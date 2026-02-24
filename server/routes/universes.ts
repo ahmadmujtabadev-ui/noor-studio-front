@@ -4,6 +4,7 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../index";
 import { UniverseHelpers } from "../models";
+import { env } from "../env";
 
 const router = Router();
 
@@ -129,7 +130,14 @@ router.post("/", async (req: Request, res: Response) => {
     return res.status(201).json({ universe: formatted });
   } catch (error) {
     console.error("[UNIVERSES] Create error:", error);
-    return res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Failed to create universe" } });
+    const errorMessage = error instanceof Error ? error.message : "Failed to create universe";
+    return res.status(500).json({
+      error: {
+        code: "INTERNAL_ERROR",
+        message: errorMessage,
+        details: env.NODE_ENV === "development" ? error : undefined
+      }
+    });
   }
 });
 

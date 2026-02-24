@@ -137,9 +137,21 @@ function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): v
 // Authentication Middleware
 // ============================================
 
-export const supabase = env.SUPABASE_URL && env.SUPABASE_ANON_KEY
-  ? createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
+// Extra defensive trimming in case Railway env vars still have issues
+const SUPABASE_URL_CLEAN = env.SUPABASE_URL?.trim().replace(/[\r\n\s]+/g, '') || '';
+const SUPABASE_ANON_KEY_CLEAN = env.SUPABASE_ANON_KEY?.trim().replace(/[\r\n\s]+/g, '') || '';
+
+export const supabase = SUPABASE_URL_CLEAN && SUPABASE_ANON_KEY_CLEAN
+  ? createClient(SUPABASE_URL_CLEAN, SUPABASE_ANON_KEY_CLEAN)
   : null;
+
+if (supabase) {
+  console.log('[SUPABASE] Client initialized successfully');
+  console.log('[SUPABASE] URL:', SUPABASE_URL_CLEAN);
+  console.log('[SUPABASE] ANON_KEY length:', SUPABASE_ANON_KEY_CLEAN.length);
+} else {
+  console.warn('[SUPABASE] Client not initialized - missing credentials');
+}
 
 /**
  * Deduct credits from user profile
@@ -391,6 +403,49 @@ console.log(`[INIT] Serving stored images from: ${IMAGE_STORAGE_DIR}`);
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Supabase health check (debugging endpoint)
+app.get("/api/health/supabase", async (_req, res) => {
+  try {
+    if (!supabase) {
+      return res.status(503).json({
+        status: "unavailable",
+        message: "Supabase client not initialized",
+        env: {
+          hasUrl: !!env.SUPABASE_URL,
+          hasAnonKey: !!env.SUPABASE_ANON_KEY,
+          urlLength: env.SUPABASE_URL?.length || 0,
+          anonKeyLength: env.SUPABASE_ANON_KEY?.length || 0,
+        }
+      });
+    }
+
+    // Test query
+    const { data, error } = await supabase.from("profiles").select("count").limit(1);
+
+    if (error) {
+      return res.status(500).json({
+        status: "error",
+        message: "Supabase query failed",
+        error: error.message,
+        details: error
+      });
+    }
+
+    return res.json({
+      status: "ok",
+      message: "Supabase connected successfully",
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    const err = error as Error;
+    return res.status(500).json({
+      status: "error",
+      message: err.message || "Unknown error",
+      stack: env.NODE_ENV === "development" ? err.stack : undefined
+    });
+  }
 });
 
 // Feature flags endpoint - Protected
