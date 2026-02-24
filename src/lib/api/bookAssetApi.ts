@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './auth';
 // Book-Asset API Client
 // Frontend API calls for book-asset relationships
 

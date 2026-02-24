@@ -48,29 +48,9 @@ export interface Universe {
   deletedAt?: string | null;
 }
 
-import { supabase } from '@/lib/supabase/client';
+import { getAuthHeaders } from './auth';
 
 const API_BASE = import.meta.env.VITE_AI_IMAGE_PROXY_URL?.replace('/ai/image', '') || '/api';
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
-
-  if (supabase) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        const token = session.access_token.trim().replace(/\s+/g, '');
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.warn('Failed to get auth token:', error);
-    }
-  }
-
-  return headers;
-}
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

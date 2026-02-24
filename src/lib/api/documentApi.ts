@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './auth';
 // Document API Client
 // Frontend API calls for document library
 

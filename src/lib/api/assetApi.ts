@@ -58,6 +58,8 @@ export interface Asset {
   deletedAt?: string | null;
 }
 
+import { getAuthHeaders } from './auth';
+
 const API_BASE = import.meta.env.VITE_AI_IMAGE_PROXY_URL?.replace('/ai/image', '') || '/api';
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -73,7 +75,9 @@ export async function listAssets(filters?: { universeId?: string; type?: AssetTy
   if (filters?.universeId) params.set('universe_id', filters.universeId);
   if (filters?.type) params.set('type', filters.type);
 
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets?${params}`, {
+    headers,
     credentials: 'include',
   });
   const data = await handleResponse<{ assets: Asset[] }>(response);
@@ -81,7 +85,9 @@ export async function listAssets(filters?: { universeId?: string; type?: AssetTy
 }
 
 export async function getAsset(id: string): Promise<Asset> {
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets/${id}`, {
+    headers,
     credentials: 'include',
   });
   const data = await handleResponse<{ asset: Asset }>(response);
@@ -89,9 +95,10 @@ export async function getAsset(id: string): Promise<Asset> {
 }
 
 export async function createAsset(input: CreateAssetInput): Promise<Asset> {
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
     body: JSON.stringify(input),
   });
@@ -100,9 +107,10 @@ export async function createAsset(input: CreateAssetInput): Promise<Asset> {
 }
 
 export async function updateAsset(id: string, input: UpdateAssetInput): Promise<Asset> {
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
     body: JSON.stringify(input),
   });
@@ -111,8 +119,10 @@ export async function updateAsset(id: string, input: UpdateAssetInput): Promise<
 }
 
 export async function deleteAsset(id: string): Promise<void> {
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets/${id}`, {
     method: 'DELETE',
+    headers,
     credentials: 'include',
   });
 
@@ -123,9 +133,10 @@ export async function deleteAsset(id: string): Promise<void> {
 }
 
 export async function migrateCharacter(characterId: string, universeId?: string): Promise<Asset> {
+  const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE}/assets/migrate-character`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     credentials: 'include',
     body: JSON.stringify({ characterId, universeId }),
   });

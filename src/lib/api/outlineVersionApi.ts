@@ -1,3 +1,4 @@
+import { getAuthHeaders } from './auth';
 // Outline Version API Client
 // Frontend API calls for outline version control
 
