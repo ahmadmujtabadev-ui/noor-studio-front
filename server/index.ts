@@ -332,13 +332,13 @@ setInterval(() => {
 // Baseline HTTP Hardening
 app.use(helmet());
 
-// Helmet with custom CSP to allow Vite, Supabase, NanoBanana, and Stripe
+// Helmet with custom CSP to allow Vite, Supabase, NanoBanana, Stripe, and Google Fonts
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"], // Stripe.js
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Google Fonts
       imgSrc: [
         "'self'",
         "data:",
@@ -352,7 +352,7 @@ app.use(helmet({
         "https://api.nanobanana.com", // NanoBanana API
         "https://*.stripe.com", // Stripe API
       ],
-      fontSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
       frameSrc: ["https://js.stripe.com", "https://*.stripe.com"], // Stripe iframe elements
