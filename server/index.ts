@@ -332,9 +332,9 @@ setInterval(() => {
 // Baseline HTTP Hardening
 app.use(helmet());
 
-// Custom CSP to allow Vite, Supabase, NanoBanana, and Stripe
-app.use(
-  helmet.contentSecurityPolicy({
+// Helmet with custom CSP to allow Vite, Supabase, NanoBanana, and Stripe
+app.use(helmet({
+  contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://js.stripe.com"], // Stripe.js
@@ -348,7 +348,6 @@ app.use(
       ],
       connectSrc: [
         "'self'",
-        env.CLIENT_ORIGIN,
         "https://*.supabase.co", // Supabase API/Storage
         "https://api.nanobanana.com", // NanoBanana API
         "https://*.stripe.com", // Stripe API
@@ -358,11 +357,7 @@ app.use(
       upgradeInsecureRequests: [],
       frameSrc: ["https://js.stripe.com", "https://*.stripe.com"], // Stripe iframe elements
     },
-  })
-);
-
-app.use(helmet({
-  contentSecurityPolicy: env.NODE_ENV === "production", // Enable CSP in production
+  },
 }));
 app.use(cors({
   origin: env.NODE_ENV === "production"
