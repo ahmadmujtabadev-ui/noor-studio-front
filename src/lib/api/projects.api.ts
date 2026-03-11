@@ -68,7 +68,7 @@ export const projectsApi = {
   },
 
   generateLayout: async (id: string): Promise<Project> => {
-    const res = await api.post(`/api/projects/${id}/generate-layout`, {});
+    const res = await api.post(`/api/projects/${id}/layout`, {});
     return unwrap<Project>(payloadOf<Project>(res));
   },
 

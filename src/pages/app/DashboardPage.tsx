@@ -24,17 +24,19 @@ function formatTimeAgo(dateString: string): string {
 }
 
 function getProjectStatus(project: Project): string {
-  const completed = project.pipeline.filter((s: PipelineStage) => s.status === "completed").length;
-  const total = project.pipeline.length;
+  const pipeline = project.pipeline ?? [];
+  const completed = pipeline.filter((s: PipelineStage) => s.status === "completed").length;
+  const total = pipeline.length;
   if (!total || completed === 0) return "Draft";
   if (completed === total) return "Completed";
   return "In Progress";
 }
 
 function getProgress(project: Project): number {
-  const total = project.pipeline.length;
+  const pipeline = project.pipeline ?? [];
+  const total = pipeline.length;
   if (!total) return 0;
-  const completed = project.pipeline.filter((s: PipelineStage) => s.status === "completed").length;
+  const completed = pipeline.filter((s: PipelineStage) => s.status === "completed").length;
   return Math.round((completed / total) * 100);
 }
 
