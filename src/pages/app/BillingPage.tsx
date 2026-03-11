@@ -3,195 +3,78 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, Users, BookOpen, TrendingUp, Zap, Calendar, Filter, RefreshCw, Loader2 } from "lucide-react";
+import { CreditCard, Users, BookOpen, TrendingUp, Zap, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { useCheckout, useCustomerPortal } from "@/lib/stripe/useCheckout";
-import { isStripeConfigured } from "@/lib/stripe/client";
-import { supabase } from "@/lib/supabase/client";
-import {
-  getBalances,
-  getLedger,
-  addCredits,
-  changePlan,
-  getFilteredLedger,
-  getCreditStats,
-  getPlanLimits,
-  resetCredits,
-  CreditBalances,
-  CreditLedgerEntry,
-  LedgerFilters,
-  IMAGE_CREDITS,
-} from "@/lib/storage/creditsStore";
-import { PlanTier, CreditType } from "@/lib/models";
-import {
-  PLANS,
-  setCurrentPlan as setEntitlementPlan,
-  getCurrentPlan as getEntitlementPlan,
-  PlanType,
-} from "@/lib/entitlements";
-import { Check, X } from "lucide-react";
+import { useCreditPackages, useTransactions, useCreateCheckout } from "@/hooks/usePayments";
+import { useUser, useAuthStore } from "@/hooks/useAuth";
+import type { CreditTransaction } from "@/lib/api/types";
+import { useToast } from "@/components/ui/use-toast";
 
-const planDetails: Record<PlanTier, { name: string; price: string; description: string }> = {
-  creator: { name: "Creator", price: "$19/mo", description: "For individual creators" },
-  author: { name: "Author", price: "$49/mo", description: "For serious authors" },
-  studio: { name: "Studio", price: "$149/mo", description: "For teams and studios" },
-};
+const PLANS = [
+  {
+    id: "creator",
+    name: "Creator",
+    price: "$0/mo",
+    credits: 50,
+    description: "For individual creators getting started",
+    features: ["50 credits/mo", "5 characters", "3 books", "PDF export"],
+  },
+  {
+    id: "author",
+    name: "Author",
+    price: "$19/mo",
+    credits: 200,
+    description: "For serious authors",
+    features: ["200 credits/mo", "20 characters", "Unlimited books", "PDF + EPUB", "Priority AI"],
+    popular: true,
+  },
+  {
+    id: "studio",
+    name: "Studio",
+    price: "$49/mo",
+    credits: 500,
+    description: "For teams and studios",
+    features: ["500 credits/mo", "Unlimited everything", "Team collaboration", "Custom styles", "API access"],
+  },
+];
 
 export default function BillingPage() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const needCreditType = searchParams.get("need") as CreditType | null;
-  const [credits, setCredits] = useState<CreditBalances>(getBalances());
-  const [ledger, setLedger] = useState<CreditLedgerEntry[]>([]);
-  const [filters, setFilters] = useState<LedgerFilters>({});
-  const [stats, setStats] = useState(getCreditStats());
-  const { checkout, isLoading: isCheckoutLoading } = useCheckout();
-  const { openPortal, isLoading: isPortalLoading } = useCustomerPortal();
-  const [checkoutTier, setCheckoutTier] = useState<string | null>(null);
-  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
-  const stripeEnabled = isStripeConfigured();
+  const user = useUser();
+  const refreshUser = useAuthStore((s) => s.refreshUser);
 
-  const refreshData = useCallback(() => {
-    setCredits(getBalances());
-    setLedger(filters.type || filters.entityType ? getFilteredLedger(filters) : getLedger());
-    setStats(getCreditStats());
-  }, [filters]);
+  const { data: packages = [], isLoading: packagesLoading } = useCreditPackages();
+  const { data: transactions = [], isLoading: txLoading } = useTransactions({ limit: 50 });
+  const checkoutMutation = useCreateCheckout();
 
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
-
-  // Fetch Stripe customer ID from profile
-  useEffect(() => {
-    async function fetchStripeCustomerId() {
-      if (!supabase) return;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.stripe_customer_id) {
-        setStripeCustomerId(profile.stripe_customer_id);
-      }
-    }
-
-    fetchStripeCustomerId();
-  }, []);
-
-  const plan = planDetails[credits.plan];
-  const limits = getPlanLimits(credits.plan);
-
-  const characterPercentage = limits.characterCredits > 0
-    ? (credits.characterCredits / limits.characterCredits) * 100
-    : 0;
-  const bookPercentage = limits.bookCredits > 0
-    ? (credits.bookCredits / limits.bookCredits) * 100
-    : 0;
-
-  const handleAddCredits = (type: CreditType, amount: number) => {
-    addCredits({
-      type,
-      amount,
-      reason: `Demo: Added ${amount} ${type} credits`,
-    });
-    refreshData();
-    toast({
-      title: "Credits added",
-      description: `+${amount} ${type} credits added to your account.`,
-    });
-  };
-
-  const handleChangePlan = (newPlan: PlanTier) => {
-    changePlan(newPlan);
-    // Sync entitlement plan with credits plan
-    setEntitlementPlan(newPlan as PlanType);
-    refreshData();
-    toast({
-      title: "Plan changed",
-      description: `You are now on the ${planDetails[newPlan].name} plan.`,
-    });
-  };
-
-  const handleUpgrade = async (tier: PlanTier) => {
-    // For creator (free) tier, just use demo mode
-    if (tier === "creator") {
-      handleChangePlan(tier);
-      return;
-    }
-
-    // If Stripe is not configured, use demo mode
-    if (!stripeEnabled) {
-      handleChangePlan(tier);
-      toast({
-        title: "Demo Mode",
-        description: "Stripe is not configured. Plan changed in demo mode.",
-      });
-      return;
-    }
-
-    // Use real Stripe checkout for paid plans
-    try {
-      setCheckoutTier(tier);
-      await checkout(tier);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to start checkout";
-      toast({
-        title: "Checkout Error",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setCheckoutTier(null);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    if (!stripeCustomerId) return;
-
-    try {
-      await openPortal(stripeCustomerId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to open subscription portal";
-      toast({
-        title: "Portal Error",
-        description: message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleResetCredits = () => {
-    resetCredits();
-    refreshData();
-    toast({
-      title: "Credits reset",
-      description: "All credits and ledger entries have been reset.",
-    });
-  };
+  const credits = user?.credits ?? 0;
+  const plan = user?.plan ?? "free";
 
   const formatDate = (ts: string) => {
     const date = new Date(ts);
     return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  const handleUpgrade = async (packageId: string) => {
+    try {
+      await checkoutMutation.mutateAsync({ packageId });
+    } catch (err) {
+      toast({
+        title: "Checkout Error",
+        description: err instanceof Error ? err.message : "Failed to start checkout",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
-    <AppLayout
-      title="Billing & Credits"
-      subtitle="Manage your subscription and credit usage"
-    >
+    <AppLayout title="Billing & Credits" subtitle="Manage your subscription and credit usage">
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Current Plan */}
+          {/* Current Balance */}
           <div className="card-glow p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -199,416 +82,184 @@ export default function BillingPage() {
                   <CreditCard className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">Current Plan</h2>
-                  <p className="text-muted-foreground">Your subscription details</p>
+                  <h2 className="text-xl font-semibold">Credit Balance</h2>
+                  <p className="text-muted-foreground capitalize">{plan} plan</p>
                 </div>
               </div>
-              <Badge className="bg-primary text-primary-foreground text-sm px-3 py-1">
-                {plan.name}
-              </Badge>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4 mb-6">
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm text-muted-foreground mb-1">Monthly Price</p>
-                <p className="text-2xl font-bold">{plan.price}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm text-muted-foreground mb-1">Character Credits</p>
-                <p className="text-2xl font-bold">{limits.characterCredits}/mo</p>
-              </div>
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm text-muted-foreground mb-1">Book Credits</p>
-                <p className="text-2xl font-bold">{limits.bookCredits}/mo</p>
-              </div>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-              <Select value={credits.plan} onValueChange={(v) => handleChangePlan(v as PlanTier)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="creator">Creator</SelectItem>
-                  <SelectItem value="author">Author</SelectItem>
-                  <SelectItem value="studio">Studio</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={handleResetCredits}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reset All (Demo)
+              <Button variant="ghost" size="sm" onClick={() => refreshUser()}>
+                <RefreshCw className="w-4 h-4 mr-2" />Refresh
               </Button>
-              {stripeCustomerId && credits.plan !== "creator" && (
-                <Button
-                  variant="outline"
-                  onClick={handleManageSubscription}
-                  disabled={isPortalLoading}
-                >
-                  {isPortalLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Manage Subscription
-                    </>
-                  )}
-                </Button>
-              )}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div className="p-5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <span className="font-semibold text-primary">Credits Available</span>
+                </div>
+                <p className="text-4xl font-bold text-primary">{credits}</p>
+                <p className="text-sm text-muted-foreground mt-1">Use for any AI generation</p>
+              </div>
+              <div className="p-5 rounded-xl bg-muted/50 border border-border">
+                <p className="text-sm text-muted-foreground mb-1">Current Plan</p>
+                <p className="text-2xl font-bold capitalize">{plan}</p>
+                <Badge className="mt-2 bg-primary/10 text-primary">Active</Badge>
+              </div>
             </div>
           </div>
 
-          {/* Credit Usage */}
+          {/* Credit Packages */}
           <div className="card-glow p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold">Credit Balances</h2>
-                <p className="text-muted-foreground">Current available credits</p>
+                <h2 className="text-xl font-semibold">Buy Credits</h2>
+                <p className="text-muted-foreground">Top up your balance</p>
               </div>
             </div>
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Character Credits</span>
+
+            {packagesLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            ) : packages.length > 0 ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {packages.map((pkg) => (
+                  <div
+                    key={pkg.id}
+                    className={cn(
+                      "p-5 rounded-xl border-2 flex flex-col",
+                      pkg.popular ? "border-primary bg-primary/5" : "border-border"
+                    )}
+                  >
+                    {pkg.popular && (
+                      <Badge className="self-start mb-3 bg-primary text-primary-foreground">Popular</Badge>
+                    )}
+                    <p className="font-semibold text-lg mb-1">{pkg.name}</p>
+                    <p className="text-3xl font-bold mb-1">{pkg.credits}</p>
+                    <p className="text-sm text-muted-foreground mb-4">credits</p>
+                    <p className="text-xl font-bold mb-4">
+                      ${pkg.price} {pkg.currency.toUpperCase()}
+                    </p>
+                    <Button
+                      variant={pkg.popular ? "hero" : "outline"}
+                      className="mt-auto"
+                      onClick={() => handleUpgrade(pkg.id)}
+                      disabled={checkoutMutation.isPending}
+                    >
+                      {checkoutMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Buy Now
+                    </Button>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {credits.characterCredits}/{limits.characterCredits}
-                  </span>
-                </div>
-                <Progress
-                  value={characterPercentage}
-                  className={cn("h-3", characterPercentage < 30 && "[&>div]:bg-destructive")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {stats.totalCharacterCreditsUsed} credits used total
-                </p>
+                ))}
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    <span className="font-medium">Book Credits</span>
+            ) : (
+              /* Fallback when no packages configured: show plan upgrade */
+              <div className="grid sm:grid-cols-3 gap-4">
+                {PLANS.map((p) => (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "p-5 rounded-xl border-2 flex flex-col",
+                      p.popular ? "border-primary bg-primary/5" : "border-border",
+                      p.id === plan && "opacity-60"
+                    )}
+                  >
+                    {p.popular && <Badge className="self-start mb-3 bg-primary text-primary-foreground">Popular</Badge>}
+                    <p className="font-semibold text-lg">{p.name}</p>
+                    <p className="text-2xl font-bold my-2">{p.price}</p>
+                    <p className="text-sm text-muted-foreground mb-4">{p.description}</p>
+                    <ul className="text-sm space-y-1 mb-4 flex-1">
+                      {p.features.map((f) => (
+                        <li key={f} className="flex items-center gap-2">
+                          <span className="text-primary">✓</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      variant={p.popular ? "hero" : "outline"}
+                      disabled={p.id === plan}
+                      onClick={() => handleUpgrade(p.id)}
+                    >
+                      {p.id === plan ? "Current Plan" : "Upgrade"}
+                    </Button>
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    {credits.bookCredits}/{limits.bookCredits}
-                  </span>
-                </div>
-                <Progress
-                  value={bookPercentage}
-                  className={cn("h-3", bookPercentage < 30 && "[&>div]:bg-destructive")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {stats.totalBookCreditsUsed} credits used total
-                </p>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Credit Ledger */}
+          {/* Transaction History */}
           <div className="card-glow p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Credit History</h2>
-              <div className="flex gap-2">
-                <Select
-                  value={filters.type || "all"}
-                  onValueChange={(v) => setFilters({ ...filters, type: v === "all" ? undefined : v as CreditType })}
-                >
-                  <SelectTrigger className="w-32">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="character">Character</SelectItem>
-                    <SelectItem value="book">Book</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {ledger.length > 0 ? (
+            <h2 className="text-xl font-semibold mb-4">Transaction History</h2>
+            {txLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            ) : transactions.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No transactions yet.</p>
+            ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead className="text-right">Credits</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ledger.slice(0, 20).map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(entry.ts)}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">{entry.reason}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize text-xs">
-                          {entry.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {entry.entityType || "-"}
-                      </TableCell>
-                      <TableCell className={cn(
-                        "text-right font-medium",
-                        entry.amount > 0 ? "text-destructive" : "text-primary"
-                      )}>
-                        {entry.amount > 0 ? `-${entry.amount}` : `+${Math.abs(entry.amount)}`}
+                  {transactions.map((tx: CreditTransaction) => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-sm text-muted-foreground">{formatDate(tx.createdAt)}</TableCell>
+                      <TableCell className="text-sm">{tx.description}</TableCell>
+                      <TableCell className={cn("text-right font-medium text-sm", tx.type === "credit" ? "text-green-600" : "text-red-500")}>
+                        {tx.type === "credit" ? "+" : "-"}{Math.abs(tx.amount)}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No credit transactions yet.</p>
-                <p className="text-sm">Generate poses or run book pipelines to see activity.</p>
-              </div>
             )}
           </div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Buy Credits - Demo */}
-          <div className="card-glow p-6 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
-              <h3 className="font-semibold">Add Credits (Demo)</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              For demo purposes, add credits directly without payment.
-            </p>
-            <div className="space-y-4">
-              {/* Character Credits - for pose generation */}
-              <div className={cn(
-                "space-y-2 p-3 rounded-lg -mx-3 transition-colors",
-                needCreditType === "character" && "bg-blue-500/10 ring-2 ring-blue-500/50"
-              )}>
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Users className="w-4 h-4" />
-                  <span>For Characters & Poses</span>
-                  {needCreditType === "character" && (
-                    <Badge className="bg-blue-500 text-white text-xs">Needed</Badge>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between border-blue-500/30 hover:border-blue-500/50"
-                  onClick={() => handleAddCredits("character", 10)}
-                >
-                  <span>+10 Character Credits</span>
-                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">Demo</Badge>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between border-blue-500/30 hover:border-blue-500/50"
-                  onClick={() => handleAddCredits("character", 25)}
-                >
-                  <span>+25 Character Credits</span>
-                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">Demo</Badge>
-                </Button>
-              </div>
-
-              {/* Book Credits - for pipeline stages */}
-              <div className={cn(
-                "space-y-2 p-3 rounded-lg -mx-3 transition-colors",
-                needCreditType === "book" && "bg-amber-500/10 ring-2 ring-amber-500/50"
-              )}>
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <BookOpen className="w-4 h-4" />
-                  <span>For Book Pipeline</span>
-                  {needCreditType === "book" && (
-                    <Badge className="bg-amber-500 text-white text-xs">Needed</Badge>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between border-amber-500/30 hover:border-amber-500/50"
-                  onClick={() => handleAddCredits("book", 25)}
-                >
-                  <span>+25 Book Credits</span>
-                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">Demo</Badge>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between border-amber-500/30 hover:border-amber-500/50"
-                  onClick={() => handleAddCredits("book", 50)}
-                >
-                  <span>+50 Book Credits</span>
-                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">Demo</Badge>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
           <div className="card-glow p-6">
-            <h3 className="font-semibold mb-4">Usage Stats</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Character Credits Used</span>
-                <span className="font-medium">{stats.totalCharacterCreditsUsed}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Book Credits Used</span>
-                <span className="font-medium">{stats.totalBookCreditsUsed}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Transactions</span>
-                <span className="font-medium">{stats.transactionCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Credits Added</span>
-                <span className="font-medium text-primary">
-                  +{stats.totalCharacterCreditsAdded + stats.totalBookCreditsAdded}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Image Credit Costs */}
-          <div className="card-glow p-6">
-            <h3 className="font-semibold mb-4">Image Generation Costs</h3>
+            <h3 className="font-semibold mb-4">Credit Usage Guide</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Character Sheet (12 poses)</span>
-                <Badge variant="outline" className="font-mono">
-                  {IMAGE_CREDITS.characterSheet} credits
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Illustration (3 variants)</span>
-                <Badge variant="outline" className="font-mono">
-                  {IMAGE_CREDITS.illustration} credits
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Cover (front or back)</span>
-                <Badge variant="outline" className="font-mono">
-                  {IMAGE_CREDITS.cover} credits
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Pose Alternative</span>
-                <Badge variant="outline" className="font-mono">
-                  {IMAGE_CREDITS.poseAlternative} credit
-                </Badge>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-border/50">
-              <p className="text-xs text-muted-foreground">
-                Character credits: poses & reference sheets
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Book credits: illustrations, covers & pipeline stages
-              </p>
+              {[
+                { label: "Outline generation", cost: 3 },
+                { label: "Chapter writing", cost: 2 },
+                { label: "Humanize pass", cost: 1 },
+                { label: "Illustrations (all)", cost: 10 },
+                { label: "Cover image", cost: 3 },
+                { label: "Layout pass", cost: 2 },
+                { label: "Export PDF", cost: 2 },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <Badge variant="outline">{item.cost} cr</Badge>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Plan Comparison with Features */}
           <div className="card-glow p-6">
-            <h3 className="font-semibold mb-4">Plan Benefits</h3>
-            <div className="space-y-4">
-              {PLANS.map((planInfo) => {
-                const isCurrentPlan = credits.plan === planInfo.id;
-                const tierLimits = getPlanLimits(planInfo.id as PlanTier);
-
-                return (
-                  <div
-                    key={planInfo.id}
-                    className={cn(
-                      "p-4 rounded-lg border transition-colors",
-                      isCurrentPlan
-                        ? "border-primary/50 bg-primary/5"
-                        : "border-border bg-muted/30"
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{planInfo.name}</span>
-                        {planInfo.recommended && (
-                          <Badge variant="secondary" className="text-xs">Popular</Badge>
-                        )}
-                      </div>
-                      <span className="text-sm font-semibold">{planInfo.price}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">{planInfo.description}</p>
-
-                    {/* Feature highlights */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-xs">
-                        <Check className="w-3 h-3 text-primary" />
-                        <span>{planInfo.limits.maxCharacters} characters</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <Check className="w-3 h-3 text-primary" />
-                        <span>{planInfo.limits.maxProjects} projects</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <Check className="w-3 h-3 text-primary" />
-                        <span>{planInfo.limits.maxKBItemsPerKB} KB items</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        {planInfo.limits.exportEnabled ? (
-                          <>
-                            <Check className="w-3 h-3 text-primary" />
-                            <span>Full export</span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">No export</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Credit allocation */}
-                    <div className="mt-3 pt-3 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground">
-                        {tierLimits.characterCredits} char + {tierLimits.bookCredits} book credits/mo
-                      </p>
-                    </div>
-
-                    {!isCurrentPlan && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-3"
-                        onClick={() => handleUpgrade(planInfo.id as PlanTier)}
-                        disabled={isCheckoutLoading && checkoutTier === planInfo.id}
-                      >
-                        {isCheckoutLoading && checkoutTier === planInfo.id ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            {planInfo.price === "Free" ? "Downgrade" : "Upgrade"} to {planInfo.name}
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    {isCurrentPlan && (
-                      <div className="mt-3 text-center">
-                        <Badge className="bg-primary/20 text-primary">Current Plan</Badge>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <h3 className="font-semibold mb-3">Account</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium truncate max-w-[140px]">{user?.email || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Plan</span>
+                <Badge className="capitalize">{plan}</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Credits</span>
+                <span className="font-bold text-primary">{credits}</span>
+              </div>
             </div>
           </div>
         </div>

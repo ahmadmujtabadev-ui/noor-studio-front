@@ -1,71 +1,80 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { translations, Language, TranslationKey } from "./translations";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface LanguageContextType {
+type Language = "en" | "ar";
+
+interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
   isRTL: boolean;
+  t: (key: string) => string;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const translations: Record<Language, Record<string, string>> = {
+  en: {
+    searchPlaceholder: "Search...",
+    dashboard: "Dashboard",
+    characters: "Characters",
+    universes: "Universes",
+    knowledgeBase: "Knowledge Base",
+    billing: "Billing",
+    settings: "Settings",
+    help: "Help",
+    newBook: "New Book",
+    credits: "Credits",
+  },
+  ar: {
+    searchPlaceholder: "بحث...",
+    dashboard: "لوحة التحكم",
+    characters: "الشخصيات",
+    universes: "العوالم",
+    knowledgeBase: "قاعدة المعرفة",
+    billing: "الفواتير",
+    settings: "الإعدادات",
+    help: "المساعدة",
+    newBook: "كتاب جديد",
+    credits: "رصيد",
+  },
+};
 
-const DEFAULT_LANGUAGE: Language = "en";
-const LANGUAGE_STORAGE_KEY = "noor-studio-language";
+const LanguageContext = createContext<LanguageContextValue>({
+  language: "en",
+  setLanguage: () => {},
+  isRTL: false,
+  t: (key) => key,
+});
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
-  const [mounted, setMounted] = useState(false);
+const STORAGE_KEY = "noor_language";
 
-  // Initialize language from localStorage on mount
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language | null;
-    if (savedLanguage && (savedLanguage === "en" || savedLanguage === "ar")) {
-      setLanguageState(savedLanguage);
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return (stored === "ar" || stored === "en" ? stored : "en") as Language;
+    } catch {
+      return "en";
     }
-    setMounted(true);
-  }, []);
-
-  // Update document direction and language attribute when language changes
-  useEffect(() => {
-    if (!mounted) return;
-
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-    document.documentElement.lang = language;
-    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-
-    // Add/remove RTL class for Tailwind RTL utilities (if using rtl plugin)
-    if (language === "ar") {
-      document.documentElement.classList.add("rtl");
-    } else {
-      document.documentElement.classList.remove("rtl");
-    }
-  }, [language, mounted]);
-
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-  };
-
-  const t = (key: TranslationKey): string => {
-    return translations[language][key] || translations.en[key];
-  };
+  });
 
   const isRTL = language === "ar";
 
-  const value: LanguageContextType = {
-    language,
-    setLanguage,
-    t,
-    isRTL,
-  };
+  useEffect(() => {
+    document.documentElement.dir = isRTL ? "rtl" : "ltr";
+    document.documentElement.lang = language;
+    try { localStorage.setItem(STORAGE_KEY, language); } catch {}
+  }, [language, isRTL]);
 
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+  const setLanguage = (lang: Language) => setLanguageState(lang);
+
+  const t = (key: string): string =>
+    translations[language][key] ?? translations["en"][key] ?? key;
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, isRTL, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (context === undefined) {
-    throw new Error("useLanguage must be used within a LanguageProvider");
-  }
-  return context;
+  return useContext(LanguageContext);
 }

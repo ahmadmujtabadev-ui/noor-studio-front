@@ -2,20 +2,16 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Users, BookOpen, FolderKanban, Clock, Sparkles, Trash2, RefreshCw, Bug, Play } from "lucide-react";
-import { useState, useEffect } from "react";
-import { listProjects, StoredProject, getCompletedStagesCount, clearAllProjects, createProject } from "@/lib/storage/projectsStore";
-import { getCharacters, clearAllCharacters, createCharacter } from "@/lib/storage/charactersStore";
-import { clearAllKnowledgeBases } from "@/lib/storage/knowledgeBaseStore";
-import { resetCredits } from "@/lib/storage/creditsStore";
+import { Plus, Users, BookOpen, FolderKanban, Clock, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { demoCharacters, demoBooks } from "@/lib/demo-data";
+import { useProjects } from "@/hooks/useProjects";
+import { useCharacters } from "@/hooks/useCharacters";
+import { useUser } from "@/hooks/useAuth";
+import type { Project, PipelineStage } from "@/lib/api/types";
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = Date.now() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -27,124 +23,33 @@ function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-function getProjectStatus(project: StoredProject): string {
-  const completed = getCompletedStagesCount(project);
+function getProjectStatus(project: Project): string {
+  const completed = project.pipeline.filter((s: PipelineStage) => s.status === "completed").length;
   const total = project.pipeline.length;
-  if (completed === 0) return "Draft";
+  if (!total || completed === 0) return "Draft";
   if (completed === total) return "Completed";
   return "In Progress";
 }
 
+function getProgress(project: Project): number {
+  const total = project.pipeline.length;
+  if (!total) return 0;
+  const completed = project.pipeline.filter((s: PipelineStage) => s.status === "completed").length;
+  return Math.round((completed / total) * 100);
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [projects, setProjects] = useState<StoredProject[]>([]);
-  const [characterCount, setCharacterCount] = useState(0);
-  const [showDevTools, setShowDevTools] = useState(false);
+  const user = useUser();
+  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const { data: characters = [], isLoading: charsLoading } = useCharacters();
 
-  const loadData = () => {
-    // Load real projects from localStorage
-    const loadedProjects = listProjects();
-    // Sort by updatedAt descending (most recent first)
-    loadedProjects.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    setProjects(loadedProjects);
-
-    // Load character count
-    const chars = getCharacters();
-    setCharacterCount(chars.length);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleClearAll = () => {
-    if (!confirm("This will clear ALL data (projects, characters, KBs, credits). Are you sure?")) {
-      return;
-    }
-    clearAllProjects();
-    clearAllCharacters();
-    clearAllKnowledgeBases();
-    resetCredits();
-    // Clear autosave too
-    localStorage.removeItem("noorstudio.book_builder.autosave.v1");
-    loadData();
-    toast({
-      title: "All data cleared",
-      description: "Your workspace has been reset. Refresh the page to re-seed demo data.",
-    });
-  };
-
-  const handleTryDemoMode = () => {
-    // Seed 3 demo characters
-    const demoCharacterIds: string[] = [];
-    demoCharacters.slice(0, 3).forEach((char) => {
-      const created = createCharacter({
-        name: `${char.name} (Demo)`,
-        role: char.role,
-        ageRange: char.ageRange,
-        traits: char.traits,
-        speechStyle: char.speechStyle,
-        appearance: char.appearance,
-        modestyRules: char.modestyRules,
-        colorPalette: char.colorPalette,
-        knowledgeLevel: char.knowledgeLevel,
-      });
-      demoCharacterIds.push(created.id);
-    });
-
-    // Seed 2 demo projects (books)
-    demoBooks.slice(0, 2).forEach((book) => {
-      createProject({
-        title: `${book.title} (Demo)`,
-        universeId: "demo-universe",
-        universeName: "Demo Universe",
-        knowledgeBaseId: "demo-kb",
-        knowledgeBaseName: "Demo Knowledge Base",
-        ageRange: book.ageRange,
-        templateType: book.category as any,
-        synopsis: `A demonstration project for trying out ${book.title}`,
-        learningObjective: "Experience the full NoorStudio workflow",
-        setting: "Islamic children's literature",
-        characterIds: [demoCharacterIds[0]],
-        layoutStyle: "split-page",
-        trimSize: "8.5x8.5",
-        exportTargets: ["pdf"],
-      });
-    });
-
-    loadData();
-    toast({
-      title: "Demo mode activated! 🎉",
-      description: "Try editing the demo characters and books. Your changes are saved locally.",
-    });
-  };
-
-  const handleRefresh = () => {
-    loadData();
-    toast({
-      title: "Data refreshed",
-      description: `Loaded ${projects.length} projects and ${characterCount} characters.`,
-    });
-  };
-
-  const handleDebugProjects = () => {
-    const allProjects = listProjects();
-    if (import.meta.env.DEV) {
-      console.log("[DEBUG] All projects in localStorage:", allProjects);
-      console.log("[DEBUG] Project IDs:", allProjects.map(p => p.id));
-      allProjects.forEach(p => {
-        console.log(`[DEBUG] Project "${p.title}" - ID: ${p.id} - URL: /app/projects/${p.id}`);
-      });
-    }
-    toast({
-      title: "Debug info logged",
-      description: `Found ${allProjects.length} projects. Check browser console (F12).`,
-    });
-  };
+  const sortedProjects = [...projects].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
 
   const stats = [
-    { label: "Characters", value: characterCount.toString(), icon: Users, color: "bg-teal-100 text-primary" },
+    { label: "Characters", value: characters.length.toString(), icon: Users, color: "bg-teal-100 text-primary" },
     { label: "Books", value: projects.length.toString(), icon: BookOpen, color: "bg-gold-100 text-gold-600" },
     { label: "Projects", value: projects.length.toString(), icon: FolderKanban, color: "bg-coral-100 text-coral-500" },
   ];
@@ -155,8 +60,12 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome back, Author</h1>
-            <p className="text-muted-foreground">Here's what's happening with your projects.</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              Welcome back, {user?.name || "Author"}
+            </h1>
+            <p className="text-muted-foreground">
+              {user?.credits ?? 0} credits available
+            </p>
           </div>
           <div className="flex gap-3">
             <Link to="/app/characters/new">
@@ -182,66 +91,33 @@ export default function DashboardPage() {
                 <stat.icon className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                {projectsLoading || charsLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                )}
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Dev Tools (only in development) */}
-        {import.meta.env.DEV && (
-          <div className="card-premium p-4 mb-8 border-dashed border-2 border-orange-300 bg-orange-50/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bug className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-medium text-orange-800">Dev Tools</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDebugProjects}
-                  className="h-8 text-xs"
-                >
-                  <Bug className="w-3 h-3 mr-1" />
-                  Debug
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="h-8 text-xs"
-                >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Refresh
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleClearAll}
-                  className="h-8 text-xs"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Clear All
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Recent Projects */}
         <div className="card-premium p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-foreground">Recent Projects</h2>
-            {projects.length > 5 && (
+            {sortedProjects.length > 5 && (
               <Link to="/app/projects" className="text-sm text-primary hover:underline">
                 View all
               </Link>
             )}
           </div>
 
-          {projects.length === 0 ? (
+          {projectsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : sortedProjects.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="w-8 h-8 text-primary" />
@@ -250,29 +126,18 @@ export default function DashboardPage() {
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 Create your first book project to start generating Islamic children's stories.
               </p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                <Button 
-                  variant="hero"
-                  onClick={handleTryDemoMode}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Try Demo Mode
+              <Link to="/app/books/new">
+                <Button variant="hero">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Book
                 </Button>
-                <Link to="/app/books/new">
-                  <Button variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Book
-                  </Button>
-                </Link>
-              </div>
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {projects.slice(0, 5).map((project) => {
+              {sortedProjects.slice(0, 5).map((project) => {
                 const status = getProjectStatus(project);
-                const completedStages = getCompletedStagesCount(project);
-                const totalStages = project.pipeline.length;
-                const progress = Math.round((completedStages / totalStages) * 100);
+                const progress = getProgress(project);
 
                 return (
                   <div
@@ -318,9 +183,7 @@ export default function DashboardPage() {
                       >
                         {status}
                       </Badge>
-                      <Button variant="ghost" size="sm">
-                        Open
-                      </Button>
+                      <Button variant="ghost" size="sm">Open</Button>
                     </div>
                   </div>
                 );

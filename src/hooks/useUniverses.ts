@@ -1,111 +1,68 @@
-// Universe React Hooks
-// Data fetching and mutations for universes
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { universesApi, type CreateUniverseInput, type UpdateUniverseInput } from '@/lib/api/universes.api';
+import type { Universe } from '@/lib/api/types';
 
-import { useState, useEffect } from 'react';
-import {
-  listUniverses,
-  getUniverse,
-  createUniverse,
-  updateUniverse,
-  deleteUniverse,
-  Universe,
-  CreateUniverseInput,
-  UpdateUniverseInput,
-} from '@/lib/api';
+export const UNIVERSES_KEY = ['universes'] as const;
+export const universeKey = (id: string) => ['universes', id] as const;
 
 export function useUniverses() {
-  const [universes, setUniverses] = useState<Universe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadUniverses();
-  }, []);
-
-  async function loadUniverses() {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await listUniverses();
-      setUniverses(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load universes');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function create(input: CreateUniverseInput): Promise<Universe> {
-    const universe = await createUniverse(input);
-    setUniverses((prev) => [universe, ...prev]);
-    return universe;
-  }
-
-  async function update(id: string, input: UpdateUniverseInput): Promise<Universe> {
-    const updated = await updateUniverse(id, input);
-    setUniverses((prev) => prev.map((u) => (u.id === id ? updated : u)));
-    return updated;
-  }
-
-  async function remove(id: string): Promise<void> {
-    await deleteUniverse(id);
-    setUniverses((prev) => prev.filter((u) => u.id !== id));
-  }
+  const query = useQuery({
+    queryKey: UNIVERSES_KEY,
+    queryFn: universesApi.list,
+    staleTime: 2 * 60 * 1000,
+  });
 
   return {
-    universes,
-    loading,
-    error,
-    refresh: loadUniverses,
-    create,
-    update,
-    remove,
+    universes: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refetch: query.refetch,
   };
 }
 
 export function useUniverse(id: string | undefined) {
-  const [universe, setUniverse] = useState<Universe | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) {
-      setUniverse(null);
-      setLoading(false);
-      return;
-    }
-
-    loadUniverse();
-  }, [id]);
-
-  async function loadUniverse() {
-    if (!id) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getUniverse(id);
-      setUniverse(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load universe');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function update(input: UpdateUniverseInput): Promise<Universe | null> {
-    if (!id) return null;
-
-    const updated = await updateUniverse(id, input);
-    setUniverse(updated);
-    return updated;
-  }
+  const query = useQuery({
+    queryKey: universeKey(id!),
+    queryFn: () => universesApi.get(id!),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
 
   return {
-    universe,
-    loading,
-    error,
-    refresh: loadUniverse,
-    update,
+    universe: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
   };
 }
+
+export function useCreateUniverse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateUniverseInput) => universesApi.create(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: UNIVERSES_KEY }),
+  });
+}
+
+export function useUpdateUniverse(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateUniverseInput) => universesApi.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: universeKey(id) });
+      qc.invalidateQueries({ queryKey: UNIVERSES_KEY });
+    },
+  });
+}
+
+export function useDeleteUniverse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => universesApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: UNIVERSES_KEY }),
+  });
+}
+
+// Legacy aliases used in old pages
+export const createUniverse = universesApi.create;
+export const updateUniverse = universesApi.update;
+export type { Universe };

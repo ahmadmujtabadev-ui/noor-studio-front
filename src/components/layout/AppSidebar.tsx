@@ -1,25 +1,14 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  Library,
-  FolderKanban,
-  Globe,
-  CreditCard,
-  Settings,
-  HelpCircle,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
+  LayoutDashboard, Users, BookOpen, Library, FolderKanban, Globe,
+  CreditCard, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight,
+  Plus, LogOut, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useLanguage } from "@/lib/i18n/useLanguage";
-import { CreditBadge } from "@/components/shared/CreditBadge";
-import { demoUserCredits } from "@/lib/demo-data";
 import { Button } from "@/components/ui/button";
+import { useUser, useCredits, useAuthStore } from "@/hooks/useAuth";
 
 const mainNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
@@ -41,9 +30,20 @@ const bottomNavItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isRTL } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
-  const credits = demoUserCredits;
+
+  const user = useUser();
+  const credits = useCredits();
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/auth");
+  };
+
+  const isLowCredits = credits < 10;
 
   const NavLink = ({
     item,
@@ -96,39 +96,31 @@ export function AppSidebar() {
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground"
         >
-          {collapsed ? (
-            isRTL ? (
-              <ChevronLeft className="w-4 h-4" />
-            ) : (
-              <ChevronRight className="w-4 h-4" />
-            )
-          ) : (
-            isRTL ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )
-          )}
+          {collapsed
+            ? isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+            : isRTL ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />
+          }
         </button>
       </div>
 
       {/* Credits Display */}
       {!collapsed && (
-        <div className="px-3 py-4 border-b border-sidebar-border">
-          <div className="space-y-2">
-            <CreditBadge
-              type="character"
-              current={credits.characterCredits}
-              max={credits.characterCreditsMax}
-              className="w-full justify-between bg-sidebar-accent border-sidebar-border"
-            />
-            <CreditBadge
-              type="book"
-              current={credits.bookCredits}
-              max={credits.bookCreditsMax}
-              className="w-full justify-between bg-sidebar-accent border-sidebar-border"
-            />
-          </div>
+        <div className="px-3 py-3 border-b border-sidebar-border">
+          <Link
+            to="/app/billing"
+            className={cn(
+              "flex items-center justify-between p-2.5 rounded-lg transition-colors",
+              "bg-sidebar-accent hover:bg-sidebar-accent/80"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Zap className={cn("w-4 h-4", isLowCredits ? "text-destructive" : "text-sidebar-primary")} />
+              <span className="text-sm font-medium text-sidebar-foreground">Credits</span>
+            </div>
+            <span className={cn("text-sm font-bold", isLowCredits ? "text-destructive" : "text-sidebar-foreground")}>
+              {credits}
+            </span>
+          </Link>
         </div>
       )}
 
@@ -140,7 +132,6 @@ export function AppSidebar() {
           ))}
         </nav>
 
-        {/* Create Section */}
         <div className="mt-6">
           {!collapsed && (
             <p className="px-3 text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider mb-2">
@@ -174,17 +165,26 @@ export function AppSidebar() {
           )}
         >
           <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground text-sm font-semibold shrink-0">
-            A
+            {user?.name?.charAt(0).toUpperCase() || "U"}
           </div>
           {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
-                Author Demo
-              </p>
-              <p className="text-xs text-sidebar-foreground/60 truncate capitalize">
-                {credits.plan} Plan
-              </p>
-            </div>
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.name || "User"}
+                </p>
+                <p className="text-xs text-sidebar-foreground/60 truncate capitalize">
+                  {user?.plan || "free"} Plan
+                </p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg hover:bg-sidebar-border transition-colors text-sidebar-foreground/60 hover:text-destructive"
+                title="Log out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div>

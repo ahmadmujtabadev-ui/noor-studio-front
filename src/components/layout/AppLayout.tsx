@@ -1,10 +1,10 @@
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, Search, Users, BookOpen, Menu, X } from "lucide-react";
+import { Bell, Search, Menu, X, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { getBalances, seedDefaultBalancesIfEmpty, CreditBalances } from "@/lib/storage/creditsStore";
+import { useCredits } from "@/hooks/useAuth";
 import { useLanguage } from "@/lib/i18n/useLanguage";
 import { cn } from "@/lib/utils";
 
@@ -15,19 +15,16 @@ interface AppLayoutProps {
   actions?: React.ReactNode;
 }
 
-function CreditIndicator({ type, current, icon: Icon }: { type: string; current: number; icon: React.ElementType }) {
+function CreditIndicator({ current }: { current: number }) {
   const isLow = current < 10;
-
   return (
     <div
       className={cn(
         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors",
-        isLow
-          ? "bg-destructive/10 text-destructive"
-          : "bg-muted hover:bg-muted/80"
+        isLow ? "bg-destructive/10 text-destructive" : "bg-muted hover:bg-muted/80"
       )}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Zap className="w-3.5 h-3.5" />
       <span>{current}</span>
     </div>
   );
@@ -38,41 +35,20 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
   const location = useLocation();
   const { isRTL, t } = useLanguage();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [credits, setCredits] = useState<CreditBalances>({ characterCredits: 0, bookCredits: 0, plan: "author" });
+  const credits = useCredits();
 
-  // Load credits on mount and set up refresh
-  useEffect(() => {
-    seedDefaultBalancesIfEmpty();
-    setCredits(getBalances());
-
-    // Refresh credits periodically (every 2 seconds) to catch updates
-    const interval = setInterval(() => {
-      setCredits(getBalances());
-    }, 2000);
-
-    // Listen for storage changes
-    const handleStorage = () => setCredits(getBalances());
-    window.addEventListener("storage", handleStorage);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, []);
-
-  // Close mobile drawer on navigation
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar (unchanged behavior) */}
+      {/* Desktop sidebar */}
       <div className="hidden md:block">
         <AppSidebar />
       </div>
 
-      {/* Mobile drawer + backdrop */}
+      {/* Mobile drawer */}
       <div className="md:hidden">
         {mobileSidebarOpen && (
           <button
@@ -82,7 +58,6 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
             onClick={() => setMobileSidebarOpen(false)}
           />
         )}
-
         <div
           className={cn(
             "[&>aside]:transition-transform [&>aside]:duration-300 [&>aside]:ease-out [&>aside]:z-50 [&>aside]:w-64 [&>aside]:shadow-xl",
@@ -91,7 +66,6 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
           )}
         >
           <AppSidebar />
-
           {mobileSidebarOpen && (
             <Button
               type="button"
@@ -118,7 +92,6 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
         )}
       >
         <div className="flex items-center gap-3 md:gap-4 flex-1">
-          {/* Mobile menu button */}
           <Button
             type="button"
             variant="ghost"
@@ -143,15 +116,14 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
             />
           </div>
         </div>
+
         <div className="flex items-center gap-4">
-          {/* Clickable Credits Indicator */}
           <button
             onClick={() => navigate("/app/billing")}
             className="hidden md:flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-            title="View billing & credits"
+            title={`${credits} credits available`}
           >
-            <CreditIndicator type="character" current={credits.characterCredits} icon={Users} />
-            <CreditIndicator type="book" current={credits.bookCredits} icon={BookOpen} />
+            <CreditIndicator current={credits} />
           </button>
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5" />

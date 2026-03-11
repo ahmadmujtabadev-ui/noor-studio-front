@@ -8,1206 +8,545 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Globe, BookOpen, Type, Users, Layout, Check, Lock, Database, FileText, Download, Save, Info } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, Globe, BookOpen, Type, Users, Layout,
+  Check, Database, FileText, Download, Info, Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { getNamespacedKey } from "@/lib/storage/keys";
-import { importStoryToChapters } from "@/lib/storyImport";
-import { addArtifact, updatePipelineStage, updateProject } from "@/lib/storage/projectsStore";
-import {
-  getCharacters,
-  StoredCharacter,
-  seedDemoCharactersIfEmpty,
-} from "@/lib/storage/charactersStore";
-import {
-  createProject,
-  LayoutStyle,
-  TrimSize,
-  ExportTarget,
-  TemplateType,
-} from "@/lib/storage/projectsStore";
-import {
-  listKnowledgeBases,
-  seedDefaultKBIfEmpty,
-  KnowledgeBase,
-} from "@/lib/storage/knowledgeBaseStore";
-import { listProjects } from "@/lib/storage/projectsStore";
-import { canCreateProject } from "@/lib/entitlements";
-import { UpgradeModal } from "@/components/shared/UpgradeModal";
-import { ChapterArtifactItem, OutlineArtifactContent } from "@/lib/types/artifacts";
+import { useCreateProject } from "@/hooks/useProjects";
 import { useUniverses } from "@/hooks/useUniverses";
+import { useCharacters } from "@/hooks/useCharacters";
+import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
+import type { Character } from "@/lib/api/types";
 
 const steps = [
-  { id: 1, title: "Story World", icon: Globe, description: "World & guidelines" },
-  { id: 2, title: "Basics", icon: BookOpen, description: "Template & age" },
+  { id: 1, title: "Story World", icon: Globe, description: "Universe & knowledge base" },
+  { id: 2, title: "Basics", icon: BookOpen, description: "Template & age range" },
   { id: 3, title: "Characters", icon: Users, description: "Pick your cast" },
-  { id: 4, title: "Formatting", icon: Layout, description: "Layout & export" },
+  { id: 4, title: "Formatting", icon: Layout, description: "Layout & export targets" },
   { id: 5, title: "Review", icon: FileText, description: "Create your project" },
 ];
 
-const BOOK_TEMPLATES: { id: TemplateType; name: string; description: string; ageRange: string }[] = [
-  { id: "adventure", name: "Middle-Grade Adventure", description: "Epic journeys with moral lessons for ages 8-12", ageRange: "8-12" },
-  { id: "values", name: "Junior Values Story", description: "Gentle tales about honesty, kindness, and sharing for ages 4-7", ageRange: "4-7" },
-  { id: "educational", name: "Educational (Salah/Quran)", description: "Learn Islamic practices through engaging illustrated stories", ageRange: "4-8" },
-  { id: "seerah", name: "Seerah-Inspired", description: "Stories from the Prophet's life adapted for young readers", ageRange: "6-12" },
+const TEMPLATES = [
+  { id: "adventure", name: "Middle-Grade Adventure", description: "Epic journeys with moral lessons", ageRange: "8-12" },
+  { id: "values", name: "Junior Values Story", description: "Gentle tales about kindness and sharing", ageRange: "4-7" },
+  { id: "educational", name: "Educational (Salah/Quran)", description: "Learn Islamic practices through stories", ageRange: "4-8" },
+  { id: "seerah", name: "Seerah-Inspired", description: "Stories from the Prophet's life", ageRange: "6-12" },
 ];
 
-const AGE_RANGES = ["4-7", "5-8", "8-12"];
+const AGE_RANGES = ["2-4", "4-7", "5-8", "6-9", "8-12"];
 
-// Autosave storage key
-const AUTOSAVE_KEY = "noorstudio.book_builder.autosave.v1";
-
-interface AutosaveData {
-  formData: {
-    universeId: string;
-    universeName: string;
-    knowledgeBaseId: string;
-    knowledgeBaseName: string;
-    templateType: TemplateType | "";
-    ageRange: string;
-    title: string;
-    synopsis: string;
-    learningObjective: string;
-    setting: string;
-    characterIds: string[];
-    layoutStyle: LayoutStyle | "";
-    trimSize: TrimSize | "";
-    exportTargets: ExportTarget[];
-  };
-  currentStep: number;
-  savedAt: string;
-}
-
-function loadAutosave(): AutosaveData | null {
-  try {
-    const key = getNamespacedKey(AUTOSAVE_KEY);
-    const stored = localStorage.getItem(key);
-    if (!stored) return null;
-    return JSON.parse(stored) as AutosaveData;
-  } catch {
-    return null;
-  }
-}
-
-function saveAutosave(data: AutosaveData): void {
-  try {
-    localStorage.setItem(getNamespacedKey(AUTOSAVE_KEY), JSON.stringify(data));
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("Failed to save autosave:", error);
-    }
-  }
-}
-
-function clearAutosave(): void {
-  localStorage.removeItem(getNamespacedKey(AUTOSAVE_KEY));
-}
-
-const LAYOUT_STYLES: { id: LayoutStyle; name: string; description: string }[] = [
-  { id: "text-under-image", name: "Text Under Image", description: "Full-width image with text below - classic picture book style" },
-  { id: "split-page", name: "Split Page", description: "Text on left, illustration on right - great for longer text" },
-  { id: "full-bleed-caption", name: "Full Bleed + Caption", description: "Full-page illustration with caption overlay - immersive visuals" },
+const LAYOUT_STYLES = [
+  { id: "split-page", label: "Split Page", description: "Text on left, image on right" },
+  { id: "full-image", label: "Full Image", description: "Full-page illustrations with text overlay" },
+  { id: "text-under-image", label: "Text Under Image", description: "Image above, text below" },
 ];
 
-const TRIM_SIZES: { id: TrimSize; name: string; description: string }[] = [
-  { id: "8.5x8.5", name: "8.5\" × 8.5\"", description: "Square format - popular for picture books" },
-  { id: "8x10", name: "8\" × 10\"", description: "Portrait format - traditional children's book" },
-  { id: "A4", name: "A4", description: "Standard international format" },
+const TRIM_SIZES = [
+  { id: "8x10", label: '8" × 10"', description: "Standard children's book" },
+  { id: "8.5x8.5", label: '8.5" × 8.5"', description: "Square format" },
+  { id: "6x9", label: '6" × 9"', description: "Chapter book" },
+  { id: "11x8.5", label: '11" × 8.5"', description: "Landscape / wide" },
+];
+
+const EXPORT_TARGETS = [
+  { id: "pdf", label: "Print-Ready PDF" },
+  { id: "epub", label: "EPUB (digital)" },
+  { id: "print-ready-pdf", label: "Commercial Print PDF" },
 ];
 
 export default function BookBuilderPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const createProject = useCreateProject();
+  const { universes } = useUniverses();
+  const { data: characters = [] } = useCharacters();
+  const { data: kbs = [] } = useKnowledgeBases();
+
   const [currentStep, setCurrentStep] = useState(1);
-  const [characters, setCharacters] = useState<StoredCharacter[]>([]);
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [projectCount, setProjectCount] = useState(0);
-  const [hasRestoredAutosave, setHasRestoredAutosave] = useState(false);
-  const [lastSaved, setLastSaved] = useState<string | null>(null);
-
-  // Load universes from API
-  const { universes, loading: universesLoading, error: universesError } = useUniverses();
-
-  const [formData, setFormData] = useState({
-    // Step 1: Universe & Knowledge Base
+  const [form, setForm] = useState({
     universeId: "",
     universeName: "",
     knowledgeBaseId: "",
     knowledgeBaseName: "",
-
-    // Step 2: Book Basics
-    templateType: "" as TemplateType | "",
+    templateType: "",
     ageRange: "",
     title: "",
     synopsis: "",
     learningObjective: "",
     setting: "",
-
-    // Step 3: Characters
     characterIds: [] as string[],
-
-    // Step 4: Formatting
-    layoutStyle: "" as LayoutStyle | "",
-    trimSize: "" as TrimSize | "",
-    exportTargets: ["pdf"] as ExportTarget[],
+    layoutStyle: "split-page",
+    trimSize: "8x10",
+    exportTargets: ["pdf"] as string[],
   });
 
-  // Story import (quick win): allow pasting an existing story (e.g., Google Docs)
-  const [importedStoryText, setImportedStoryText] = useState<string>("");
-  const [importedChaptersPreview, setImportedChaptersPreview] = useState<ReturnType<typeof importStoryToChapters>>([]);
-  const [useImportedStory, setUseImportedStory] = useState<boolean>(false);
+  const progressPct = ((currentStep - 1) / (steps.length - 1)) * 100;
 
-  // Load characters, knowledge bases, and project count on mount
-  useEffect(() => {
-    seedDemoCharactersIfEmpty();
-    setCharacters(getCharacters());
-
-    // Seed and load real KBs
-    seedDefaultKBIfEmpty();
-    setKnowledgeBases(listKnowledgeBases());
-
-    // Get current project count for entitlement check
-    setProjectCount(listProjects().length);
-
-    // Check for autosaved data
-    const autosaved = loadAutosave();
-    if (autosaved && !hasRestoredAutosave) {
-      setFormData(autosaved.formData);
-      setCurrentStep(autosaved.currentStep);
-      setLastSaved(autosaved.savedAt);
-      setHasRestoredAutosave(true);
-      toast({
-        title: "Draft Restored",
-        description: `Your previous progress has been restored from ${new Date(autosaved.savedAt).toLocaleTimeString()}.`,
-      });
-    }
-  }, [hasRestoredAutosave, toast]);
-
-  // Refresh characters when page becomes visible or localStorage changes
-  useEffect(() => {
-    const refreshCharacters = () => {
-      const freshCharacters = getCharacters();
-      setCharacters(freshCharacters);
-      console.log('[BookBuilder] Refreshed characters:', freshCharacters.length, 'characters');
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshCharacters();
-      }
-    };
-
-    const handleFocus = () => {
-      refreshCharacters();
-    };
-
-    const handleStorageChange = (e: StorageEvent) => {
-      // Refresh when character storage changes
-      if (e.key && e.key.includes('characters')) {
-        console.log('[BookBuilder] Characters storage changed, refreshing...');
-        refreshCharacters();
-      }
-    };
-
-    // Refresh on visibility change (tab switching)
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    // Refresh on window focus (navigation within app)
-    window.addEventListener('focus', handleFocus);
-    // Refresh on localStorage changes (character creation/updates)
-    window.addEventListener('storage', handleStorageChange);
-
-    // Also refresh every 2 seconds while page is active (polling fallback)
-    const pollInterval = setInterval(() => {
-      if (!document.hidden) {
-        refreshCharacters();
-      }
-    }, 2000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(pollInterval);
-    };
-  }, []);
-
-  // Autosave whenever form data or step changes
-  useEffect(() => {
-    // Don't save empty forms
-    if (!formData.title && !formData.universeId && !formData.templateType) {
-      return;
-    }
-
-    const autosaveData: AutosaveData = {
-      formData,
-      currentStep,
-      savedAt: new Date().toISOString(),
-    };
-    saveAutosave(autosaveData);
-    setLastSaved(autosaveData.savedAt);
-  }, [formData, currentStep]);
-
-  // Build chapter preview from pasted story
-  useEffect(() => {
-    const chapters = importStoryToChapters(importedStoryText);
-    setImportedChaptersPreview(chapters);
-
-    // Auto-enable when content is present
-    if (importedStoryText.trim().length > 0) {
-      setUseImportedStory(true);
-    }
-  }, [importedStoryText]);
-
-  const updateForm = (field: string, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleUniverseSelect = (universeId: string) => {
-    const universe = universes.find((u) => u.id === universeId);
-    if (universe) {
-      updateForm("universeId", universe.id);
-      updateForm("universeName", universe.name);
-
-      // Auto-populate from universe book_presets if available
-      if (universe.book_presets) {
-        const presets = universe.book_presets as {
-          defaultAgeRange?: string;
-          defaultTemplate?: TemplateType;
-          defaultLayoutStyle?: LayoutStyle;
-          defaultTrimSize?: TrimSize;
-        };
-
-        if (presets.defaultAgeRange) {
-          updateForm("ageRange", presets.defaultAgeRange);
-        }
-        if (presets.defaultTemplate) {
-          updateForm("templateType", presets.defaultTemplate);
-        }
-        if (presets.defaultLayoutStyle) {
-          updateForm("layoutStyle", presets.defaultLayoutStyle);
-        }
-        if (presets.defaultTrimSize) {
-          updateForm("trimSize", presets.defaultTrimSize);
-        }
-
-        toast({
-          title: "Universe Settings Loaded",
-          description: `Default settings from "${universe.name}" have been applied.`,
-        });
-      }
-    }
-  };
-
-  const handleKnowledgeBaseSelect = (kbId: string) => {
-    const kb = knowledgeBases.find((k) => k.id === kbId);
-    if (kb) {
-      updateForm("knowledgeBaseId", kb.id);
-      updateForm("knowledgeBaseName", kb.name);
-    }
-  };
-
-  const handleCharacterToggle = (charId: string, character: StoredCharacter) => {
-    // Relaxed check: Allow any character, but warn if not locked
-    if (character.status !== "locked" && character.status !== "approved") {
-      // Optional: could show a non-blocking toast here
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      characterIds: prev.characterIds.includes(charId)
-        ? prev.characterIds.filter((id) => id !== charId)
-        : [...prev.characterIds, charId],
-    }));
-  };
-
-  const toggleExportTarget = (target: ExportTarget) => {
-    setFormData((prev) => ({
-      ...prev,
-      exportTargets: prev.exportTargets.includes(target)
-        ? prev.exportTargets.filter((t) => t !== target)
-        : [...prev.exportTargets, target],
-    }));
-  };
+  const updateForm = (updates: Partial<typeof form>) =>
+    setForm((f) => ({ ...f, ...updates }));
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1:
-        return formData.universeId && formData.knowledgeBaseId;
-      case 2:
-        return formData.templateType && formData.ageRange && formData.title.trim() && formData.synopsis.trim();
-      case 3:
-        return formData.characterIds.length > 0;
-      case 4:
-        return formData.layoutStyle && formData.trimSize && formData.exportTargets.length > 0;
-      case 5:
-        return true;
-      default:
-        return false;
+      case 1: return true; // optional step
+      case 2: return !!form.templateType && !!form.ageRange && !!form.title;
+      case 3: return true; // characters optional
+      case 4: return !!form.layoutStyle && !!form.trimSize && form.exportTargets.length > 0;
+      default: return true;
     }
   };
 
   const handleCreate = async () => {
-    if (isCreating) return;
-
-    // Check project limit
-    const check = canCreateProject(projectCount);
-    if (!check.allowed) {
-      setShowUpgradeModal(true);
+    if (!form.title.trim()) {
+      toast({ title: "Book title is required", variant: "destructive" });
       return;
     }
-
-    setIsCreating(true);
-
     try {
-      const project = createProject({
-        title: formData.title,
-        universeId: formData.universeId,
-        universeName: formData.universeName,
-        knowledgeBaseId: formData.knowledgeBaseId,
-        knowledgeBaseName: formData.knowledgeBaseName,
-        ageRange: formData.ageRange,
-        templateType: formData.templateType as TemplateType,
-        synopsis: formData.synopsis,
-        learningObjective: formData.learningObjective,
-        setting: formData.setting,
-        characterIds: formData.characterIds,
-        layoutStyle: formData.layoutStyle as LayoutStyle,
-        trimSize: formData.trimSize as TrimSize,
-        exportTargets: formData.exportTargets,
+      const project = await createProject.mutateAsync({
+        universeId: form.universeId || undefined,
+        universeName: form.universeName || undefined,
+        knowledgeBaseId: form.knowledgeBaseId || undefined,
+        knowledgeBaseName: form.knowledgeBaseName || undefined,
+        title: form.title,
+        ageRange: form.ageRange,
+        templateType: form.templateType,
+        synopsis: form.synopsis || undefined,
+        learningObjective: form.learningObjective || undefined,
+        setting: form.setting || undefined,
+        characterIds: form.characterIds,
+        layoutStyle: form.layoutStyle,
+        trimSize: form.trimSize,
+        exportTargets: form.exportTargets,
       });
-
-      // If a story was imported, pre-seed outline/chapters artifacts and mark stages completed.
-      if (useImportedStory && importedChaptersPreview.length > 0) {
-        const now = new Date().toISOString();
-
-        const chaptersArtifact: ChapterArtifactItem[] = importedChaptersPreview.map((ch) => ({
-          chapterNumber: ch.chapterNumber,
-          title: ch.title,
-          content: ch.content,
-          wordCount: ch.wordCount,
-        }));
-
-        const outlineArtifact: OutlineArtifactContent = {
-          chapters: chaptersArtifact.map((c) => c.title),
-          synopsis: formData.synopsis,
-          kbApplied: formData.knowledgeBaseName || null,
-        };
-
-        addArtifact(project.id, "storyImport", {
-          type: "meta" as const,
-          content: {
-            source: "paste",
-            rawText: importedStoryText,
-            detectedChapters: importedChaptersPreview.length,
-          },
-          generatedAt: now,
-        });
-
-        addArtifact(project.id, "outline", {
-          type: "outline" as const,
-          content: outlineArtifact,
-          generatedAt: now,
-        });
-
-        addArtifact(project.id, "chapters", {
-          type: "chapters" as const,
-          content: chaptersArtifact,
-          generatedAt: now,
-        });
-
-        updatePipelineStage(project.id, "outline", {
-          status: "completed",
-          progress: 100,
-          completedAt: now,
-        });
-
-        updatePipelineStage(project.id, "chapters", {
-          status: "completed",
-          progress: 100,
-          completedAt: now,
-        });
-
-        updateProject(project.id, {
-          currentStage: "illustrations",
-        });
-      }
-
-      // Clear autosave on successful creation
-      clearAutosave();
-
-      toast({
-        title: "Project created!",
-        description: `"${formData.title}" has been created and is ready for generation.`,
-      });
-
+      toast({ title: "Project created!", description: `"${form.title}" is ready to build.` });
       navigate(`/app/projects/${project.id}`);
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Failed to create project:", error);
-      }
-      toast({
-        title: "Failed to create project",
-        description: "An error occurred while creating the project. Your draft has been saved.",
-        variant: "destructive",
-      });
-      setIsCreating(false);
+    } catch (err) {
+      toast({ title: "Failed to create project", description: (err as Error).message, variant: "destructive" });
     }
   };
 
-  const handleClearDraft = () => {
-    clearAutosave();
-    setFormData({
-      universeId: "",
-      universeName: "",
-      knowledgeBaseId: "",
-      knowledgeBaseName: "",
-      templateType: "",
-      ageRange: "",
-      title: "",
-      synopsis: "",
-      learningObjective: "",
-      setting: "",
-      characterIds: [],
-      layoutStyle: "",
-      trimSize: "",
-      exportTargets: ["pdf"],
-    });
-    setCurrentStep(1);
-    setLastSaved(null);
-    toast({
-      title: "Draft cleared",
-      description: "Your draft has been cleared. Start fresh!",
-    });
+  const toggleCharacter = (id: string) => {
+    if (form.characterIds.includes(id)) {
+      updateForm({ characterIds: form.characterIds.filter((c) => c !== id) });
+    } else {
+      updateForm({ characterIds: [...form.characterIds, id] });
+    }
   };
 
-  const progress = (currentStep / steps.length) * 100;
-  const lockedCharacters = characters.filter((c) => c.status === "locked");
-  const selectedUniverse = universes.find((u) => u.id === formData.universeId);
-  const selectedKB = knowledgeBases.find((k) => k.id === formData.knowledgeBaseId);
-  const selectedTemplate = BOOK_TEMPLATES.find((t) => t.id === formData.templateType);
-  const selectedCharacters = characters.filter((c) => formData.characterIds.includes(c.id));
+  const toggleExportTarget = (id: string) => {
+    if (form.exportTargets.includes(id)) {
+      updateForm({ exportTargets: form.exportTargets.filter((t) => t !== id) });
+    } else {
+      updateForm({ exportTargets: [...form.exportTargets, id] });
+    }
+  };
 
   return (
     <AppLayout
-      title="Book Builder"
-      subtitle="Create a new book project"
+      title="New Book Project"
+      subtitle="Set up your Islamic children's book"
       actions={
-        <div className="flex items-center gap-3">
-          {lastSaved && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Save className="w-3 h-3" />
-              <span>Draft saved {new Date(lastSaved).toLocaleTimeString()}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={handleClearDraft}
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-          <Button variant="outline" onClick={() => navigate("/app/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Cancel
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => navigate("/app/dashboard")}>
+          <ArrowLeft className="w-4 h-4 mr-2" />Cancel
+        </Button>
       }
     >
-      {/* Progress */}
-      <div className="mb-8">
-        <Progress value={progress} className="h-2 mb-4" />
-        <div className="flex justify-between">
-          {steps.map((step) => (
-            <button
-              key={step.id}
-              onClick={() => step.id < currentStep && setCurrentStep(step.id)}
-              disabled={step.id > currentStep}
-              className={cn(
-                "flex items-center gap-2 text-sm transition-colors",
-                currentStep >= step.id ? "text-primary" : "text-muted-foreground",
-                step.id < currentStep && "cursor-pointer hover:text-primary/80"
-              )}
-            >
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-colors",
-                  currentStep > step.id
-                    ? "bg-primary text-primary-foreground"
-                    : currentStep === step.id
-                      ? "bg-primary/20 text-primary border-2 border-primary"
-                      : "bg-muted text-muted-foreground"
+      {/* Steps */}
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            {steps.map((step, idx) => (
+              <div key={step.id} className="flex items-center">
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all",
+                    currentStep > step.id
+                      ? "bg-primary text-primary-foreground"
+                      : currentStep === step.id
+                        ? "bg-primary/20 text-primary ring-2 ring-primary"
+                        : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {currentStep > step.id ? <Check className="w-4 h-4" /> : step.id}
+                </div>
+                {idx < steps.length - 1 && (
+                  <div className={cn("h-0.5 w-12 sm:w-24 mx-1", currentStep > step.id ? "bg-primary" : "bg-border")} />
                 )}
-              >
-                {currentStep > step.id ? <Check className="w-4 h-4" /> : step.id}
               </div>
-              <div className="hidden sm:block text-left">
-                <p className="font-medium">{step.title}</p>
-                <p className="text-xs text-muted-foreground">{step.description}</p>
-              </div>
-            </button>
-          ))}
+            ))}
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground px-0.5">
+            {steps.map((step) => (
+              <span key={step.id} className={cn("hidden sm:block", currentStep === step.id && "text-primary font-medium")}>
+                {step.title}
+              </span>
+            ))}
+          </div>
+          <Progress value={progressPct} className="h-1.5 mt-3" />
         </div>
-      </div>
 
-      <div className="card-glow p-8 max-w-3xl mx-auto">
-        {/* Step 1: Universe & Knowledge Base */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Globe className="w-6 h-6 text-primary" />
-              </div>
+        <div className="card-glow p-8 space-y-6">
+          {/* Step 1: Story World */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold">Story World & Islamic Guidelines</h2>
-                <p className="text-muted-foreground">Choose where your story takes place and the Islamic content rules to follow.</p>
+                <h2 className="text-xl font-bold mb-1">Story World</h2>
+                <p className="text-muted-foreground text-sm">Optionally link this book to a universe and knowledge base.</p>
               </div>
-            </div>
-
-            {/* Universe Selection */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium">Story World *</Label>
-                  <span title="Choose the setting/world for your stories" aria-label="Choose the setting/world for your stories">
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                  </span>
-                </div>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-xs h-auto p-0"
-                  onClick={() => navigate("/app/universes/new")}
-                >
-                  Create Universe
-                </Button>
-              </div>
-
-              {universesLoading && (
-                <div className="p-6 rounded-xl border-2 border-dashed border-border text-center">
-                  <p className="text-sm text-muted-foreground">Loading universes...</p>
-                </div>
-              )}
-
-              {universesError && (
-                <div className="p-6 rounded-xl border-2 border-dashed border-border text-center">
-                  <p className="text-sm text-destructive">{universesError}</p>
-                </div>
-              )}
-
-              {!universesLoading && !universesError && universes.length === 0 && (
-                <div className="p-6 rounded-xl border-2 border-dashed border-border text-center">
-                  <Globe className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-                  <p className="text-sm text-muted-foreground mb-2">No story worlds found</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/app/universes/new")}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Universe (optional)</Label>
+                  <Select
+                    value={form.universeId}
+                    onValueChange={(v) => {
+                      const u = universes.find((u) => u.id === v);
+                      updateForm({ universeId: v, universeName: u?.name || "" });
+                    }}
                   >
-                    Create Your First Universe
-                  </Button>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a universe..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>  {/* ← "none" not "" */}
+                      {universes.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
-
-              {!universesLoading && !universesError && universes.length > 0 && (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {universes.map((universe) => (
-                    <div
-                      key={universe.id}
-                      className={cn(
-                        "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                        formData.universeId === universe.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                      onClick={() => handleUniverseSelect(universe.id)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Globe className="w-4 h-4 text-primary" />
-                        <h3 className="font-semibold">{universe.name}</h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{universe.description || "No description"}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Knowledge Base Selection */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium">Islamic Guidelines *</Label>
-                  <span title="Select age-appropriate Islamic content rules" aria-label="Select age-appropriate Islamic content rules">
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                  </span>
-                </div>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-xs h-auto p-0"
-                  onClick={() => navigate("/app/knowledge-base")}
-                >
-                  Manage Guidelines
-                </Button>
-              </div>
-              {knowledgeBases.length > 0 ? (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {knowledgeBases.map((kb) => (
-                    <div
-                      key={kb.id}
-                      className={cn(
-                        "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                        formData.knowledgeBaseId === kb.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                      onClick={() => handleKnowledgeBaseSelect(kb.id)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <Database className="w-4 h-4 text-primary" />
-                        <h3 className="font-semibold">{kb.name}</h3>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{kb.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 rounded-xl border-2 border-dashed border-border text-center">
-                  <Database className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-                  <p className="text-sm text-muted-foreground mb-2">No Islamic guidelines found</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/app/knowledge-base")}
+                <div className="space-y-2">
+                  <Label>Knowledge Base (optional)</Label>
+                  <Select
+                    value={form.knowledgeBaseId}
+                    onValueChange={(v) => {
+                      const kb = kbs.find((k) => k.id === v);
+                      updateForm({ knowledgeBaseId: v, knowledgeBaseName: kb?.name || "" });
+                    }}
                   >
-                    Create Guidelines
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Book Basics */}
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Book Basics</h2>
-                <p className="text-muted-foreground">Define the template, audience, and story details</p>
-              </div>
-            </div>
-
-            {/* Template Type */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Template Type *</Label>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {BOOK_TEMPLATES.map((template) => (
-                  <div
-                    key={template.id}
-                    className={cn(
-                      "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                      formData.templateType === template.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                    onClick={() => updateForm("templateType", template.id)}
-                  >
-                    <h4 className="font-semibold mb-1">{template.name}</h4>
-                    <p className="text-sm text-muted-foreground">{template.description}</p>
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      Ages {template.ageRange}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Age Range */}
-            <div className="space-y-2">
-              <Label>Target Age Range *</Label>
-              <Select value={formData.ageRange} onValueChange={(v) => updateForm("ageRange", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select target age range" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AGE_RANGES.map((range) => (
-                    <SelectItem key={range} value={range}>
-                      Ages {range}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Title */}
-            <div className="space-y-2">
-              <Label>Book Title *</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => updateForm("title", e.target.value)}
-                placeholder="Enter the book title"
-              />
-            </div>
-
-            {/* Synopsis */}
-            <div className="space-y-2">
-              <Label>Synopsis *</Label>
-              <Textarea
-                value={formData.synopsis}
-                onChange={(e) => updateForm("synopsis", e.target.value)}
-                placeholder="Brief description of the story (2-3 sentences)..."
-                rows={3}
-              />
-            </div>
-
-            {/* Story Import (Paste your story) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label>Paste your story (optional)</Label>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="useImportedStory"
-                    checked={useImportedStory}
-                    onCheckedChange={(v) => setUseImportedStory(Boolean(v))}
-                    disabled={importedStoryText.trim().length === 0}
-                  />
-                  <Label htmlFor="useImportedStory" className="text-sm text-muted-foreground">
-                    Use imported story (skip AI chapter writing)
-                  </Label>
-                </div>
-              </div>
-              <Textarea
-                value={importedStoryText}
-                onChange={(e) => setImportedStoryText(e.target.value)}
-                placeholder="Paste from Google Docs or plain text. We'll auto-detect chapters (e.g., 'Chapter 1')."
-                rows={8}
-              />
-              {importedChaptersPreview.length > 0 && (
-                <div className="p-3 rounded-lg border bg-muted/30">
-                  <p className="text-sm font-medium mb-2">Detected chapters</p>
-                  <div className="space-y-2 max-h-[180px] overflow-auto">
-                    {importedChaptersPreview.map((ch) => (
-                      <div key={ch.chapterNumber} className="text-sm">
-                        <span className="font-medium">{ch.title}</span>
-                        <span className="text-muted-foreground"> • {ch.wordCount} words</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Learning Objective */}
-            <div className="space-y-2">
-              <Label>Learning Objective</Label>
-              <Input
-                value={formData.learningObjective}
-                onChange={(e) => updateForm("learningObjective", e.target.value)}
-                placeholder="What should children learn from this book?"
-              />
-            </div>
-
-            {/* Setting */}
-            <div className="space-y-2">
-              <Label>Setting</Label>
-              <Input
-                value={formData.setting}
-                onChange={(e) => updateForm("setting", e.target.value)}
-                placeholder="Where does this story take place?"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Characters */}
-        {currentStep === 3 && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Select Characters</h2>
-                <p className="text-muted-foreground">
-                  Choose locked characters for visual consistency
-                </p>
-              </div>
-            </div>
-
-            {/* Info Box */}
-            <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-sm">
-              <div className="flex items-start gap-2">
-                <Users className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-blue-800">Select characters for your story</p>
-                  <p className="text-blue-600">
-                    It is recommended to use "locked" characters for best consistency, but you can start with drafts.
-                  </p>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a knowledge base..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>  {/* ← "none" not "" */}
+                      {kbs.map((kb) => (
+                        <SelectItem key={kb.id} value={kb.id}>{kb.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">The KB provides Islamic rules and vocabulary to the AI.</p>
                 </div>
               </div>
             </div>
-
-            {/* Character Grid */}
-            {characters.length > 0 ? (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {characters.map((char) => {
-                  const isSelected = formData.characterIds.includes(char.id);
-                  const isLocked = char.status === "locked";
-
-                  return (
-                    <div
-                      key={char.id}
-                      className={cn(
-                        "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                      onClick={() => handleCharacterToggle(char.id, char)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gradient-subtle flex-shrink-0">
-                          <img
-                            src={char.imageUrl}
-                            alt={char.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "https://placehold.co/100x100/e2e8f0/64748b?text=" + char.name.charAt(0);
-                            }}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-semibold truncate">{char.name}</h4>
-                            {isLocked && <Lock className="w-3 h-3 text-primary" />}
-                          </div>
-                          <p className="text-sm text-muted-foreground truncate">{char.role}</p>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs mt-1 capitalize",
-                              isLocked && "bg-primary/10 text-primary border-primary/30"
-                            )}
-                          >
-                            {char.status}
-                          </Badge>
-                        </div>
-                        <Checkbox checked={isSelected} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No characters available.</p>
-                <p className="text-sm">Create characters in the Character Studio first.</p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => navigate("/app/characters")}
-                >
-                  Go to Character Studio
-                </Button>
-              </div>
-            )}
-
-            {/* Selection Count */}
-            {formData.characterIds.length > 0 && (
-              <div className="text-sm text-muted-foreground">
-                {formData.characterIds.length} character{formData.characterIds.length > 1 ? "s" : ""} selected
-              </div>
-            )}
-
-            {/* Warning if no characters */}
-            {characters.length === 0 && (
-              <div className="p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-sm">
-                <p className="font-medium text-yellow-800">No characters available</p>
-                <p className="text-yellow-700">
-                  You need to create at least one character first.{" "}
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-yellow-800 underline"
-                    onClick={() => navigate("/app/characters/new")}
-                  >
-                    Create Character
-                  </Button>
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 4: Formatting */}
-        {currentStep === 4 && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Layout className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Formatting Options</h2>
-                <p className="text-muted-foreground">Choose layout, size, and export formats</p>
-              </div>
-            </div>
-
-            {/* Layout Style */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Layout Style *</Label>
-              <RadioGroup
-                value={formData.layoutStyle}
-                onValueChange={(v) => updateForm("layoutStyle", v)}
-                className="space-y-3"
-              >
-                {LAYOUT_STYLES.map((style) => (
-                  <div
-                    key={style.id}
-                    className={cn(
-                      "flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                      formData.layoutStyle === style.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                    onClick={() => updateForm("layoutStyle", style.id)}
-                  >
-                    <RadioGroupItem value={style.id} id={style.id} className="mt-1" />
-                    <div>
-                      <label htmlFor={style.id} className="font-semibold cursor-pointer">
-                        {style.name}
-                      </label>
-                      <p className="text-sm text-muted-foreground">{style.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-
-            {/* Trim Size */}
-            <div className="space-y-2">
-              <Label>Trim Size *</Label>
-              <Select value={formData.trimSize} onValueChange={(v) => updateForm("trimSize", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select book size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRIM_SIZES.map((size) => (
-                    <SelectItem key={size.id} value={size.id}>
-                      {size.name} - {size.description}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Export Targets */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Export Formats *</Label>
-              <div className="flex gap-4">
-                <div
-                  className={cn(
-                    "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all flex-1",
-                    formData.exportTargets.includes("pdf")
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                  onClick={() => toggleExportTarget("pdf")}
-                >
-                  <Checkbox checked={formData.exportTargets.includes("pdf")} />
-                  <div className="flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    <span className="font-medium">PDF</span>
-                  </div>
-                </div>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all flex-1",
-                    formData.exportTargets.includes("epub")
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                  onClick={() => toggleExportTarget("epub")}
-                >
-                  <Checkbox checked={formData.exportTargets.includes("epub")} />
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    <span className="font-medium">EPUB</span>
-                  </div>
-                </div>
-              </div>
-              {formData.exportTargets.length === 0 && (
-                <p className="text-sm text-destructive">Select at least one export format</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Review & Create */}
-        {currentStep === 5 && (
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">Review & Create</h2>
-                <p className="text-muted-foreground">Confirm your project settings</p>
-              </div>
-            </div>
-
-            {/* Summary Card */}
-            <div className="p-6 rounded-xl bg-muted/50 border border-border space-y-4">
-              <h3 className="font-semibold text-lg">{formData.title}</h3>
-
-              {/* Synopsis */}
-              <p className="text-sm text-muted-foreground">{formData.synopsis}</p>
-
-              {/* Details Grid */}
-              <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Story World</p>
-                  <p className="font-medium">{selectedUniverse?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Islamic Guidelines</p>
-                  <p className="font-medium">{selectedKB?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Template</p>
-                  <p className="font-medium">{selectedTemplate?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Age Range</p>
-                  <p className="font-medium">{formData.ageRange}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Layout Style</p>
-                  <p className="font-medium">
-                    {LAYOUT_STYLES.find((l) => l.id === formData.layoutStyle)?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Trim Size</p>
-                  <p className="font-medium">
-                    {TRIM_SIZES.find((t) => t.id === formData.trimSize)?.name || "—"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Characters */}
-              <div className="pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                  Characters ({selectedCharacters.length})
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  {selectedCharacters.map((char) => (
-                    <div key={char.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background border">
-                      <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-subtle">
-                        <img
-                          src={char.imageUrl}
-                          alt={char.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              "https://placehold.co/50x50/e2e8f0/64748b?text=" + char.name.charAt(0);
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{char.name}</span>
-                      <Lock className="w-3 h-3 text-muted-foreground" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Export Formats */}
-              <div className="pt-4 border-t border-border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Export Formats</p>
-                <div className="flex gap-2">
-                  {formData.exportTargets.map((target) => (
-                    <Badge key={target} variant="secondary" className="uppercase">
-                      {target}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Learning Objective */}
-              {formData.learningObjective && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Learning Objective</p>
-                  <p className="text-sm">{formData.learningObjective}</p>
-                </div>
-              )}
-
-              {/* Setting */}
-              {formData.setting && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Setting</p>
-                  <p className="text-sm">{formData.setting}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Create Button */}
-            <Button
-              variant="hero"
-              size="lg"
-              className="w-full"
-              onClick={handleCreate}
-              disabled={isCreating}
-            >
-              {isCreating ? (
-                <>Creating Project...</>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Create Project
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-border">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentStep((s) => s - 1)}
-            disabled={currentStep === 1}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-          {currentStep < 5 && (
-            <Button variant="hero" onClick={() => setCurrentStep((s) => s + 1)} disabled={!canProceed()}>
-              Next
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
           )}
+
+          {/* Step 2: Basics */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Book Basics</h2>
+                <p className="text-muted-foreground text-sm">Choose a template and fill in your story details.</p>
+              </div>
+              {/* Template */}
+              <div className="space-y-3">
+                <Label>Template *</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {TEMPLATES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => updateForm({ templateType: t.id, ageRange: form.ageRange || t.ageRange })}
+                      className={cn(
+                        "p-4 rounded-xl border-2 text-left transition-all",
+                        form.templateType === t.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <p className="font-semibold text-sm mb-1">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.description}</p>
+                      <Badge variant="outline" className="mt-2 text-xs">Ages {t.ageRange}</Badge>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Age Range */}
+              <div className="space-y-2">
+                <Label>Age Range *</Label>
+                <div className="flex flex-wrap gap-2">
+                  {AGE_RANGES.map((age) => (
+                    <button
+                      key={age}
+                      type="button"
+                      onClick={() => updateForm({ ageRange: age })}
+                      className={cn(
+                        "px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all",
+                        form.ageRange === age ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      {age}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Title */}
+              <div className="space-y-2">
+                <Label>Book Title *</Label>
+                <Input
+                  placeholder="The Adventures of Amira..."
+                  value={form.title}
+                  onChange={(e) => updateForm({ title: e.target.value })}
+                />
+              </div>
+              {/* Synopsis */}
+              <div className="space-y-2">
+                <Label>Synopsis</Label>
+                <Textarea
+                  placeholder="A short description of your story..."
+                  value={form.synopsis}
+                  onChange={(e) => updateForm({ synopsis: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              {/* Learning Objective */}
+              <div className="space-y-2">
+                <Label>Learning Objective</Label>
+                <Input
+                  placeholder="e.g., Understanding the importance of honesty"
+                  value={form.learningObjective}
+                  onChange={(e) => updateForm({ learningObjective: e.target.value })}
+                />
+              </div>
+              {/* Setting */}
+              <div className="space-y-2">
+                <Label>Setting</Label>
+                <Input
+                  placeholder="e.g., A small village near a beautiful mosque"
+                  value={form.setting}
+                  onChange={(e) => updateForm({ setting: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Characters */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Choose Characters</h2>
+                <p className="text-muted-foreground text-sm">
+                  Select characters to appear in this book. You can add them later too.
+                </p>
+              </div>
+              {characters.length === 0 ? (
+                <div className="text-center py-12 bg-muted/30 rounded-xl">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No characters yet.</p>
+                  <Button variant="outline" size="sm" onClick={() => navigate("/app/characters/new")}>
+                    Create Characters
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {characters.map((char: Character) => (
+                    <button
+                      key={char.id}
+                      type="button"
+                      onClick={() => toggleCharacter(char.id)}
+                      className={cn(
+                        "p-3 rounded-xl border-2 text-left transition-all relative",
+                        form.characterIds.includes(char.id)
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      {form.characterIds.includes(char.id) && (
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      {char.imageUrl && (
+                        <img src={char.imageUrl} alt={char.name} className="w-full aspect-square object-cover rounded-lg mb-2" />
+                      )}
+                      <p className="font-semibold text-sm truncate">{char.name}</p>
+                      <p className="text-xs text-muted-foreground">{char.role}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {form.characterIds.length > 0 && (
+                <p className="text-sm text-primary font-medium">
+                  {form.characterIds.length} character{form.characterIds.length > 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Formatting */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Formatting</h2>
+                <p className="text-muted-foreground text-sm">Choose layout style, trim size, and export formats.</p>
+              </div>
+              {/* Layout Style */}
+              <div className="space-y-3">
+                <Label>Layout Style *</Label>
+                <div className="grid gap-3">
+                  {LAYOUT_STYLES.map((ls) => (
+                    <button
+                      key={ls.id}
+                      type="button"
+                      onClick={() => updateForm({ layoutStyle: ls.id })}
+                      className={cn(
+                        "p-4 rounded-xl border-2 text-left transition-all",
+                        form.layoutStyle === ls.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">{ls.label}</p>
+                          <p className="text-sm text-muted-foreground">{ls.description}</p>
+                        </div>
+                        {form.layoutStyle === ls.id && <Check className="w-5 h-5 text-primary" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Trim Size */}
+              <div className="space-y-3">
+                <Label>Trim Size *</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {TRIM_SIZES.map((ts) => (
+                    <button
+                      key={ts.id}
+                      type="button"
+                      onClick={() => updateForm({ trimSize: ts.id })}
+                      className={cn(
+                        "p-4 rounded-xl border-2 text-left transition-all",
+                        form.trimSize === ts.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
+                      )}
+                    >
+                      <p className="font-bold">{ts.label}</p>
+                      <p className="text-xs text-muted-foreground">{ts.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Export Targets */}
+              <div className="space-y-3">
+                <Label>Export Formats *</Label>
+                <div className="space-y-2">
+                  {EXPORT_TARGETS.map((et) => (
+                    <div key={et.id} className="flex items-center gap-3">
+                      <Checkbox
+                        id={et.id}
+                        checked={form.exportTargets.includes(et.id)}
+                        onCheckedChange={() => toggleExportTarget(et.id)}
+                      />
+                      <label htmlFor={et.id} className="text-sm font-medium cursor-pointer">{et.label}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Review */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold mb-1">Review & Create</h2>
+                <p className="text-muted-foreground text-sm">Everything looks good? Create your project!</p>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-muted/50 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Title</span>
+                    <span className="font-semibold">{form.title}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Template</span>
+                    <span className="font-semibold capitalize">{form.templateType.replace(/-/g, " ")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Age Range</span>
+                    <span className="font-semibold">{form.ageRange}</span>
+                  </div>
+                  {form.universeName && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Universe</span>
+                      <span className="font-semibold">{form.universeName}</span>
+                    </div>
+                  )}
+                  {form.knowledgeBaseName && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Knowledge Base</span>
+                      <span className="font-semibold">{form.knowledgeBaseName}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Characters</span>
+                    <span className="font-semibold">{form.characterIds.length} selected</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Layout</span>
+                    <span className="font-semibold capitalize">{form.layoutStyle.replace(/-/g, " ")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Trim Size</span>
+                    <span className="font-semibold">{form.trimSize}"</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Export</span>
+                    <span className="font-semibold">{form.exportTargets.join(", ").toUpperCase()}</span>
+                  </div>
+                </div>
+                {form.synopsis && (
+                  <div className="p-4 rounded-xl bg-muted/30">
+                    <p className="text-sm text-muted-foreground mb-1">Synopsis</p>
+                    <p className="text-sm">{form.synopsis}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div className="flex justify-between pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentStep((s) => s - 1)}
+              disabled={currentStep === 1}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />Previous
+            </Button>
+
+            {currentStep < steps.length ? (
+              <Button
+                variant="hero"
+                onClick={() => setCurrentStep((s) => s + 1)}
+                disabled={!canProceed()}
+              >
+                Next <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                variant="hero"
+                onClick={handleCreate}
+                disabled={createProject.isPending || !form.title}
+              >
+                {createProject.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating...</>
+                ) : (
+                  <><Check className="w-4 h-4 mr-2" />Create Project</>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Upgrade Modal */}
-      <UpgradeModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        title="Project Limit Reached"
-        description="You've reached the maximum number of book projects on your current plan."
-        feature="more projects"
-        currentLimit={projectCount}
-        limitType="Projects"
-      />
     </AppLayout>
   );
 }
