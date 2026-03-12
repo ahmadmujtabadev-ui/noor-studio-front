@@ -1,23 +1,26 @@
-import { api, tokenStorage } from './client';
-import type { Export } from './types';
-
-const BASE_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:3001';
+import { api, tokenStorage } from "./client";
 
 export const exportsApi = {
-  list: (projectId: string) =>
-    api.get<Export[]>('/api/exports', { params: { projectId } }),
+  // Fix list: should be GET not POST
+  list: async (projectId: string): Promise<Export[]> => {
+    const res = await api.get<any>(`/api/exports/${projectId}`);
+    return res.exports ?? [];
+  },
 
-  downloadPdf: async (projectId: string): Promise<string> => {
-    const token = tokenStorage.get();
-    const res = await fetch(`${BASE_URL}/api/exports/${projectId}/download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) throw new Error('Download failed');
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
+  downloadPdf: async (projectId: string) => {
+    // Use api.post with responseType blob — same auth as list()
+    const blob = await api.post<Blob>("/api/exports",
+      { projectId },
+      { responseType: "blob" }  // tells your client: don't parse JSON, return raw bytes
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `export_${projectId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   },
 };

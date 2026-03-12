@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
   Loader2,
@@ -45,12 +45,13 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePublishProject } from "@/hooks/useProjects";
 import { useAuthStore, useCredits } from "@/hooks/useAuth";
-import { useDownloadPdf } from "@/hooks/usePayments";
+import { useDownloadPdf, useExports } from "@/hooks/usePayments";
 import { aiApi } from "@/lib/api/ai.api";
 import { projectsApi } from "@/lib/api/projects.api";
 import { PIPELINE_STAGES, STAGE_CREDIT_COSTS } from "@/lib/models";
 import type { Project, PipelineStage } from "@/lib/api/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { exportsApi } from "@/lib/api";
 
 const STAGE_ICONS: Record<string, React.ElementType> = {
   outline: FileText,
@@ -116,6 +117,22 @@ type IllustrationItem = {
   imagesPerChapter?: number;
 };
 
+type ExportItem = {
+  id?: string;
+  _id?: string;
+  export_url?: string;
+  url?: string;
+  file_url?: string;
+  pdf_url?: string;
+  name?: string;
+  title?: string;
+  file_name?: string;
+  format?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  status?: string;
+};
+
 interface MergedStage {
   id: string;
   label: string;
@@ -155,8 +172,8 @@ function getMergedPipeline(
     const hasData = Array.isArray(artifactData)
       ? artifactData.length > 0
       : artifactData != null &&
-        typeof artifactData === "object" &&
-        Object.keys(artifactData).length > 0;
+      typeof artifactData === "object" &&
+      Object.keys(artifactData).length > 0;
 
     const derivedStatus = hasData ? "completed" : "pending";
     const stageAiUsage = artifacts?.__aiUsage?.stages?.[def.id];
@@ -196,8 +213,8 @@ function resolveSpreadImage(project: Project, spread: any): string | null {
       typeof content.chapterIndex === "number"
         ? content.chapterIndex
         : typeof content.chapterNumber === "number"
-        ? content.chapterNumber - 1
-        : -1;
+          ? content.chapterNumber - 1
+          : -1;
 
     if (chapterIndex < 0) return null;
 
@@ -211,6 +228,26 @@ function resolveSpreadImage(project: Project, spread: any): string | null {
   }
 
   return content.imageUrl ?? null;
+}
+
+function getExportUrl(item: ExportItem): string | null {
+  return (
+    item.export_url ||
+    item.url ||
+    item.file_url ||
+    item.pdf_url ||
+    null
+  );
+}
+
+function getExportLabel(item: ExportItem, index: number): string {
+  return (
+    item.title ||
+    item.name ||
+    item.file_name ||
+    item.format ||
+    `Export ${index + 1}`
+  );
 }
 
 function StageCard({
@@ -264,10 +301,10 @@ function StageCard({
             status === "completed"
               ? "bg-green-500/15"
               : status === "running"
-              ? "bg-blue-500/15"
-              : status === "error"
-              ? "bg-destructive/10"
-              : "bg-muted/60"
+                ? "bg-blue-500/15"
+                : status === "error"
+                  ? "bg-destructive/10"
+                  : "bg-muted/60"
           )}
         >
           {status === "completed" ? (
@@ -340,7 +377,15 @@ function StageCard({
   );
 }
 
-function ArtifactViewer({ project }: { project: Project }) {
+function ArtifactViewer({
+  project,
+  exportsList,
+  exportsLoading,
+}: {
+  project: Project;
+  exportsList: ExportItem[];
+  exportsLoading: boolean;
+}) {
   const arts = (project.artifacts || {}) as Record<string, any>;
 
   const artifactsWithMeta = { ...arts, __aiUsage: (project as any).aiUsage };
@@ -518,9 +563,8 @@ function ArtifactViewer({ project }: { project: Project }) {
                   {variant.imageUrl ? (
                     <img
                       src={variant.imageUrl}
-                      alt={`Chapter ${ill.chapterNumber} variant ${
-                        variant.variantIndex + 1
-                      }`}
+                      alt={`Chapter ${ill.chapterNumber} variant ${variant.variantIndex + 1
+                        }`}
                       className="aspect-square w-full object-cover"
                     />
                   ) : (
@@ -673,10 +717,64 @@ function ArtifactViewer({ project }: { project: Project }) {
           )}
         </TabsContent>
 
-        <TabsContent value="export" className="mt-0">
-          <p className="text-sm text-muted-foreground">
-            Export files available after running the export stage.
-          </p>
+        <TabsContent value="export" className="mt-0 space-y-4">
+          {exportsLoading ? (
+            <div className="flex items-center gap-2 rounded-xl border border-border p-4 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading exports...
+            </div>
+          ) : exportsList.length > 0 ? (
+            <div className="space-y-3">
+              {exportsList.map((item, index) => {
+                const exportUrl = getExportUrl(item);
+
+                return (
+                  <div
+                    key={item._id || item.id || index}
+                    className="flex items-center justify-between rounded-xl border border-border p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {getExportLabel(item, index)}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        {item.format && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.format}
+                          </Badge>
+                        )}
+                        {item.status && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.status}
+                          </Badge>
+                        )}
+                        {(item.createdAt || item.updatedAt) && (
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(item.createdAt || item.updatedAt || "").toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {exportUrl ? (
+                      <Button asChild size="sm" variant="outline">
+                        <a href={exportUrl} target="_blank" rel="noreferrer">
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </a>
+                      </Button>
+                    ) : (
+                      <Badge className="text-xs">No file</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No export files found yet. Run the export stage to generate them.
+            </p>
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -709,6 +807,26 @@ export default function ProjectWorkspacePage() {
     },
   });
 
+  const {
+    data: exportsResponse,
+    isLoading: exportsLoading,
+    refetch: refetchExports,
+  } = useExports(project?.id);
+
+  const exportsList: ExportItem[] = useMemo(() => {
+    if (!exportsResponse) return [];
+    if (Array.isArray(exportsResponse)) return exportsResponse;
+    if (Array.isArray((exportsResponse as any)?.data)) return (exportsResponse as any).data;
+    if (Array.isArray((exportsResponse as any)?.data?.exports)) return (exportsResponse as any).data.exports;
+    if (Array.isArray((exportsResponse as any)?.exports)) return (exportsResponse as any).exports;
+    return [];
+  }, [exportsResponse]);
+
+  const latestExportUrl = useMemo(() => {
+    const latest = exportsList[0];
+    return latest ? getExportUrl(latest) : null;
+  }, [exportsList]);
+
   useEffect(() => {
     if (!project || !runningStageId) return;
 
@@ -717,6 +835,9 @@ export default function ProjectWorkspacePage() {
     );
 
     if (live && live.status !== "running") {
+      if (runningStageId === "export") {
+        refetchExports();
+      }
       setRunningStageId(null);
       return;
     }
@@ -727,12 +848,17 @@ export default function ProjectWorkspacePage() {
       const hasData = Array.isArray(artifactData)
         ? artifactData.length > 0
         : artifactData != null &&
-          typeof artifactData === "object" &&
-          Object.keys(artifactData ?? {}).length > 0;
+        typeof artifactData === "object" &&
+        Object.keys(artifactData ?? {}).length > 0;
 
-      if (hasData) setRunningStageId(null);
+      if (hasData) {
+        if (runningStageId === "export") {
+          refetchExports();
+        }
+        setRunningStageId(null);
+      }
     }
-  }, [project, runningStageId]);
+  }, [project, runningStageId, refetchExports]);
 
   const publishMutation = usePublishProject(id!);
   const downloadPdf = useDownloadPdf(id!);
@@ -800,7 +926,20 @@ export default function ProjectWorkspacePage() {
 
     if (apiType === "batch") {
       if (stageId === "export") {
-        await aiApi.runStage(project.id, "export");
+        // ✅ TEST: force captions on-image
+        await projectsApi.update(project.id, {
+          artifacts: {
+            ...(project.artifacts || {}),
+            layout: {
+              ...((project.artifacts as any)?.layout || {}),
+              textPlacement: "on-image",
+            },
+          },
+        });
+
+        // now generate export
+        await exportsApi.list(project.id);
+        await refetchExports();
         return;
       }
     }
@@ -840,6 +979,7 @@ export default function ProjectWorkspacePage() {
     try {
       await dispatchStageApi(stageId);
       await qc.invalidateQueries({ queryKey: ["projects", id] });
+      await qc.invalidateQueries({ queryKey: ["exports", id] });
       await refreshUser();
 
       toast({
@@ -910,7 +1050,7 @@ export default function ProjectWorkspacePage() {
     project.ageRange,
     project.templateType
       ? project.templateType.charAt(0).toUpperCase() +
-        project.templateType.slice(1).replace(/-/g, " ")
+      project.templateType.slice(1).replace(/-/g, " ")
       : null,
   ].filter(Boolean);
 
@@ -950,7 +1090,14 @@ export default function ProjectWorkspacePage() {
             </Button>
           )}
 
-          {isExportReady && (
+          {latestExportUrl ? (
+            <Button asChild variant="hero" size="sm">
+              <a href={latestExportUrl} target="_blank" rel="noreferrer">
+                <Download className="mr-2 h-4 w-4" />
+                Download Export
+              </a>
+            </Button>
+          ) : isExportReady ? (
             <Button
               variant="hero"
               size="sm"
@@ -964,7 +1111,7 @@ export default function ProjectWorkspacePage() {
               )}
               Download PDF
             </Button>
-          )}
+          ) : null}
         </div>
       }
     >
@@ -1012,7 +1159,11 @@ export default function ProjectWorkspacePage() {
 
         <div className="lg:col-span-3">
           <h2 className="mb-3 font-semibold">Generated Content</h2>
-          <ArtifactViewer project={project} />
+          <ArtifactViewer
+            project={project}
+            exportsList={exportsList}
+            exportsLoading={exportsLoading}
+          />
         </div>
       </div>
 
