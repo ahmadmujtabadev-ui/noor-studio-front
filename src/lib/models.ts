@@ -60,24 +60,28 @@ export interface PipelineStageDefinition {
   requiresStage?: ProjectStage;
 }
 
-export const PIPELINE_STAGES: PipelineStageDefinition[] = [
-  { id: 'outline', label: 'Outline', description: 'Generate chapter outline', creditCost: 3, icon: 'FileText' },
-  { id: 'chapters', label: 'Chapters', description: 'Write all chapters', creditCost: 2, icon: 'BookOpen', requiresStage: 'outline' },
-  { id: 'humanize', label: 'Humanize', description: 'Polish the text', creditCost: 1, icon: 'Heart', requiresStage: 'chapters' },
-  { id: 'illustrations', label: 'Illustrations', description: 'Generate scene illustrations', creditCost: 10, icon: 'Image', requiresStage: 'chapters' },
-  { id: 'cover', label: 'Cover', description: 'Generate book cover', creditCost: 3, icon: 'Package', requiresStage: 'outline' },
-  { id: 'layout', label: 'Layout', description: 'Compose page spreads', creditCost: 2, icon: 'Layout', requiresStage: 'illustrations' },
-  { id: 'export', label: 'Export', description: 'Generate PDF/EPUB', creditCost: 2, icon: 'Download', requiresStage: 'layout' },
+export const PIPELINE_STAGES = [
+  { id: "outline",     label: "Outline",       creditCost: 3,  requiresStage: undefined },
+  { id: "dedication",  label: "Dedication",    creditCost: 1,  requiresStage: "outline" },  // ← ADD
+  { id: "theme",       label: "Islamic Theme", creditCost: 1,  requiresStage: "outline" },  // ← ADD
+  { id: "chapters",    label: "Chapters",      creditCost: 1,  requiresStage: "outline" },
+  { id: "humanize",    label: "Humanize",      creditCost: 1,  requiresStage: "chapters" },
+  { id: "illustrations", label: "Illustrations", creditCost: 10, requiresStage: "chapters" },
+  { id: "cover",       label: "Cover",         creditCost: 3,  requiresStage: undefined },
+  { id: "layout",      label: "Layout",        creditCost: 2,  requiresStage: "illustrations" },
+  { id: "export",      label: "Export",        creditCost: 2,  requiresStage: "layout" },
 ];
 
 export const STAGE_CREDIT_COSTS: Record<string, number> = {
-  outline: 3,
-  chapters: 2,
-  humanize: 1,
+  outline:       3,
+  dedication:    1,  // ← ADD
+  theme:         1,  // ← ADD
+  chapters:      1,
+  humanize:      1,
   illustrations: 10,
-  cover: 3,
-  layout: 2,
-  export: 2,
+  cover:         3,
+  layout:        2,
+  export:        2,
 };
 
 export type LayoutStyle = 'split-page' | 'full-image' | 'text-under-image';

@@ -34,6 +34,10 @@ import {
   Download,
   FileText,
   Sparkles,
+  // Add inside the object:
+  Heart,
+  BookMarked,
+  // Also add Heart, BookMarked to lucide imports at top
   Share2,
   RefreshCw,
   CreditCard,
@@ -60,6 +64,10 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
   illustrations: Image,
   cover: Package,
   layout: Layout,
+  // Add inside the object:
+  dedication: Heart,
+  theme: BookMarked,
+  // Also add Heart, BookMarked to lucide imports at top
   export: Download,
 };
 
@@ -71,6 +79,8 @@ const STAGE_LABELS: Record<string, string> = {
   cover: "Cover",
   layout: "Layout",
   export: "Export",
+  dedication: "Dedication",
+  theme: "Islamic Theme",
 };
 
 type StageApiType = "text" | "image" | "project" | "batch";
@@ -82,6 +92,8 @@ const STAGE_API_TYPE: Record<string, StageApiType> = {
   illustrations: "image",
   cover: "image",
   layout: "project",
+  dedication: "text",
+  theme: "text",
   export: "batch",
 };
 
@@ -98,6 +110,9 @@ const ARTIFACT_STAGE_KEYS: Record<string, string> = {
   cover: "cover",
   layout: "layout",
   export: "export",
+  // Add inside the object:
+  dedication: "dedication",
+  theme: "themePage",
 };
 
 type IllustrationVariant = {
@@ -509,7 +524,7 @@ function ArtifactViewer({
               </div>
 
               <p className="line-clamp-4 text-sm leading-relaxed text-foreground/80">
-                {ch.text ?? ch.content}
+                {ch.spreads?.length ? ch.spreads.map((s: any, si: number) => <p key={si} className="mb-1">{s.text}</p>) : (ch.text ?? ch.content)}
               </p>
             </div>
           ))}
@@ -527,7 +542,7 @@ function ArtifactViewer({
               </p>
 
               <p className="line-clamp-6 whitespace-pre-line text-sm leading-relaxed text-foreground/80">
-                {ch.text}
+                {ch.spreads?.length ? ch.spreads.map((s: any, si: number) => <p key={si} className="mb-1">{s.text}</p>) : ch.text}
               </p>
 
               {ch.changesMade?.length > 0 && (
@@ -552,10 +567,78 @@ function ArtifactViewer({
           ))}
         </TabsContent>
 
+        <TabsContent value="dedication" className="mt-0 space-y-3">
+          <div className="rounded-xl border border-border p-4 space-y-2">
+            <p className="text-sm font-semibold">{arts.dedication?.greeting}</p>
+            <p className="text-sm leading-relaxed">{arts.dedication?.message}</p>
+            <p className="text-xs text-muted-foreground">{arts.dedication?.closing}</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="theme" className="mt-0 space-y-3">
+          <div className="rounded-xl border border-border p-4 space-y-2">
+            <p className="text-lg font-bold">{arts.themePage?.sectionTitle}</p>
+            <p className="text-2xl">{arts.themePage?.arabicPhrase}</p>
+            <p className="text-sm font-medium">{arts.themePage?.transliteration} — {arts.themePage?.meaning}</p>
+            <p className="text-xs text-muted-foreground">{arts.themePage?.referenceSource}</p>
+            <p className="text-sm italic">{arts.themePage?.referenceText}</p>
+            <p className="text-sm">{arts.themePage?.explanation}</p>
+            <p className="text-xs text-green-700">{arts.themePage?.dailyPractice}</p>
+          </div>
+        </TabsContent>
+
         <TabsContent value="illustrations" className="mt-0">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {illustrations.flatMap((ill) =>
-              (ill.variants ?? []).map((variant) => (
+            {illustrations.flatMap((ill) => {
+              // Picture-book: use spreads array
+              if (ill.spreads?.length) {
+                return ill.spreads.map((spread: any, si: number) => (
+                  <div
+                    key={`${ill.chapterNumber}-spread-${si}`}
+                    className="overflow-hidden rounded-xl border border-border"
+                  >
+                    {spread.imageUrl ? (
+                      <div className="relative aspect-square w-full">
+                        <img
+                          src={spread.imageUrl}
+                          alt={`Chapter ${ill.chapterNumber} spread ${si + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {spread.text && (
+                          <div
+                            className={`absolute left-0 right-0 bg-black/50 px-2 py-1 ${spread.textPosition === "top" || spread.textPosition === "overlay-top"
+                                ? "top-0"
+                                : "bottom-0"
+                              }`}
+                          >
+                            <p className="text-center text-xs font-medium leading-snug text-white">
+                              {spread.text}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center bg-muted">
+                        <Image className="h-8 w-8 text-muted-foreground/30" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between p-2">
+                      <p className="text-xs text-muted-foreground">
+                        Ch. {ill.chapterNumber} • Spread {si + 1}
+                      </p>
+                      {spread.textPosition && (
+                        <Badge variant="outline" className="text-xs">
+                          {spread.textPosition}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ));
+              }
+
+              // Chapter-book: use variants array
+              return (ill.variants ?? []).map((variant: IllustrationVariant) => (
                 <div
                   key={`${ill.chapterNumber}-${variant.variantIndex}`}
                   className="overflow-hidden rounded-xl border border-border"
@@ -563,8 +646,7 @@ function ArtifactViewer({
                   {variant.imageUrl ? (
                     <img
                       src={variant.imageUrl}
-                      alt={`Chapter ${ill.chapterNumber} variant ${variant.variantIndex + 1
-                        }`}
+                      alt={`Chapter ${ill.chapterNumber} variant ${variant.variantIndex + 1}`}
                       className="aspect-square w-full object-cover"
                     />
                   ) : (
@@ -577,7 +659,6 @@ function ArtifactViewer({
                     <p className="text-xs text-muted-foreground">
                       Ch. {ill.chapterNumber} • V{variant.variantIndex + 1}
                     </p>
-
                     {variant.selected && (
                       <Badge variant="outline" className="text-xs">
                         Selected
@@ -585,8 +666,8 @@ function ArtifactViewer({
                     )}
                   </div>
                 </div>
-              ))
-            )}
+              ));
+            })}
           </div>
         </TabsContent>
 
@@ -911,6 +992,9 @@ export default function ProjectWorkspacePage() {
         outline: "outline",
         chapters: "chapters",
         humanize: "humanize",
+        // Add inside the object:
+        dedication: "dedication",
+        theme: "theme",
       };
       const apiStageName = TEXT_STAGE_API_NAME[stageId] ?? stageId;
       await aiApi.runStage(project.id, apiStageName);
