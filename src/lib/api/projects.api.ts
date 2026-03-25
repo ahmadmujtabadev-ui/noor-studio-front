@@ -1,130 +1,223 @@
-// src/lib/api/projects.api.ts
-// Complete projects API client — CRUD + layout + publish + summary + step tracking
-
-import { api } from './client';
-import type { Project, ProjectSummary, BookStyle } from './types';
-
-// ─── Input types ──────────────────────────────────────────────────────────────
+import { api } from "./client";
+import type { Project, ProjectSummary } from "./types";
 
 export interface CreateProjectInput {
-  // Core
-  title: string;
-  ageRange: string;
-  // New 5-step flow
-  storyIdea?: string;
-  language?: string;
-  chapterCount?: number;
-  authorName?: string;
-  learningObjective?: string;
-  // Characters & universe
   universeId?: string;
-  universeName?: string;
-  knowledgeBaseId?: string;
-  knowledgeBaseName?: string;
   characterIds?: string[];
-  // Book style
-  bookStyle?: BookStyle;
-  trimSize?: string;
-  // Legacy fields
-  templateType?: string;
+  title: string;
+  ageRange?: string;
+  chapterCount?: number;
   template?: string;
-  synopsis?: string;
-  setting?: string;
-  layoutStyle?: string;
-  exportTargets?: string[];
-  spreadOnly?: boolean;
+  learningObjective?: string;
+  authorName?: string;
+  trimSize?: string;
+  language?: string;
+  bookStyle?: Record<string, unknown>;
+  storyIdea?: string;
 }
 
-export type UpdateProjectInput = Partial<CreateProjectInput> & {
-  artifacts?: Record<string, unknown>;
-  stepsComplete?: Record<string, boolean>;
-  currentStep?: number;
+export interface UpdateProjectInput {
+  title?: string;
+  ageRange?: string;
+  chapterCount?: number;
+  template?: string;
+  learningObjective?: string;
+  authorName?: string;
+  trimSize?: string;
+  language?: string;
   status?: string;
   currentStage?: string;
-};
-
-// ─── Helper: unwrap API response ──────────────────────────────────────────────
-
-function unwrap<T>(res: any): T {
-  // Handle { data: T } wrapper
-  if (res && typeof res === 'object' && 'data' in res && !('id' in res) && !('_id' in res)) {
-    return res.data as T;
-  }
-  return res as T;
+  currentStep?: number;
+  characterIds?: string[];
+  bookStyle?: Record<string, unknown>;
+  imageWidth?: number;
+  imageHeight?: number;
+  stepsComplete?: {
+    story?: boolean;
+    spreads?: boolean;
+    style?: boolean;
+    images?: boolean;
+    editor?: boolean;
+  };
+  artifacts?: Record<string, unknown>;
 }
 
-// ─── Projects API ─────────────────────────────────────────────────────────────
+export interface ProjectListResponse {
+  projects: Project[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+export interface AdvanceStepResponse {
+  message: string;
+  currentStep: number;
+  stepsComplete?: {
+    story?: boolean;
+    spreads?: boolean;
+    style?: boolean;
+    images?: boolean;
+    editor?: boolean;
+  };
+}
+
+export interface PublishResponse {
+  shareUrl: string;
+  shareToken: string;
+  publishedAt: string;
+}
+
+export interface LayoutResponse {
+  layout: Record<string, unknown>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Project review types                                                       */
+/* -------------------------------------------------------------------------- */
+
+export type ReviewStageId =
+  | "story"
+  | "structure"
+  | "chapters"
+  | "spreads"
+  | "humanize"
+  | "illustrations"
+  | "cover"
+  | "layout"
+  | "export";
+
+export interface ReviewStageStatus {
+  stage: ReviewStageId;
+  approved: boolean;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  status?: "draft" | "edited" | "approved" | "rejected" | "generated";
+  notes?: string;
+  updatedAt?: string | null;
+}
+
+export interface ReviewContextResponse {
+  projectId: string;
+  spreadOnly: boolean;
+  chapterBook: boolean;
+  ageRange?: string;
+  currentStep?: number;
+  status?: string;
+  title?: string;
+  outline?: Record<string, unknown> | null;
+  storyText?: string | null;
+  spreads?: Array<Record<string, unknown>>;
+  chapters?: Array<Record<string, unknown>>;
+  humanized?: Array<Record<string, unknown>>;
+  illustrations?: Array<Record<string, unknown>>;
+  spreadIllustrations?: Array<Record<string, unknown>>;
+  cover?: Record<string, unknown> | null;
+  layout?: Record<string, unknown> | null;
+  review?: ReviewStageStatus[];
+}
+
+export interface SaveReviewSectionRequest {
+  stage: ReviewStageId;
+  data: Record<string, unknown>;
+}
+
+export interface SaveReviewSectionResponse {
+  message: string;
+  stage: ReviewStageId;
+  updatedAt: string;
+}
+
+export interface ApproveReviewStageRequest {
+  stage: ReviewStageId;
+  notes?: string;
+}
+
+export interface ApproveReviewStageResponse {
+  message: string;
+  stage: ReviewStageId;
+  approved: true;
+  approvedAt: string;
+}
+
+export interface ResetReviewStageRequest {
+  stage: ReviewStageId;
+  reason?: string;
+}
+
+export interface ResetReviewStageResponse {
+  message: string;
+  stage: ReviewStageId;
+  approved: false;
+  resetAt: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* API                                                                        */
+/* -------------------------------------------------------------------------- */
 
 export const projectsApi = {
+  list: (params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ProjectListResponse> =>
+    api.get("/api/projects", { params }),
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
+  get: (id: string): Promise<Project> => api.get(`/api/projects/${id}`),
 
-  list: async (params?: { status?: string; page?: number; limit?: number }): Promise<Project[]> => {
-    const res = await api.get('/api/projects', { params });
-    const payload = unwrap<{ projects?: Project[] } | Project[]>(res);
-    // Handle paginated response { projects: [], pagination: {} }
-    if (payload && !Array.isArray(payload) && 'projects' in payload) {
-      return (payload as { projects: Project[] }).projects;
-    }
-    return payload as Project[];
-  },
+  getSummary: (id: string): Promise<ProjectSummary> =>
+    api.get(`/api/projects/${id}/summary`),
 
-  get: async (id: string): Promise<Project> => {
-    const res = await api.get(`/api/projects/${id}`);
-    return unwrap<Project>(res);
-  },
+  create: (data: CreateProjectInput): Promise<Project> =>
+    api.post("/api/projects", data),
 
-  create: async (data: CreateProjectInput): Promise<Project> => {
-    const res = await api.post('/api/projects', data);
-    return unwrap<Project>(res);
-  },
+  update: (id: string, data: UpdateProjectInput): Promise<Project> =>
+    api.put(`/api/projects/${id}`, data),
 
-  update: async (id: string, data: UpdateProjectInput): Promise<{ message: string; updatedAt: string; currentStep?: number }> => {
-    const res = await api.put(`/api/projects/${id}`, data);
-    return unwrap(res);
-  },
+  delete: (id: string): Promise<{ message: string }> =>
+    api.delete(`/api/projects/${id}`),
 
-  delete: async (id: string): Promise<{ message: string }> => {
-    const res = await api.delete(`/api/projects/${id}`);
-    return unwrap(res);
-  },
+  duplicate: (id: string): Promise<Project> =>
+    api.post(`/api/projects/${id}/duplicate`),
 
-  duplicate: async (id: string): Promise<Project> => {
-    const res = await api.post(`/api/projects/${id}/duplicate`);
-    return unwrap<Project>(res);
-  },
-
-  // ── Step tracking (5-step flow) ───────────────────────────────────────────
-
-  /** Advance the project to the next step and optionally mark current as complete */
-  advanceStep: async (
+  advanceStep: (
     id: string,
     step: number,
     complete = true,
-  ): Promise<{ currentStep: number; stepsComplete: Record<string, boolean> }> => {
-    const res = await api.patch(`/api/projects/${id}/step`, { step, complete });
-    return unwrap(res);
-  },
+  ): Promise<AdvanceStepResponse> =>
+    api.patch(`/api/projects/${id}/step`, { step, complete }),
 
-  // ── Summary ───────────────────────────────────────────────────────────────
+  generateLayout: (id: string): Promise<LayoutResponse> =>
+    api.post(`/api/projects/${id}/layout`),
 
-  /** Lightweight summary — stats, character list, step progress */
-  getSummary: async (id: string): Promise<ProjectSummary> => {
-    const res = await api.get(`/api/projects/${id}/summary`);
-    return unwrap<ProjectSummary>(res);
-  },
+  publish: (id: string, isPublic = true): Promise<PublishResponse> =>
+    api.post(`/api/projects/${id}/publish`, { isPublic }),
 
-  // ── Layout ────────────────────────────────────────────────────────────────
+  /* ---------------------------------------------------------------------- */
+  /* Review workflow                                                        */
+  /* ---------------------------------------------------------------------- */
 
-  generateLayout: async (id: string): Promise<{ layout: import('./types').ProjectLayout }> => {
-    const res = await api.post(`/api/projects/${id}/layout`);
-    return unwrap(res);
-  },
+  getReviewContext: (id: string): Promise<ReviewContextResponse> =>
+    api.get(`/api/projects/${id}/review`),
 
-  // ── Publish ───────────────────────────────────────────────────────────────
+  saveReviewSection: (
+    id: string,
+    payload: SaveReviewSectionRequest,
+  ): Promise<SaveReviewSectionResponse> =>
+    api.put(`/api/projects/${id}/review`, payload),
 
-  publish: async (id: string, isPublic = true): Promise<{ shareUrl: string; shareToken: string; publishedAt: string }> => {
-    const res = await api.post(`/api/projects/${id}/publish`, { isPublic });
-    return unwrap(res);
-  },
+  approveReviewStage: (
+    id: string,
+    payload: ApproveReviewStageRequest,
+  ): Promise<ApproveReviewStageResponse> =>
+    api.post(`/api/projects/${id}/review/approve`, payload),
+
+  resetReviewStage: (
+    id: string,
+    payload: ResetReviewStageRequest,
+  ): Promise<ResetReviewStageResponse> =>
+    api.post(`/api/projects/${id}/review/reset`, payload),
 };
