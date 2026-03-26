@@ -1,6 +1,6 @@
 // steps/StructureStep.tsx
 import React, { useState } from "react";
-import { Sparkles, ArrowLeft, ArrowRight, Check, Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, ArrowLeft, ArrowRight, Check, CheckCheck, Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,15 +157,28 @@ export function StructureStep({ bb, allCharacters, onBack, onContinue }: Structu
             <h3 className="font-bold">
               {isChBook ? `${items.length} Chapters` : `${items.length} Pages`}
             </h3>
-            <div className="flex items-center gap-2">
-              {bb.allStructureApproved && (
-                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                  All Approved
-                </Badge>
-              )}
+            <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">
                 {items.filter((i) => i.status === "approved").length}/{items.length} approved
               </span>
+              {bb.allStructureApproved ? (
+                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  All Approved
+                </Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  disabled={bb.loadingKey === "approve-all-structure"}
+                  onClick={() => bb.approveAllStructure()}
+                >
+                  {bb.loadingKey === "approve-all-structure"
+                    ? <><Loader2 className="w-3 h-3 animate-spin" />Approving…</>
+                    : <><CheckCheck className="w-3 h-3" />Approve All</>
+                  }
+                </Button>
+              )}
             </div>
           </div>
 

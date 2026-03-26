@@ -34,6 +34,7 @@ export interface BookBuilderState {
   language: string;
   authorName: string;
   universeId: string;
+  knowledgeBaseId: string;
   theme: string;
   storyReview: StoryReview | null;
   structureReview: StructureReview | null;
@@ -67,8 +68,9 @@ export function useBookBuilder() {
   const [ageRange,   setAgeRange]   = useState("6-8");
   const [language,   setLanguage]   = useState("english");
   const [authorName, setAuthorName] = useState("");
-  const [universeId, setUniverseId] = useState("");
-  const [theme,      setTheme]      = useState("");
+  const [universeId,      setUniverseId]      = useState("");
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState("");
+  const [theme,           setTheme]           = useState("");
   const [storyReview,       setStoryReview]       = useState<StoryReview | null>(null);
   const [structureReview,   setStructureReview]   = useState<StructureReview | null>(null);
   const [proseReview,       setProseReview]       = useState<ProseReviewNode[]>([]);
@@ -134,9 +136,10 @@ export function useBookBuilder() {
         storyIdea,
         ageRange,
         language,
-        authorName:        authorName || undefined,
-        universeId:        universeId || undefined,
-        learningObjective: theme      || undefined,
+        authorName:        authorName        || undefined,
+        universeId:        universeId        || undefined,
+        knowledgeBaseId:   knowledgeBaseId   || undefined,
+        learningObjective: theme             || undefined,
         chapterCount:      isChapterBook ? 4 : 10,
       });
 
@@ -233,6 +236,27 @@ export function useBookBuilder() {
       setLoadingKey(null);
     }
   }, [getPid, refreshReview, toast]);
+
+  const approveAllStructure = useCallback(async () => {
+    const pid = getPid();
+    const items = normArr<StructureItem>(structureReview?.items);
+    const unapproved = items.filter((i) => i.status !== "approved");
+    if (!unapproved.length) return;
+    setLoadingKey("approve-all-structure");
+    try {
+      await Promise.all(
+        unapproved.map((item) =>
+          reviewApi.approveStructureItem(pid, item.key)
+        )
+      );
+      await refreshReview();
+      toast({ title: `All ${unapproved.length} items approved ✓` });
+    } catch (err) {
+      toast({ title: "Approve all failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setLoadingKey(null);
+    }
+  }, [getPid, structureReview, refreshReview, toast]);
 
   const allStructureApproved = useMemo(() => {
     const items = normArr<StructureItem>(structureReview?.items);
@@ -495,6 +519,7 @@ export function useBookBuilder() {
     language, setLanguage,
     authorName, setAuthorName,
     universeId, setUniverseId,
+    knowledgeBaseId, setKnowledgeBaseId,
     theme, setTheme,
     storyReview,
     updateStoryCurrent,
@@ -508,6 +533,7 @@ export function useBookBuilder() {
     generateStructure,
     patchStructureItem,
     approveStructureItem,
+    approveAllStructure,
 
     // Style
     characterIds, setCharacterIds,

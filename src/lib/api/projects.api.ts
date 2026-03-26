@@ -3,6 +3,7 @@ import type { Project, ProjectSummary } from "./types";
 
 export interface CreateProjectInput {
   universeId?: string;
+  knowledgeBaseId?: string;
   characterIds?: string[];
   title: string;
   ageRange?: string;

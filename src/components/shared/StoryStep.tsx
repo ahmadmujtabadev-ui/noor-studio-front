@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Universe } from "@/lib/api/types";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
+import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
 
 const AGE_RANGES = [
   { value: "2-4",  label: "2–4 years  (Picture spreads)" },
@@ -33,6 +34,10 @@ interface StoryStepProps {
 
 export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
   const [regenerating, setRegenerating] = useState(false);
+  const { data: allKBs = [] } = useKnowledgeBases(bb.universeId || undefined);
+  const kbsForUniverse = bb.universeId
+    ? (allKBs as any[]).filter((kb: any) => kb.universeId === bb.universeId || kb.universeId?._id === bb.universeId)
+    : (allKBs as any[]);
   const hasStory = !!bb.storyReview?.current?.storyText;
   const current  = bb.storyReview?.current;
 
@@ -103,7 +108,10 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             <Label>Universe</Label>
             <Select
               value={bb.universeId || "none"}
-              onValueChange={(v) => bb.setUniverseId(v === "none" ? "" : v)}
+              onValueChange={(v) => {
+                bb.setUniverseId(v === "none" ? "" : v);
+                bb.setKnowledgeBaseId(""); // reset KB when universe changes
+              }}
               disabled={hasStory}
             >
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
@@ -114,6 +122,28 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label>Knowledge Base <span className="text-xs text-muted-foreground">(optional — shapes AI story, illustrations & cover)</span></Label>
+            <Select
+              value={bb.knowledgeBaseId || "none"}
+              onValueChange={(v) => bb.setKnowledgeBaseId(v === "none" ? "" : v)}
+              disabled={hasStory}
+            >
+              <SelectTrigger><SelectValue placeholder="None — select to inject KB rules into all AI prompts" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {kbsForUniverse.map((kb: any) => (
+                  <SelectItem key={kb.id || kb._id} value={kb.id || kb._id}>{kb.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {bb.knowledgeBaseId && (
+              <p className="text-xs text-emerald-600 font-medium">✓ KB rules will be injected into story, structure, prose, illustrations, and cover prompts.</p>
+            )}
           </div>
         </div>
 
