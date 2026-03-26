@@ -1,21 +1,19 @@
-// steps/ProseStep.tsx — chapter-book only
-// Fixes:
-// 1. Auto-save local edits BEFORE generate/humanize so nothing is lost
-// 2. Compare view: LEFT = first version snapshot (original AI generation)
-//                  RIGHT = humanized current text
+// ProseStep.tsx — Kids-friendly book-type layout
+// Chapters displayed as open book pages with story-like feel
 
 import React, { useState, useCallback, useRef } from "react";
 import {
   PenLine, ArrowLeft, ArrowRight, RefreshCw, Sparkles,
-  Loader2, ChevronDown, ChevronUp, Check, GitCompare, Save,
+  Loader2, Check, GitCompare, Save, BookOpen, ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button }   from "@/components/ui/button";
 import { Label }    from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge }    from "@/components/ui/badge";
 import { cn }       from "@/lib/utils";
-
 import { useToast } from "@/hooks/use-toast";
+import { reviewApi } from "@/lib/api/review.api";
 import { ChapterOutlineItem, normArr, ProseReviewNode, StructureItem } from "@/lib/api/reviewTypes";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 
@@ -27,31 +25,41 @@ interface ProseStepProps {
 
 type ViewMode = "current" | "compare";
 
+// ── Decorative page corner ───────────────────────────────────────────────────
+function PageCorner({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("absolute w-8 h-8 text-primary/10", className)}
+      viewBox="0 0 32 32" fill="none"
+    >
+      <path d="M0 0 L32 0 L32 32 Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
   const { toast } = useToast();
   const [expanded,  setExpanded]  = useState<Record<number, boolean>>({});
   const [viewMode,  setViewMode]  = useState<Record<number, ViewMode>>({});
   const [saving,    setSaving]    = useState<Record<number, boolean>>({});
 
-  // Local edits tracked per chapter so we can save before any server action
   const localEdits = useRef<Record<number, Partial<ProseReviewNode["current"]>>>({});
 
-  const chapters = normArr <StructureItem>(bb.structureReview?.items)
+  const chapters = normArr<StructureItem>(bb.structureReview?.items)
     .filter((i) => i.unitType === "chapter-outline") as ChapterOutlineItem[];
 
   // ── Helpers ─────────────────────────────────────────────────────────────
-  const getHumanizedNode = (chapterIndex: number): ProseReviewNode | undefined =>
-    bb.humanizedReview.find((n) => n.chapterIndex === chapterIndex) as ProseReviewNode | undefined;
+  const getHumanizedNode = (ci: number): ProseReviewNode | undefined =>
+    bb.humanizedReview.find((n) => n.chapterIndex === ci) as ProseReviewNode | undefined;
 
-  const getRawProseNode = (chapterIndex: number): ProseReviewNode | undefined =>
-    bb.proseReview.find((n) => n.chapterIndex === chapterIndex) as ProseReviewNode | undefined;
+  const getRawProseNode = (ci: number): ProseReviewNode | undefined =>
+    bb.proseReview.find((n) => n.chapterIndex === ci) as ProseReviewNode | undefined;
 
-  const getActiveProseNode = (chapterIndex: number): ProseReviewNode | undefined =>
-    getHumanizedNode(chapterIndex) ?? getRawProseNode(chapterIndex);
+  const getActiveProseNode = (ci: number): ProseReviewNode | undefined =>
+    getHumanizedNode(ci) ?? getRawProseNode(ci);
 
-  // The "Original" for compare = FIRST version snapshot (raw AI output before edits)
-  const getOriginalText = (chapterIndex: number): string => {
-    const raw = getRawProseNode(chapterIndex);
+  const getOriginalText = (ci: number): string => {
+    const raw = getRawProseNode(ci);
     if (!raw) return "";
     const versions = normArr(raw.versions as Array<{ version: number; snapshot: ProseReviewNode["current"]; createdAt: string }>);
     return versions.length > 0
@@ -59,92 +67,116 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
       : raw.current.chapterText;
   };
 
-  // Merge server state + local (unsaved) edits for display
-  const getMergedCurrent = (chapterIndex: number): ProseReviewNode["current"] => {
-    const node = getActiveProseNode(chapterIndex);
-    const c    = chapters[chapterIndex]?.current;
+  const getMergedCurrent = (ci: number): ProseReviewNode["current"] => {
+    const node = getActiveProseNode(ci);
+    const c    = chapters[ci]?.current;
     const base: ProseReviewNode["current"] = node?.current ?? {
-      chapterNumber:      chapterIndex + 1,
-      chapterTitle:       c?.title ?? `Chapter ${chapterIndex + 1}`,
+      chapterNumber:      ci + 1,
+      chapterTitle:       c?.title ?? `Chapter ${ci + 1}`,
       chapterSummary:     (c as any)?.goal ?? "",
       chapterText:        "",
       islamicMoment:      (c as any)?.duaHint ?? "",
       illustrationMoments: [],
     };
-    return { ...base, ...(localEdits.current[chapterIndex] ?? {}) };
+    return { ...base, ...(localEdits.current[ci] ?? {}) };
   };
 
-  // ── Save local edits to server ──────────────────────────────────────────
-  const saveLocalEdits = useCallback(async (chapterIndex: number): Promise<void> => {
-    const edits = localEdits.current[chapterIndex];
+  // ── Save local edits to server ───────────────────────────────────────────
+  const saveLocalEdits = useCallback(async (ci: number): Promise<void> => {
+    const edits = localEdits.current[ci];
     if (!edits || Object.keys(edits).length === 0) return;
     if (!bb.projectId) return;
-    setSaving((p) => ({ ...p, [chapterIndex]: true }));
+    setSaving((p) => ({ ...p, [ci]: true }));
     try {
-      await reviewApi.patchChapterProse(bb.projectId, chapterIndex, edits);
-      localEdits.current[chapterIndex] = {};
+      await reviewApi.patchChapterProse(bb.projectId, ci, edits);
+      localEdits.current[ci] = {};
     } catch {
       // non-fatal
     } finally {
-      setSaving((p) => ({ ...p, [chapterIndex]: false }));
+      setSaving((p) => ({ ...p, [ci]: false }));
     }
   }, [bb.projectId]);
 
-  const handleFieldChange = (chapterIndex: number, field: keyof ProseReviewNode["current"], value: string) => {
-    localEdits.current[chapterIndex] = { ...(localEdits.current[chapterIndex] ?? {}), [field]: value };
-    bb.updateProseNode(chapterIndex, { [field]: value } as any);
+  const handleFieldChange = (ci: number, field: keyof ProseReviewNode["current"], value: string) => {
+    localEdits.current[ci] = { ...(localEdits.current[ci] ?? {}), [field]: value };
+    bb.updateProseNode(ci, { [field]: value } as any);
   };
 
-  // ── Actions — always auto-save first ────────────────────────────────────
-  const handleGenerate = async (chapterIndex: number) => {
-    await saveLocalEdits(chapterIndex);
-    await bb.generateChapterProse(chapterIndex);
-  };
-
-  const handleHumanize = async (chapterIndex: number) => {
-    await saveLocalEdits(chapterIndex);
-    await bb.humanizeChapterProse(chapterIndex);
-    setViewMode((p) => ({ ...p, [chapterIndex]: "compare" }));
-  };
-
-  const handleSave = async (chapterIndex: number) => {
-    await saveLocalEdits(chapterIndex);
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleGenerate = async (ci: number) => {
+    await saveLocalEdits(ci);
+    await bb.generateChapterProse(ci);
     await bb.refreshReview();
-    toast({ title: `Chapter ${chapterIndex + 1} saved ✓` });
   };
 
-  const handleApprove = async (chapterIndex: number) => {
-    await saveLocalEdits(chapterIndex);
-    const current = getMergedCurrent(chapterIndex);
-    await bb.saveAndApproveChapterProse(chapterIndex, current);
+  const handlePolish = async (ci: number) => {
+    await saveLocalEdits(ci);
+    await bb.humanizeChapterProse(ci);
+    await bb.refreshReview();
+    setViewMode((p) => ({ ...p, [ci]: "compare" }));
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
+  const handleSave = async (ci: number) => {
+    await saveLocalEdits(ci);
+    await bb.refreshReview();
+    toast({ title: `Chapter ${ci + 1} saved ✓` });
+  };
+
+  const handleApprove = async (ci: number) => {
+    await saveLocalEdits(ci);
+    const current = getMergedCurrent(ci);
+    await bb.saveAndApproveChapterProse(ci, current);
+    await bb.refreshReview();
+  };
+
+  const approvedCount = chapters.filter((_, i) => getActiveProseNode(i)?.status === "approved").length;
+
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-card p-8">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <PenLine className="w-5 h-5 text-primary" />
+      {/* ── Header ── */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <BookOpen className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Chapter Prose</h2>
+            <h2 className="text-xl font-bold">Chapter Writing</h2>
             <p className="text-sm text-muted-foreground">
-              Generate → edit → humanize → compare original vs humanized → approve.
+              Write each chapter → polish → compare → approve.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-2">
-          <span className="font-bold text-foreground">
-            {chapters.filter((_, i) => getActiveProseNode(i)?.status === "approved").length}/{chapters.length}
+
+        {/* Progress row */}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            {chapters.map((_, i) => {
+              const approved = getActiveProseNode(i)?.status === "approved";
+              const hasText  = !!(getRawProseNode(i)?.current?.chapterText);
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-2 rounded-full transition-all",
+                    approved ? "bg-emerald-500 w-6" : hasText ? "bg-primary/40 w-4" : "bg-muted w-3",
+                  )}
+                  title={`Chapter ${i + 1}`}
+                />
+              );
+            })}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            <span className="font-bold text-foreground">{approvedCount}</span>/{chapters.length} approved
           </span>
-          chapters approved
           {bb.allProseApproved && (
-            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">All approved</Badge>
+            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              All approved ✓
+            </Badge>
           )}
         </div>
       </div>
 
+      {/* ── Chapter cards ── */}
       {chapters.map((chapter, i) => {
         const activeNode    = getActiveProseNode(i);
         const humanNode     = getHumanizedNode(i);
@@ -153,180 +185,341 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
         const vMode         = viewMode[i] ?? "current";
         const approved      = activeNode?.status === "approved";
         const hasText       = !!(rawNode?.current?.chapterText);
-        const hasHuman      = !!(humanNode?.current?.chapterText);
+        const hasPolished   = !!(humanNode?.current?.chapterText);
         const merged        = getMergedCurrent(i);
         const originalText  = getOriginalText(i);
-        const humanizedText = humanNode?.current?.chapterText ?? "";
+        const polishedText  = humanNode?.current?.chapterText ?? "";
 
-        const isGenLoading  = bb.loadingKey === `prose-gen-${i}`;
-        const isHumanLoad   = bb.loadingKey === `prose-humanize-${i}`;
-        const isApproveLoad = bb.loadingKey === `prose-approve-${i}`;
-        const isSaving      = saving[i] ?? false;
-        const c             = chapter.current;
+        const isWriting    = bb.loadingKey === `prose-gen-${i}`;
+        const isPolishing  = bb.loadingKey === `prose-humanize-${i}`;
+        const isApproving  = bb.loadingKey === `prose-approve-${i}`;
+        const isSaving     = saving[i] ?? false;
+        const c            = chapter.current;
+
+        // Word count estimate
+        const wordCount = merged.chapterText?.split(/\s+/).filter(Boolean).length ?? 0;
 
         return (
-          <div key={i} className={cn(
-            "rounded-2xl border overflow-hidden transition-all",
-            approved ? "border-emerald-300 dark:border-emerald-700" : "border-border",
-          )}>
-            {/* Chapter header */}
+          <div
+            key={i}
+            className={cn(
+              "rounded-2xl overflow-hidden transition-all duration-300",
+              approved
+                ? "border-2 border-emerald-400 dark:border-emerald-600 shadow-md shadow-emerald-500/10"
+                : isOpen
+                ? "border-2 border-primary/30 shadow-lg shadow-primary/5"
+                : "border border-border",
+            )}
+          >
+            {/* ── Chapter tab header ── */}
             <div
-              className="px-6 py-4 bg-muted/30 border-b border-border flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              className={cn(
+                "px-5 py-4 flex items-center gap-3 cursor-pointer transition-colors",
+                approved
+                  ? "bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/50"
+                  : isOpen
+                  ? "bg-primary/5 hover:bg-primary/10"
+                  : "bg-muted/30 hover:bg-muted/50",
+              )}
               onClick={() => setExpanded((p) => ({ ...p, [i]: !p[i] }))}
             >
+              {/* Chapter number bubble */}
               <div className={cn(
-                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm",
-                approved ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",
+                "w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm transition-all",
+                approved ? "bg-emerald-500 text-white"
+                  : isWriting || isPolishing ? "bg-primary text-primary-foreground"
+                  : isOpen ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground",
               )}>
-                {approved ? <Check className="w-4 h-4" /> : i + 1}
+                {approved
+                  ? <Check className="w-4 h-4" />
+                  : (isWriting || isPolishing)
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : i + 1
+                }
               </div>
+
               <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{c.title || `Chapter ${i + 1}`}</p>
-                {c.goal && <p className="text-xs text-muted-foreground truncate">{c.goal}</p>}
+                <p className="font-semibold truncate text-base">
+                  {c.title || `Chapter ${i + 1}`}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {c.goal && (
+                    <p className="text-xs text-muted-foreground truncate max-w-xs">{c.goal}</p>
+                  )}
+                  {hasText && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      ~{wordCount} words
+                    </span>
+                  )}
+                </div>
               </div>
+
               <div className="flex items-center gap-2 shrink-0">
-                {approved && <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Approved</Badge>}
-                {hasHuman && !approved && <Badge className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">Humanized</Badge>}
-                {hasText && !hasHuman && !approved && <Badge className="text-xs bg-blue-100 text-blue-700">Generated</Badge>}
-                {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                {approved && (
+                  <Badge className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                    Approved
+                  </Badge>
+                )}
+                {hasPolished && !approved && (
+                  <Badge className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                    Polished
+                  </Badge>
+                )}
+                {hasText && !hasPolished && !approved && (
+                  <Badge className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    Written
+                  </Badge>
+                )}
+                {isOpen
+                  ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                  : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                }
               </div>
             </div>
 
+            {/* ── Expanded content ── */}
             {isOpen && (
-              <div className="p-6 space-y-4">
-                {/* Action bar */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" disabled={isGenLoading || isSaving} onClick={() => handleGenerate(i)}>
-                    {isGenLoading
-                      ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Generating</>
-                      : <><RefreshCw className="w-3 h-3 mr-1.5" />{hasText ? "Regenerate" : "Generate prose"}</>
+              <div className="bg-card">
+                {/* Action toolbar */}
+                <div className="px-5 py-3 border-b border-border bg-muted/20 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isWriting || isSaving}
+                    onClick={() => handleGenerate(i)}
+                    className="h-8"
+                  >
+                    {isWriting
+                      ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Writing…</>
+                      : <><RefreshCw className="w-3 h-3 mr-1.5" />{hasText ? "Rewrite" : "Write Chapter"}</>
                     }
                   </Button>
 
                   {hasText && (
-                    <Button size="sm" variant="outline" disabled={isHumanLoad || isSaving} onClick={() => handleHumanize(i)}>
-                      {isHumanLoad
-                        ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Humanizing</>
-                        : <><Sparkles className="w-3 h-3 mr-1.5" />Humanize</>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPolishing || isSaving}
+                      onClick={() => handlePolish(i)}
+                      className="h-8"
+                    >
+                      {isPolishing
+                        ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Polishing…</>
+                        : <><Sparkles className="w-3 h-3 mr-1.5" />Polish Text</>
                       }
                     </Button>
                   )}
 
-                  {hasHuman && (
+                  {hasPolished && (
                     <Button
                       size="sm"
                       variant={vMode === "compare" ? "default" : "ghost"}
-                      onClick={() => setViewMode((p) => ({ ...p, [i]: p[i] === "compare" ? "current" : "compare" }))}
+                      onClick={() =>
+                        setViewMode((p) => ({ ...p, [i]: p[i] === "compare" ? "current" : "compare" }))
+                      }
+                      className="h-8"
                     >
                       <GitCompare className="w-3 h-3 mr-1.5" />
-                      {vMode === "compare" ? "Hide compare" : "Compare versions"}
+                      {vMode === "compare" ? "Hide comparison" : "Compare drafts"}
                     </Button>
                   )}
 
-                  <Button size="sm" variant="ghost" disabled={isSaving} onClick={() => handleSave(i)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={isSaving}
+                    onClick={() => handleSave(i)}
+                    className="h-8"
+                  >
                     {isSaving
                       ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Saving</>
-                      : <><Save className="w-3 h-3 mr-1.5" />Save edits</>
+                      : <><Save className="w-3 h-3 mr-1.5" />Save</>
                     }
                   </Button>
 
-                  <Button size="sm" className="ml-auto" disabled={isApproveLoad || !hasText} onClick={() => handleApprove(i)}>
-                    {isApproveLoad
-                      ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Approving</>
+                  <Button
+                    size="sm"
+                    className="ml-auto h-8"
+                    disabled={isApproving || !hasText}
+                    onClick={() => handleApprove(i)}
+                  >
+                    {isApproving
+                      ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Approving…</>
                       : <><Check className="w-3 h-3 mr-1.5" />Approve</>
                     }
                   </Button>
                 </div>
 
-                {/* Summary — always editable, pre-seeded from outline goal */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Chapter Summary</Label>
-                  <Textarea
-                    value={merged.chapterSummary ?? ""}
-                    onChange={(e) => handleFieldChange(i, "chapterSummary", e.target.value)}
-                    rows={2}
-                    placeholder={c.goal || "Brief chapter summary…"}
-                  />
-                </div>
+                {/* ── Book page layout ── */}
+                <div className="p-5 space-y-5">
+                  {/* Chapter heading — book-style */}
+                  <div className="text-center py-4 border-b border-dashed border-border">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">
+                      Chapter {i + 1}
+                    </p>
+                    <h3 className="text-2xl font-serif font-bold text-foreground">
+                      {c.title || `Chapter ${i + 1}`}
+                    </h3>
+                    {c.goal && (
+                      <p className="text-sm text-muted-foreground mt-2 italic max-w-md mx-auto">
+                        {c.goal}
+                      </p>
+                    )}
+                  </div>
 
-                {/* Prose — compare or single */}
-                {vMode === "compare" && hasHuman ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Writing area — compare or single */}
+                  {vMode === "compare" && hasPolished ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Original */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Original Draft
+                          </Label>
+                          <span className="text-[10px] text-muted-foreground">
+                            ~{originalText.split(/\s+/).filter(Boolean).length} words
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <PageCorner className="top-0 left-0" />
+                          <PageCorner className="top-0 right-0 rotate-90" />
+                          <Textarea
+                            value={originalText}
+                            readOnly
+                            rows={24}
+                            className="text-sm leading-relaxed opacity-60 resize-none bg-amber-50/30 dark:bg-amber-950/10 font-serif rounded-xl border-border/50 pt-4 px-5"
+                          />
+                        </div>
+                      </div>
+                      {/* Polished */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                            Polished Draft
+                            <Badge className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">AI</Badge>
+                          </Label>
+                          <span className="text-[10px] text-muted-foreground">
+                            ~{polishedText.split(/\s+/).filter(Boolean).length} words
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <PageCorner className="top-0 left-0" />
+                          <PageCorner className="top-0 right-0 rotate-90" />
+                          <Textarea
+                            value={polishedText}
+                            onChange={(e) => handleFieldChange(i, "chapterText", e.target.value)}
+                            rows={24}
+                            className="text-sm leading-relaxed font-serif rounded-xl bg-white dark:bg-card pt-4 px-5"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          {hasPolished ? "Polished Story Text" : "Story Text"}
+                        </Label>
+                        {hasText && (
+                          <span className="text-[10px] text-muted-foreground">
+                            ~{wordCount} words
+                          </span>
+                        )}
+                      </div>
+                      {/* Book-page styled textarea */}
+                      <div className="relative">
+                        <PageCorner className="top-0 left-0" />
+                        <PageCorner className="top-0 right-0 rotate-90" />
+                        <Textarea
+                          value={merged.chapterText ?? ""}
+                          onChange={(e) => handleFieldChange(i, "chapterText", e.target.value)}
+                          rows={24}
+                          placeholder={hasText ? undefined : "✨ Click \"Write Chapter\" to begin…"}
+                          className={cn(
+                            "text-sm leading-[1.9] font-serif rounded-xl pt-5 px-6 resize-none",
+                            !hasText && "bg-muted/20 text-muted-foreground/60",
+                            hasText && "bg-white dark:bg-card",
+                          )}
+                        />
+                        {/* Horizontal page lines overlay — subtle */}
+                        {!hasText && (
+                          <div className="absolute inset-5 top-5 pointer-events-none space-y-[1.9rem] overflow-hidden opacity-30">
+                            {Array.from({ length: 12 }).map((_, li) => (
+                              <div key={li} className="h-px bg-border" />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bottom meta row */}
+                  <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-dashed border-border">
+                    {/* Chapter summary */}
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Original (AI generation)
+                        Chapter Summary
                       </Label>
                       <Textarea
-                        value={originalText}
-                        readOnly
-                        rows={20}
-                        className="text-sm leading-relaxed opacity-60 resize-none bg-muted/30"
+                        value={merged.chapterSummary ?? ""}
+                        onChange={(e) => handleFieldChange(i, "chapterSummary", e.target.value)}
+                        rows={2}
+                        placeholder={c.goal || "Brief chapter summary…"}
+                        className="text-sm resize-none"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                        Humanized
-                        <Badge className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">AI</Badge>
-                      </Label>
-                      <Textarea
-                        value={humanizedText}
-                        onChange={(e) => handleFieldChange(i, "chapterText", e.target.value)}
-                        rows={20}
-                        className="text-sm leading-relaxed font-serif"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {hasHuman ? "Humanized Prose" : "Chapter Prose"}
-                    </Label>
-                    <Textarea
-                      value={merged.chapterText ?? ""}
-                      onChange={(e) => handleFieldChange(i, "chapterText", e.target.value)}
-                      rows={20}
-                      placeholder={hasText ? undefined : "Click Generate prose to begin…"}
-                      className="text-sm leading-relaxed font-serif"
-                    />
-                  </div>
-                )}
 
-                {/* Islamic moment */}
-                {!hasHuman && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Islamic Moment</Label>
-                    <Textarea
-                      value={merged.islamicMoment ?? (c as any).duaHint ?? ""}
-                      onChange={(e) => handleFieldChange(i, "islamicMoment", e.target.value)}
-                      rows={2}
-                      placeholder="Islamic reflection or dua in this chapter…"
-                    />
-                  </div>
-                )}
+                    {/* Islamic moment */}
+                    {!hasPolished && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Islamic Moment / Dua
+                        </Label>
+                        <Textarea
+                          value={merged.islamicMoment ?? (c as any).duaHint ?? ""}
+                          onChange={(e) => handleFieldChange(i, "islamicMoment", e.target.value)}
+                          rows={2}
+                          placeholder="Islamic reflection or dua in this chapter…"
+                          className="text-sm resize-none"
+                        />
+                      </div>
+                    )}
 
-                {/* changesMade chips */}
-                {hasHuman && normArr(humanNode?.current?.changesMade as string[]).length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Changes made</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {normArr(humanNode!.current.changesMade as string[]).map((change, ci) => (
-                        <span key={ci} className="px-2 py-0.5 rounded-full text-xs bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">
-                          {change}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Improvements chips */}
+                    {hasPolished && normArr(humanNode?.current?.changesMade as string[]).length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Improvements made
+                        </Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {normArr(humanNode!.current.changesMade as string[]).map((change, ci2) => (
+                            <span
+                              key={ci2}
+                              className="px-2.5 py-0.5 rounded-full text-xs bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
+                            >
+                              {change}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
         );
       })}
 
+      {/* Footer nav */}
       <div className="flex justify-between pt-2">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />Back
+        </Button>
         <Button disabled={!bb.allProseApproved} onClick={onContinue}>
-          Continue to Illustrations<ArrowRight className="w-4 h-4 ml-2" />
+          Continue to Illustrations
+          <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>

@@ -14,7 +14,6 @@ import {
   Unlock,
   RefreshCw,
   Check,
-  History,
   Palette,
   User,
   Sparkles,
@@ -25,6 +24,7 @@ import {
   Loader2,
   Save,
   Wand2,
+  Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -73,18 +73,16 @@ export default function CharacterDetailPage() {
   const [showGeneratePoses, setShowGeneratePoses] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [selectedPoseKey, setSelectedPoseKey] = useState<string | null>(null);
 
-  const [promptConfigForm, setPromptConfigForm] = useState({
-    masterSystemNote: "",
-    portraitPromptPrefix: "",
-    portraitPromptSuffix: "",
-    posePromptPrefix: "",
-    posePromptSuffix: "",
-    scenePromptPrefix: "",
-    scenePromptSuffix: "",
+  // Simplified prompt config — 3 fields instead of 7
+  const [promptForm, setPromptForm] = useState({
+    masterNote: "",
+    portraitNote: "",
+    sceneNote: "",
   });
 
+  // Pose edit dialog
+  const [editingPose, setEditingPose] = useState<any>(null);
   const [poseEditor, setPoseEditor] = useState({
     label: "",
     prompt: "",
@@ -96,34 +94,31 @@ export default function CharacterDetailPage() {
 
   useEffect(() => {
     if (!character) return;
-    setPromptConfigForm({
-      masterSystemNote: character.promptConfig?.masterSystemNote || "",
-      portraitPromptPrefix: character.promptConfig?.portraitPromptPrefix || "",
-      portraitPromptSuffix: character.promptConfig?.portraitPromptSuffix || "",
-      posePromptPrefix: character.promptConfig?.posePromptPrefix || "",
-      posePromptSuffix: character.promptConfig?.posePromptSuffix || "",
-      scenePromptPrefix: character.promptConfig?.scenePromptPrefix || "",
-      scenePromptSuffix: character.promptConfig?.scenePromptSuffix || "",
+    setPromptForm({
+      masterNote: character.promptConfig?.masterSystemNote || "",
+      portraitNote: character.promptConfig?.portraitPromptPrefix || "",
+      sceneNote: character.promptConfig?.scenePromptPrefix || "",
     });
   }, [character]);
 
   useEffect(() => {
-    if (!character || !selectedPoseKey) return;
-    const pose = (character.poseLibrary || []).find((p: any) => p.poseKey === selectedPoseKey);
-    if (!pose) return;
-
+    if (!editingPose) return;
     setPoseEditor({
-      label: pose.label || "",
-      prompt: pose.prompt || "",
-      notes: pose.notes || "",
-      useForScenes: Array.isArray(pose.useForScenes) ? pose.useForScenes.join(", ") : "",
-      approved: pose.approved !== false,
-      priority: Number(pose.priority || 0),
+      label: editingPose.label || "",
+      prompt: editingPose.prompt || "",
+      notes: editingPose.notes || "",
+      useForScenes: Array.isArray(editingPose.useForScenes)
+        ? editingPose.useForScenes.join(", ")
+        : "",
+      approved: editingPose.approved !== false,
+      priority: Number(editingPose.priority || 0),
     });
-  }, [character, selectedPoseKey]);
+  }, [editingPose]);
 
   const sortedPoses = useMemo(() => {
-    return [...(character?.poseLibrary || [])].sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0));
+    return [...(character?.poseLibrary || [])].sort(
+      (a: any, b: any) => (a.priority || 0) - (b.priority || 0)
+    );
   }, [character]);
 
   if (isLoading) {
@@ -152,21 +147,22 @@ export default function CharacterDetailPage() {
   const isLocked = character.status === "locked";
   const hasPortrait = !!character.imageUrl;
   const hasPoseSheet = !!character.poseSheetUrl;
-  const approvedPoses = (character.approvedPoseKeys || []).length;
-  const activePose = selectedPoseKey
-    ? sortedPoses.find((p: any) => p.poseKey === selectedPoseKey)
-    : sortedPoses[0];
+
+  const isWorking =
+    generatePortrait.isPending ||
+    generatePoseSheet.isPending ||
+    approveCharacter.isPending ||
+    updateCharacter.isPending ||
+    updatePromptConfig.isPending ||
+    applyMasterToPoses.isPending ||
+    updatePosePrompt.isPending ||
+    regeneratePose.isPending;
 
   const handleGeneratePortrait = async () => {
     if (credits < PORTRAIT_COST) {
-      toast({
-        title: "Insufficient credits",
-        description: `You need ${PORTRAIT_COST} credits.`,
-        variant: "destructive",
-      });
+      toast({ title: "Insufficient credits", description: `You need ${PORTRAIT_COST} credits.`, variant: "destructive" });
       return;
     }
-
     try {
       await generatePortrait.mutateAsync();
       toast({ title: "Portrait generated!", description: `${character.name}'s image has been created.` });
@@ -186,21 +182,13 @@ export default function CharacterDetailPage() {
 
   const handleGeneratePoseSheet = async () => {
     if (credits < POSE_SHEET_COST) {
-      toast({
-        title: "Insufficient credits",
-        description: `You need ${POSE_SHEET_COST} credits.`,
-        variant: "destructive",
-      });
+      toast({ title: "Insufficient credits", description: `You need ${POSE_SHEET_COST} credits.`, variant: "destructive" });
       setShowGeneratePoses(false);
       return;
     }
-
     try {
       await generatePoseSheet.mutateAsync();
-      toast({
-        title: "Pose sheet generated!",
-        description: `Pose sheet created for ${character.name}.`,
-      });
+      toast({ title: "Pose sheet generated!", description: `Pose sheet created for ${character.name}.` });
       setShowGeneratePoses(false);
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
@@ -220,7 +208,7 @@ export default function CharacterDetailPage() {
   const handleUnlock = async () => {
     try {
       await updateCharacter.mutateAsync({ status: "approved" });
-      toast({ title: "Character unlocked", description: `${character.name} can now be edited.` });
+      toast({ title: "Character unlocked" });
       setShowUnlockModal(false);
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
@@ -230,37 +218,35 @@ export default function CharacterDetailPage() {
   const handleDelete = async () => {
     try {
       await deleteMutation.mutateAsync(character.id || character._id);
-      toast({ title: "Character deleted", description: `${character.name} has been deleted.` });
+      toast({ title: "Character deleted" });
       navigate("/app/characters");
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
     }
   };
 
-  const handleSavePromptConfig = async () => {
+  const handleSavePrompts = async () => {
     try {
-      await updatePromptConfig.mutateAsync(promptConfigForm);
-      toast({ title: "Prompt config updated" });
+      await updatePromptConfig.mutateAsync({
+        masterSystemNote: promptForm.masterNote,
+        portraitPromptPrefix: promptForm.portraitNote,
+        portraitPromptSuffix: "",
+        posePromptPrefix: promptForm.masterNote,
+        posePromptSuffix: "",
+        scenePromptPrefix: promptForm.sceneNote,
+        scenePromptSuffix: "",
+      });
+      toast({ title: "Prompts saved", description: "Changes will apply to the next generation." });
     } catch (err) {
       toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" });
     }
   };
 
-  const handleApplyMasterToAllPoses = async () => {
-    try {
-      await applyMasterToPoses.mutateAsync();
-      toast({ title: "Applied master rules", description: "All pose prompts were rebuilt." });
-    } catch (err) {
-      toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
-    }
-  };
-
-  const handleSavePosePrompt = async () => {
-    if (!activePose) return;
-
+  const handleSavePose = async () => {
+    if (!editingPose) return;
     try {
       await updatePosePrompt.mutateAsync({
-        poseKey: activePose.poseKey,
+        poseKey: editingPose.poseKey,
         data: {
           label: poseEditor.label,
           prompt: poseEditor.prompt,
@@ -269,50 +255,31 @@ export default function CharacterDetailPage() {
           priority: poseEditor.priority,
           useForScenes: poseEditor.useForScenes
             .split(",")
-            .map((s) => s.trim())
+            .map((s: string) => s.trim())
             .filter(Boolean),
         },
       });
       toast({ title: "Pose updated" });
+      setEditingPose(null);
     } catch (err) {
       toast({ title: "Update failed", description: (err as Error).message, variant: "destructive" });
     }
   };
 
   const handleRegeneratePose = async () => {
-    if (!activePose) return;
-
+    if (!editingPose) return;
     if (credits < SINGLE_POSE_COST) {
-      toast({
-        title: "Insufficient credits",
-        description: `You need ${SINGLE_POSE_COST} credits.`,
-        variant: "destructive",
-      });
+      toast({ title: "Insufficient credits", description: `You need ${SINGLE_POSE_COST} credits.`, variant: "destructive" });
       return;
     }
-
     try {
-      await regeneratePose.mutateAsync({
-        poseKey: activePose.poseKey,
-        body: {
-          prompt: poseEditor.prompt,
-        },
-      });
-      toast({ title: "Pose regenerated", description: activePose.label });
+      await regeneratePose.mutateAsync({ poseKey: editingPose.poseKey, body: { prompt: poseEditor.prompt } });
+      toast({ title: "Pose regenerated" });
+      setEditingPose(null);
     } catch (err) {
-      toast({ title: "Regenerate failed", description: (err as Error).message, variant: "destructive" });
+      toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
     }
   };
-
-  const isWorking =
-    generatePortrait.isPending ||
-    generatePoseSheet.isPending ||
-    approveCharacter.isPending ||
-    updateCharacter.isPending ||
-    updatePromptConfig.isPending ||
-    applyMasterToPoses.isPending ||
-    updatePosePrompt.isPending ||
-    regeneratePose.isPending;
 
   return (
     <AppLayout
@@ -324,14 +291,12 @@ export default function CharacterDetailPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-
           {character.status === "approved" && !isLocked && (
             <Button variant="hero" onClick={handleLock} disabled={isWorking}>
               <Lock className="w-4 h-4 mr-2" />
-              Lock Character
+              Lock for Production
             </Button>
           )}
-
           {isLocked && (
             <Button variant="outline" onClick={() => setShowUnlockModal(true)}>
               <Unlock className="w-4 h-4 mr-2" />
@@ -342,9 +307,11 @@ export default function CharacterDetailPage() {
       }
     >
       <div className="grid lg:grid-cols-3 gap-8">
+        {/* ── Left: Portrait panel ── */}
         <div className="lg:col-span-1">
-          <div className="card-glow p-6 sticky top-6">
-            <div className="aspect-square rounded-xl overflow-hidden mb-4 bg-gradient-subtle relative">
+          <div className="card-glow p-6 sticky top-6 space-y-4">
+            {/* Portrait */}
+            <div className="aspect-square rounded-2xl overflow-hidden bg-gradient-subtle relative">
               {hasPortrait ? (
                 <>
                   <img
@@ -360,58 +327,61 @@ export default function CharacterDetailPage() {
                   )}
                 </>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4">
-                  <Image className="w-16 h-16 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground text-center">No image generated yet</p>
-                  <Button
-                    variant="hero"
-                    size="sm"
-                    onClick={handleGeneratePortrait}
-                    disabled={isWorking || credits < PORTRAIT_COST}
-                  >
-                    {generatePortrait.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Generate ({PORTRAIT_COST} credits)
-                      </>
-                    )}
-                  </Button>
+                <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
+                  <Image className="w-14 h-14 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground text-center">No portrait yet</p>
                 </div>
               )}
             </div>
 
-            {hasPortrait && character.status !== "approved" && (
-              <div className="flex gap-2 mb-4">
-                <Button variant="hero" size="sm" className="flex-1" onClick={handleApprove} disabled={isWorking}>
-                  <ThumbsUp className="w-4 h-4 mr-2" />
-                  Approve
+            {/* Generate / Approve */}
+            <div className="flex gap-2">
+              <Button
+                variant="hero"
+                size="sm"
+                className="flex-1"
+                onClick={handleGeneratePortrait}
+                disabled={isWorking || credits < PORTRAIT_COST || isLocked}
+              >
+                {generatePortrait.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
+                ) : (
+                  <><Sparkles className="w-4 h-4 mr-2" />{hasPortrait ? "Regenerate" : "Generate"} ({PORTRAIT_COST} cr)</>
+                )}
+              </Button>
+              {hasPortrait && character.status !== "approved" && character.status !== "locked" && (
+                <Button variant="outline" size="sm" onClick={handleApprove} disabled={isWorking}>
+                  <ThumbsUp className="w-4 h-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGeneratePortrait}
-                  disabled={isWorking || credits < PORTRAIT_COST}
-                >
-                  <RefreshCw className={cn("w-4 h-4", generatePortrait.isPending && "animate-spin")} />
-                </Button>
-              </div>
-            )}
+              )}
+            </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Stats */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Status</span>
                 <Badge className={statusColors[character.status] || statusColors.draft}>
                   {character.status}
                 </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {character.selectedStyle || character.visualDNA?.style || "style"}
-                </span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Poses</span>
+                <span className="font-medium">{sortedPoses.length} poses</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Credits</span>
+                <span className="font-medium">{credits}</span>
+              </div>
+              {character.ageRange && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Age Range</span>
+                  <span className="font-medium">{character.ageRange}</span>
+                </div>
+              )}
+            </div>
 
+            {/* Traits */}
+            {(character.traits || []).length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {(character.traits || []).map((trait: string) => (
                   <Badge key={trait} variant="outline" className="text-xs capitalize">
@@ -419,449 +389,380 @@ export default function CharacterDetailPage() {
                   </Badge>
                 ))}
               </div>
+            )}
 
-              <div className="pt-3 border-t border-border space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Age Range</span>
-                  <span className="font-medium">{character.ageRange}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Approved Poses</span>
-                  <span className="font-medium">{approvedPoses}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Credits remaining</span>
-                  <span className="font-medium">{credits}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-border">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setShowDeleteModal(true)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Character
-                </Button>
-              </div>
+            {/* Delete */}
+            <div className="pt-2 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Character
+              </Button>
             </div>
           </div>
         </div>
 
+        {/* ── Right: Tabs ── */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="poses">Pose Sheet</TabsTrigger>
-              <TabsTrigger value="prompts">Prompts</TabsTrigger>
-              <TabsTrigger value="versions">History</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">
+                <User className="w-4 h-4 mr-2" />
+                Character
+              </TabsTrigger>
+              <TabsTrigger value="poses">
+                <Palette className="w-4 h-4 mr-2" />
+                Poses
+              </TabsTrigger>
+              <TabsTrigger value="prompts">
+                <Settings2 className="w-4 h-4 mr-2" />
+                Prompts
+              </TabsTrigger>
             </TabsList>
 
+            {/* ── Overview Tab ── */}
             <TabsContent value="overview" className="space-y-6">
-              <div className="card-glow p-6 space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">Persona</h3>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Name</p>
-                    <p className="font-medium">{character.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Role</p>
-                    <p className="font-medium">{character.role}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Age Range</p>
-                    <p className="font-medium">{character.ageRange}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Speaking Style</p>
-                    <p className="font-medium">{character.speakingStyle || "Not specified"}</p>
-                  </div>
+              {/* Persona */}
+              <div className="card-glow p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Persona
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+                  {[
+                    ["Name", character.name],
+                    ["Role", character.role],
+                    ["Age Range", character.ageRange],
+                    ["Speaking Style", character.speakingStyle],
+                  ].map(([label, value]) => value ? (
+                    <div key={label as string}>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                      <p className="font-medium text-sm">{value}</p>
+                    </div>
+                  ) : null)}
                 </div>
               </div>
 
-              <div className="card-glow p-6 space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Palette className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">Visual DNA</h3>
+              {/* Visual DNA */}
+              <div className="card-glow p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-primary" />
+                  Visual DNA
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+                  {[
+                    ["Skin Tone", character.visualDNA?.skinTone],
+                    ["Eye Color", character.visualDNA?.eyeColor],
+                    ["Face Shape", character.visualDNA?.faceShape],
+                    ["Hair Style", character.visualDNA?.hairStyle],
+                    ["Hair Color", character.visualDNA?.hairColor],
+                    ["Hijab Style", character.visualDNA?.hijabStyle],
+                    ["Hijab Color", character.visualDNA?.hijabColor],
+                    ["Top Garment", character.visualDNA?.topGarmentType],
+                    ["Top Color", character.visualDNA?.topGarmentColor],
+                    ["Bottom Garment", character.visualDNA?.bottomGarmentType],
+                    ["Shoe Type", character.visualDNA?.shoeType],
+                    ["Shoe Color", character.visualDNA?.shoeColor],
+                  ].map(([label, value]) => value ? (
+                    <div key={label as string}>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                      <p className="font-medium text-sm">{value}</p>
+                    </div>
+                  ) : null)}
                 </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div><p className="text-sm text-muted-foreground mb-1">Skin Tone</p><p className="font-medium">{character.visualDNA?.skinTone || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Eye Color</p><p className="font-medium">{character.visualDNA?.eyeColor || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Face Shape</p><p className="font-medium">{character.visualDNA?.faceShape || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Age Look</p><p className="font-medium">{character.visualDNA?.ageLook || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Hair Style</p><p className="font-medium">{character.visualDNA?.hairStyle || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Hijab Style</p><p className="font-medium">{character.visualDNA?.hijabStyle || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Top Garment</p><p className="font-medium">{character.visualDNA?.topGarmentType || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Top Color</p><p className="font-medium">{character.visualDNA?.topGarmentColor || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Bottom Garment</p><p className="font-medium">{character.visualDNA?.bottomGarmentType || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Bottom Color</p><p className="font-medium">{character.visualDNA?.bottomGarmentColor || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Shoe Type</p><p className="font-medium">{character.visualDNA?.shoeType || "Not specified"}</p></div>
-                  <div><p className="text-sm text-muted-foreground mb-1">Shoe Color</p><p className="font-medium">{character.visualDNA?.shoeColor || "Not specified"}</p></div>
-                </div>
-
-                {!!character.visualDNA?.topGarmentDetails && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Garment Details</p>
-                    <p className="font-medium">{character.visualDNA.topGarmentDetails}</p>
-                  </div>
-                )}
-
-                {!!character.visualDNA?.paletteNotes && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Palette Notes</p>
-                    <p className="font-medium">{character.visualDNA.paletteNotes}</p>
+                {character.visualDNA?.paletteNotes && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Palette Notes</p>
+                    <p className="text-sm">{character.visualDNA.paletteNotes}</p>
                   </div>
                 )}
               </div>
             </TabsContent>
 
+            {/* ── Poses Tab ── */}
             <TabsContent value="poses" className="space-y-6">
+              {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold">Pose Sheet + Pose Library</h3>
+                  <h3 className="font-semibold">Pose Library</h3>
                   <p className="text-sm text-muted-foreground">
-                    Edit approved poses, prompts, and regenerate one pose at a time.
+                    {sortedPoses.length} poses · click any pose to edit or regenerate
                   </p>
                 </div>
-
-                {!hasPoseSheet ? (
-                  <Button variant="hero" onClick={() => setShowGeneratePoses(true)} disabled={isWorking}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Poses ({POSE_SHEET_COST} credits)
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleApplyMasterToAllPoses} disabled={isWorking || isLocked}>
+                <div className="flex gap-2">
+                  {hasPoseSheet && (
+                    <Button variant="outline" size="sm" onClick={() => applyMasterToPoses.mutate()} disabled={isWorking || isLocked}>
                       <Wand2 className="w-4 h-4 mr-2" />
-                      Apply Master to All
+                      Apply Master
                     </Button>
-                    <Button variant="outline" onClick={() => setShowGeneratePoses(true)} disabled={isWorking || isLocked}>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Regenerate Sheet
-                    </Button>
-                  </div>
-                )}
+                  )}
+                  <Button
+                    variant={hasPoseSheet ? "outline" : "hero"}
+                    size="sm"
+                    onClick={() => setShowGeneratePoses(true)}
+                    disabled={isWorking || isLocked}
+                  >
+                    {hasPoseSheet ? (
+                      <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Sheet</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4 mr-2" />Generate Poses ({POSE_SHEET_COST} cr)</>
+                    )}
+                  </Button>
+                </div>
               </div>
 
-              {hasPoseSheet && character.poseSheetUrl && (
+              {/* Pose sheet image */}
+              {hasPoseSheet && (
                 <div className="card-glow p-4">
                   <img
                     src={character.poseSheetUrl}
                     alt={`${character.name} Pose Sheet`}
-                    className="w-full rounded-lg border border-border"
+                    className="w-full rounded-xl border border-border"
                   />
                 </div>
               )}
 
-              <div className="grid lg:grid-cols-[260px_1fr] gap-6">
-                <div className="card-glow p-4 space-y-2">
-                  <h4 className="font-semibold text-sm">Pose Library</h4>
-                  {sortedPoses.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No poses yet.</p>
-                  ) : (
-                    sortedPoses.map((pose: any) => (
-                      <button
-                        key={pose.poseKey}
-                        onClick={() => setSelectedPoseKey(pose.poseKey)}
-                        className={cn(
-                          "w-full text-left p-3 rounded-lg border transition-all",
-                          (selectedPoseKey || activePose?.poseKey) === pose.poseKey
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-sm">{pose.label}</span>
-                          <div className="flex items-center gap-1">
-                            {pose.approved ? (
-                              <Badge variant="secondary" className="text-[10px]">approved</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">off</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{pose.poseKey}</p>
-                      </button>
-                    ))
-                  )}
+              {/* Pose grid */}
+              {sortedPoses.length === 0 ? (
+                <div className="card-glow p-12 text-center text-muted-foreground text-sm">
+                  No poses yet. Generate a pose sheet to get started.
                 </div>
-
-                <div className="card-glow p-6 space-y-4">
-                  {activePose ? (
-                    <>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h4 className="font-semibold">{activePose.label}</h4>
-                          <p className="text-sm text-muted-foreground">{activePose.poseKey}</p>
-                        </div>
-                        <Badge variant={poseEditor.approved ? "secondary" : "outline"}>
-                          {poseEditor.approved ? "Approved" : "Disabled"}
+              ) : (
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {sortedPoses.map((pose: any) => (
+                    <button
+                      key={pose.poseKey}
+                      onClick={() => setEditingPose(pose)}
+                      className="card-glow p-3 text-left hover:border-primary/50 transition-all group"
+                    >
+                      {/* Pose image */}
+                      <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-3">
+                        {pose.imageUrl ? (
+                          <img src={pose.imageUrl} alt={pose.label} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
+                            <Image className="w-8 h-8" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-sm truncate">{pose.label}</span>
+                        <Badge
+                          variant={pose.approved !== false ? "secondary" : "outline"}
+                          className="text-[10px] shrink-0"
+                        >
+                          {pose.approved !== false ? "on" : "off"}
                         </Badge>
                       </div>
-
-                      {activePose.imageUrl ? (
-                        <img
-                          src={activePose.imageUrl}
-                          alt={activePose.label}
-                          className="w-48 h-48 object-cover rounded-xl border border-border"
-                        />
-                      ) : (
-                        <div className="w-48 h-48 rounded-xl border border-dashed border-border flex items-center justify-center text-sm text-muted-foreground">
-                          No single pose image yet
-                        </div>
-                      )}
-
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Label</Label>
-                          <Input
-                            value={poseEditor.label}
-                            onChange={(e) => setPoseEditor((s) => ({ ...s, label: e.target.value }))}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Priority</Label>
-                          <Input
-                            type="number"
-                            value={poseEditor.priority}
-                            onChange={(e) => setPoseEditor((s) => ({ ...s, priority: Number(e.target.value || 0) }))}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Use For Scenes</Label>
-                        <Input
-                          value={poseEditor.useForScenes}
-                          onChange={(e) => setPoseEditor((s) => ({ ...s, useForScenes: e.target.value }))}
-                          placeholder="e.g. greeting, discovery, prayer"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          id="pose-approved"
-                          type="checkbox"
-                          checked={poseEditor.approved}
-                          onChange={(e) => setPoseEditor((s) => ({ ...s, approved: e.target.checked }))}
-                        />
-                        <Label htmlFor="pose-approved">Approved for scene generation</Label>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Notes</Label>
-                        <Textarea
-                          rows={2}
-                          value={poseEditor.notes}
-                          onChange={(e) => setPoseEditor((s) => ({ ...s, notes: e.target.value }))}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Pose Prompt</Label>
-                        <Textarea
-                          rows={14}
-                          value={poseEditor.prompt}
-                          onChange={(e) => setPoseEditor((s) => ({ ...s, prompt: e.target.value }))}
-                          className="font-mono text-xs"
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button onClick={handleSavePosePrompt} disabled={updatePosePrompt.isPending || isLocked}>
-                          {updatePosePrompt.isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
-                          ) : (
-                            <><Save className="w-4 h-4 mr-2" />Save Pose</>
-                          )}
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          onClick={handleRegeneratePose}
-                          disabled={regeneratePose.isPending || isLocked || credits < SINGLE_POSE_COST}
-                        >
-                          {regeneratePose.isPending ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</>
-                          ) : (
-                            <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Pose ({SINGLE_POSE_COST} cr)</>
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Select a pose to edit.</p>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="prompts" className="space-y-6">
-              <div className="card-glow p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">Generation Prompts</h3>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Master System Note</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.masterSystemNote}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, masterSystemNote: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Portrait Prompt Prefix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.portraitPromptPrefix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, portraitPromptPrefix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Portrait Prompt Suffix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.portraitPromptSuffix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, portraitPromptSuffix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Pose Prompt Prefix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.posePromptPrefix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, posePromptPrefix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Pose Prompt Suffix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.posePromptSuffix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, posePromptSuffix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Scene Prompt Prefix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.scenePromptPrefix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, scenePromptPrefix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Scene Prompt Suffix</Label>
-                  <Textarea
-                    rows={3}
-                    value={promptConfigForm.scenePromptSuffix}
-                    onChange={(e) => setPromptConfigForm((s) => ({ ...s, scenePromptSuffix: e.target.value }))}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={handleSavePromptConfig} disabled={updatePromptConfig.isPending || isLocked}>
-                    {updatePromptConfig.isPending ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
-                    ) : (
-                      <><Save className="w-4 h-4 mr-2" />Save Prompt Config</>
-                    )}
-                  </Button>
-
-                  <Button variant="outline" onClick={handleApplyMasterToAllPoses} disabled={applyMasterToPoses.isPending || isLocked}>
-                    {applyMasterToPoses.isPending ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Applying...</>
-                    ) : (
-                      <><Wand2 className="w-4 h-4 mr-2" />Apply To All Poses</>
-                    )}
-                  </Button>
-                </div>
-
-                {(character.generationMeta?.portraitPrompt || character.generationMeta?.poseSheetPrompt) && (
-                  <div className="pt-4 border-t border-border space-y-4">
-                    {character.generationMeta?.portraitPrompt && (
-                      <div>
-                        <Label>Portrait Prompt</Label>
-                        <Textarea
-                          rows={14}
-                          value={character.generationMeta.portraitPrompt}
-                          readOnly
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                    )}
-
-                    {character.generationMeta?.poseSheetPrompt && (
-                      <div>
-                        <Label>Pose Sheet Prompt</Label>
-                        <Textarea
-                          rows={12}
-                          value={character.generationMeta.poseSheetPrompt}
-                          readOnly
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="versions" className="space-y-6">
-              <div className="card-glow p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <History className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">Version History</h3>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                      1
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Current Version</p>
-                      <p className="text-sm text-muted-foreground">{character.status}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Updated: {new Date(character.updatedAt).toLocaleDateString()}
+                      <p className="text-xs text-muted-foreground mt-0.5 group-hover:text-primary transition-colors">
+                        Edit →
                       </p>
-                    </div>
-                    <Badge className="bg-primary text-primary-foreground">Current</Badge>
-                  </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    Version history can be expanded later.
+            {/* ── Prompts Tab ── */}
+            <TabsContent value="prompts" className="space-y-6">
+              <div className="card-glow p-6 space-y-5">
+                <div>
+                  <h3 className="font-semibold mb-1">Generation Prompts</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Custom instructions that override AI generation for this character. Leave blank to use defaults.
                   </p>
                 </div>
+
+                {/* Master Note */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Master Note
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      — applies to ALL images (portrait, poses, scenes)
+                    </span>
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="e.g. always wear black rounded glasses, warm expression"
+                    value={promptForm.masterNote}
+                    onChange={(e) => setPromptForm((s) => ({ ...s, masterNote: e.target.value }))}
+                    disabled={isLocked}
+                  />
+                </div>
+
+                {/* Portrait Note */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Portrait Note
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      — extra instructions for portrait/reference image only
+                    </span>
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="e.g. show full body, strong front-facing pose"
+                    value={promptForm.portraitNote}
+                    onChange={(e) => setPromptForm((s) => ({ ...s, portraitNote: e.target.value }))}
+                    disabled={isLocked}
+                  />
+                </div>
+
+                {/* Scene Note */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Scene Note
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      — extra instructions for book illustration scenes only
+                    </span>
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    placeholder="e.g. always show carrying a small backpack"
+                    value={promptForm.sceneNote}
+                    onChange={(e) => setPromptForm((s) => ({ ...s, sceneNote: e.target.value }))}
+                    disabled={isLocked}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleSavePrompts}
+                  disabled={updatePromptConfig.isPending || isLocked}
+                  className="w-full sm:w-auto"
+                >
+                  {updatePromptConfig.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    <><Save className="w-4 h-4 mr-2" />Save Prompts</>
+                  )}
+                </Button>
+
+                {isLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Character is locked. Unlock to edit prompts.
+                  </p>
+                )}
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
 
+      {/* ── Pose Edit Dialog ── */}
+      <Dialog open={!!editingPose} onOpenChange={(open) => { if (!open) setEditingPose(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Pose — {editingPose?.label}</DialogTitle>
+            <DialogDescription>{editingPose?.poseKey}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Pose image */}
+            {editingPose?.imageUrl && (
+              <img
+                src={editingPose.imageUrl}
+                alt={editingPose.label}
+                className="w-32 h-32 object-cover rounded-xl border border-border mx-auto"
+              />
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Label</Label>
+                <Input
+                  value={poseEditor.label}
+                  onChange={(e) => setPoseEditor((s) => ({ ...s, label: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Priority (lower = first)</Label>
+                <Input
+                  type="number"
+                  value={poseEditor.priority}
+                  onChange={(e) => setPoseEditor((s) => ({ ...s, priority: Number(e.target.value || 0) }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Use For Scenes (comma separated)</Label>
+              <Input
+                value={poseEditor.useForScenes}
+                onChange={(e) => setPoseEditor((s) => ({ ...s, useForScenes: e.target.value }))}
+                placeholder="e.g. greeting, discovery, prayer"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="pose-approved-dialog"
+                type="checkbox"
+                checked={poseEditor.approved}
+                onChange={(e) => setPoseEditor((s) => ({ ...s, approved: e.target.checked }))}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="pose-approved-dialog" className="text-sm">
+                Approved for scene generation
+              </Label>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Pose Prompt</Label>
+              <Textarea
+                rows={8}
+                value={poseEditor.prompt}
+                onChange={(e) => setPoseEditor((s) => ({ ...s, prompt: e.target.value }))}
+                className="font-mono text-xs"
+              />
+            </div>
+
+            {poseEditor.notes !== undefined && (
+              <div className="space-y-1">
+                <Label className="text-xs">Notes</Label>
+                <Textarea
+                  rows={2}
+                  value={poseEditor.notes}
+                  onChange={(e) => setPoseEditor((s) => ({ ...s, notes: e.target.value }))}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 flex-wrap">
+            <Button variant="ghost" onClick={() => setEditingPose(null)}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={handleRegeneratePose}
+              disabled={regeneratePose.isPending || isLocked || credits < SINGLE_POSE_COST}
+            >
+              {regeneratePose.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</>
+              ) : (
+                <><RefreshCw className="w-4 h-4 mr-2" />Regenerate ({SINGLE_POSE_COST} cr)</>
+              )}
+            </Button>
+            <Button onClick={handleSavePose} disabled={updatePosePrompt.isPending || isLocked}>
+              {updatePosePrompt.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+              ) : (
+                <><Save className="w-4 h-4 mr-2" />Save Pose</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Generate Pose Sheet Dialog ── */}
       <Dialog open={showGeneratePoses} onOpenChange={setShowGeneratePoses}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Generate Pose Sheet</DialogTitle>
             <DialogDescription>
               Generate a pose sheet for {character.name}. This costs {POSE_SHEET_COST} credits.
-              You have {credits} credits.
+              You have {credits} credits remaining.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -881,6 +782,7 @@ export default function CharacterDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Unlock Dialog ── */}
       <Dialog open={showUnlockModal} onOpenChange={setShowUnlockModal}>
         <DialogContent>
           <DialogHeader>
@@ -889,19 +791,20 @@ export default function CharacterDetailPage() {
               Unlock Character?
             </DialogTitle>
             <DialogDescription>
-              This character is locked. Unlocking will allow editing.
+              This character is locked. Unlocking allows edits.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setShowUnlockModal(false)}>Cancel</Button>
             <Button variant="outline" onClick={handleUnlock} disabled={updateCharacter.isPending}>
               <Unlock className="w-4 h-4 mr-2" />
-              Unlock Character
+              Unlock
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* ── Delete Dialog ── */}
       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
         <DialogContent>
           <DialogHeader>
@@ -910,14 +813,14 @@ export default function CharacterDetailPage() {
               Delete Character?
             </DialogTitle>
             <DialogDescription>
-              This will permanently delete {character.name}. This action cannot be undone.
+              This will permanently delete {character.name}. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Delete Character
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

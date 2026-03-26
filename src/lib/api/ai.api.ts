@@ -150,10 +150,11 @@ export const aiApi = {
     }),
 
   /** Generate all book illustrations in one go (legacy full-book run) */
-  generateAllIllustrations: (projectId: string, style?: string): Promise<ImageGenerateResponse> =>
+  generateAllIllustrations: (projectId: string, style?: string, force = false): Promise<ImageGenerateResponse> =>
     api.post('/api/ai/image/generate', {
       task: 'illustrations',
       projectId,
+      force,
       ...(style ? { style } : {}),
     }),
 

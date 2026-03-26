@@ -1,12 +1,14 @@
-// steps/IllustrationsStep.tsx
+// IllustrationStep.tsx — Fixed: shows all chapters, generate all button, real-time save
 import React, { useEffect, useState } from "react";
-import { Image as ImageIcon, ArrowLeft, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import {
+  Image as ImageIcon, ArrowLeft, ArrowRight, Loader2,
+  RefreshCw, Sparkles, CheckCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
-import { illNodestoSlots, VariantGrid } from "./VarientGrid";
-
+import { IllustrationCard, illNodestoSlots } from "./VarientGrid";
 
 interface IllustrationsStepProps {
   bb: BookBuilderHook;
@@ -22,72 +24,139 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
     setLoaded(true);
   };
 
+  // Load on mount; also re-load when returning to this step
   useEffect(() => {
-    if (!loaded && bb.illustrationNodes.length === 0) {
-      load();
-    } else {
-      setLoaded(true);
-    }
+    load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const slots   = illNodestoSlots(bb.illustrationNodes);
+  const slots    = illNodestoSlots(bb.illustrationNodes);
   const approved = bb.illustrationNodes.filter((n) => n.status === "approved").length;
   const total    = bb.illustrationNodes.length;
-
-  const handlePromptEdit = async (key: string, prompt: string) => {
-    // silently stored locally in VariantGrid — persisted on regenerate
-  };
+  const isGeneratingAll = bb.loadingKey === "generate-all-illustrations";
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-card p-8">
-        <div className="flex items-center justify-between">
+      {/* Header card */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <ImageIcon className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h2 className="text-xl font-bold">Illustrations</h2>
               <p className="text-sm text-muted-foreground">
-                Review source text → edit prompt → generate 4 variants → pick best → approve.
+                Generate variants → select the best → approve. All approved images power your book.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {total > 0 && (
-              <span className="text-sm text-muted-foreground">
-                <span className="font-bold text-foreground">{approved}</span>/{total} approved
-              </span>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(total, 10) }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        i < approved ? "bg-emerald-500" : "bg-muted",
+                      )}
+                    />
+                  ))}
+                </div>
+                <span className="text-muted-foreground font-medium">
+                  <span className="text-foreground font-bold">{approved}</span>/{total}
+                </span>
+              </div>
             )}
-            <Button size="sm" variant="outline" disabled={bb.globalLoading} onClick={load}>
-              {bb.globalLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bb.globalLoading || isGeneratingAll}
+              onClick={load}
+            >
+              {bb.globalLoading && !isGeneratingAll
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <RefreshCw className="w-3 h-3" />
+              }
             </Button>
           </div>
         </div>
+
+        {/* Generate all button */}
+        {slots.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              variant={isGeneratingAll ? "default" : "outline"}
+              size="sm"
+              disabled={bb.globalLoading || isGeneratingAll}
+              onClick={() => bb.generateAllIllustrations(false)}
+            >
+              {isGeneratingAll ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Generating all…</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5 mr-2" />Generate All</>
+              )}
+            </Button>
+            {/* Regenerate All — forces fresh images even if already generated (picks up updated characters) */}
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={bb.globalLoading || isGeneratingAll}
+              onClick={() => bb.generateAllIllustrations(true)}
+              title="Regenerate all illustrations from scratch — use this after updating characters"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-2" />
+              Regenerate All
+            </Button>
+            {bb.allIllusApproved && (
+              <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 px-3 py-1.5">
+                <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
+                All approved
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
 
-      {!loaded || bb.globalLoading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />Loading illustration slots…
+      {/* Content */}
+      {!loaded ? (
+        <div className="flex items-center justify-center py-24 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" />
+          Loading illustration slots…
         </div>
       ) : slots.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-          <ImageIcon className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No illustration slots found. Make sure the previous steps are complete.</p>
+        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
+          <ImageIcon className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+          <p className="font-medium text-muted-foreground">No illustration slots found</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Make sure structure and prose steps are complete, then click refresh.
+          </p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={load}>
+            <RefreshCw className="w-3 h-3 mr-1.5" />
+            Refresh
+          </Button>
         </div>
       ) : (
-        <VariantGrid
-          slots={slots}
-          loadingKey={bb.loadingKey}
-          onGenerate={(key, prompt) => bb.regenerateIllustration(key, { prompt, variantCount: 4 })}
-          onSelect={bb.selectIllustrationVariant}
-          onApprove={bb.approveIllustration}
-          onPromptEdit={handlePromptEdit}
-        />
+        <div className="space-y-6">
+          {slots.map((slot) => (
+            <IllustrationCard
+              key={slot.key}
+              slot={slot}
+              loadingKey={bb.loadingKey}
+              onGenerate={(key, prompt) =>
+                bb.regenerateIllustration(key, { prompt, variantCount: 4 })
+              }
+              onSelect={(key, vi) => bb.selectIllustrationVariant(key, vi)}
+              onApprove={(key) => bb.approveIllustration(key)}
+            />
+          ))}
+        </div>
       )}
 
+      {/* Footer nav */}
       <div className="flex justify-between pt-2">
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />Back

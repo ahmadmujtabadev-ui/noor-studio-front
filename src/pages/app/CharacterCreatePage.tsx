@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
@@ -118,6 +117,23 @@ const TRAIT_OPTIONS = [
 ];
 
 const AGE_RANGES = ["2-4", "4-7", "5-8", "6-9", "8-12", "12"];
+
+const WEIGHT_CATEGORIES = [
+  { value: "slim",    label: "Slim / Lean" },
+  { value: "average", label: "Average / Medium" },
+  { value: "stocky",  label: "Stocky / Sturdy" },
+  { value: "heavy",   label: "Heavy / Chubby" },
+];
+
+// Typical height ranges by age (cm) for helper text
+function suggestedHeightRange(ageRange: string): string {
+  if (ageRange === "2-4")  return "85–105 cm";
+  if (ageRange === "4-7")  return "100–125 cm";
+  if (ageRange === "5-8")  return "105–132 cm";
+  if (ageRange === "6-9")  return "112–138 cm";
+  if (ageRange === "8-12") return "128–160 cm";
+  return "150–180 cm";
+}
 const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Other"];
 
 const STYLES = [
@@ -197,6 +213,8 @@ export default function CharacterCreatePage() {
 
     bodyBuild: "",
     heightFeel: "",
+    heightCm: 0,
+    weightCategory: "",
 
     accessoriesText: "",
     paletteNotes: "",
@@ -305,6 +323,8 @@ export default function CharacterCreatePage() {
 
           bodyBuild: form.bodyBuild,
           heightFeel: form.heightFeel,
+          heightCm: form.heightCm || undefined,
+          weightCategory: form.weightCategory || undefined,
 
           accessories,
           paletteNotes: form.paletteNotes,
@@ -416,8 +436,8 @@ export default function CharacterCreatePage() {
 
   return (
     <AppLayout
-      title="Create Character"
-      subtitle="Build a character with consistent visual DNA"
+      title="✨ Create Character"
+      subtitle="Design your character's look — it stays consistent in every illustration!"
       actions={
         <Button variant="outline" onClick={() => navigate("/app/characters")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -426,47 +446,59 @@ export default function CharacterCreatePage() {
       }
     >
       <div className="max-w-4xl mx-auto">
+        {/* Colorful step indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            {steps.map((step, idx) => (
+            {steps.map((step, idx) => {
+              const STEP_EMOJIS = ["🧑", "🎨", "✨", "🕺"];
+              const emoji = STEP_EMOJIS[step.id] || "⭐";
+              return (
               <div key={step.id} className="flex items-center">
                 <div
                   className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all",
+                    "w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-extrabold transition-all shadow-sm",
                     currentStep > step.id
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-emerald-500 text-white shadow-emerald-200"
                       : currentStep === step.id
-                        ? "bg-primary/20 text-primary ring-2 ring-primary"
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/30 scale-110"
                         : "bg-muted text-muted-foreground"
                   )}
                 >
-                  {currentStep > step.id ? <Check className="w-4 h-4" /> : step.id + 1}
+                  {currentStep > step.id ? <Check className="w-4 h-4" /> : <span>{emoji}</span>}
                 </div>
                 {idx < steps.length - 1 && (
                   <div
                     className={cn(
-                      "h-0.5 w-16 sm:w-28 mx-1",
-                      currentStep > step.id ? "bg-primary" : "bg-border"
+                      "h-1 w-16 sm:w-28 mx-1 rounded-full",
+                      currentStep > step.id ? "bg-gradient-to-r from-emerald-400 to-primary" : "bg-border"
                     )}
                   />
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
-          <div className="flex justify-between text-xs text-muted-foreground px-0.5">
+          <div className="flex justify-between text-xs font-semibold px-0.5">
             {steps.map((step) => (
-              <span key={step.id} className={cn(currentStep === step.id && "text-primary font-medium")}>
+              <span key={step.id} className={cn(
+                currentStep === step.id ? "text-primary" : "text-muted-foreground"
+              )}>
                 {step.title}
               </span>
             ))}
           </div>
-          <Progress value={progressPct} className="h-1.5 mt-3" />
+          <div className="w-full bg-muted rounded-full h-2.5 mt-3 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-pink-400 via-primary to-purple-500 rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
         </div>
 
-        <div className="card-glow p-8 space-y-6">
+        <div className="card-glow p-8 space-y-6 rounded-3xl border-2 border-border">
           {currentStep === 0 && (
             <div className="space-y-5">
-              <h2 className="text-xl font-bold">Persona</h2>
+              <h2 className="text-2xl font-extrabold flex items-center gap-2">🧑 Persona</h2>
 
               <div className="space-y-2">
                 <Label>Character Name *</Label>
@@ -539,7 +571,7 @@ export default function CharacterCreatePage() {
 
           {currentStep === 1 && (
             <div className="space-y-5">
-              <h2 className="text-xl font-bold">Visual DNA</h2>
+              <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
 
               <div className="space-y-2">
                 <Label>Art Style</Label>
@@ -749,21 +781,49 @@ export default function CharacterCreatePage() {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Body Build</Label>
-                  <Input
-                    placeholder="e.g. slim child build"
-                    value={form.bodyBuild}
-                    onChange={(e) => updateForm("bodyBuild", e.target.value)}
-                  />
+              {/* Height & Weight — used to lock character proportions across all illustrations */}
+              <div className="space-y-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  📏 Body Proportions
+                  <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks character size across all illustrations)</span>
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Height (cm)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={40}
+                        max={220}
+                        placeholder="e.g. 115"
+                        value={form.heightCm || ""}
+                        onChange={(e) => updateForm("heightCm", parseInt(e.target.value, 10) || 0)}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground shrink-0">cm</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Typical for age {form.ageRange}: {suggestedHeightRange(form.ageRange)}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Body Type</Label>
+                    <Select value={form.weightCategory} onValueChange={(v) => updateForm("weightCategory", v)}>
+                      <SelectTrigger><SelectValue placeholder="Select body type…" /></SelectTrigger>
+                      <SelectContent>
+                        {WEIGHT_CATEGORIES.map((w) => (
+                          <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Height Feel</Label>
+                  <Label>Build Notes <span className="text-xs text-muted-foreground">(optional extra description)</span></Label>
                   <Input
-                    placeholder="e.g. average for age"
-                    value={form.heightFeel}
-                    onChange={(e) => updateForm("heightFeel", e.target.value)}
+                    placeholder="e.g. broad shoulders, petite frame"
+                    value={form.bodyBuild}
+                    onChange={(e) => updateForm("bodyBuild", e.target.value)}
                   />
                 </div>
               </div>

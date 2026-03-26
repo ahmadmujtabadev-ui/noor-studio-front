@@ -616,6 +616,8 @@ export interface CharacterVisualDNA {
 
   bodyBuild?: string;
   heightFeel?: string;
+  heightCm?: number;
+  weightCategory?: string;
 
   accessories?: string[];
   paletteNotes?: string;
@@ -710,6 +712,8 @@ export interface Character {
 
     bodyBuild?: string;
     heightFeel?: string;
+    heightCm?: number;
+    weightCategory?: string;
 
     accessories?: string[];
     paletteNotes?: string;

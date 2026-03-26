@@ -432,6 +432,22 @@ export function useBookBuilder() {
     return illustrationNodes.length > 0 && illustrationNodes.every((n) => n.status === "approved");
   }, [illustrationNodes]);
 
+  const generateAllIllustrations = useCallback(async (force = false) => {
+    const pid = getPid();
+    setGlobalLoading(true);
+    setLoadingKey("generate-all-illustrations");
+    try {
+      await aiApi.generateAllIllustrations(pid, artStyle, force);
+      await loadIllustrations();
+      toast({ title: force ? "All illustrations regenerated ✓" : "All illustrations generated ✓" });
+    } catch (err) {
+      toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setGlobalLoading(false);
+      setLoadingKey(null);
+    }
+  }, [getPid, artStyle, loadIllustrations, toast]);
+
   // ─── STEP 5/6: Cover ──────────────────────────────────────────────────────
   const loadCover = useCallback(async () => {
     const pid = getPid();
@@ -556,6 +572,7 @@ export function useBookBuilder() {
     selectedVariants,
     allIllusApproved,
     loadIllustrations,
+    generateAllIllustrations,
     regenerateIllustration,
     selectIllustrationVariant,
     approveIllustration,

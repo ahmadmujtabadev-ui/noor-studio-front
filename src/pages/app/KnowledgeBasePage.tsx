@@ -153,7 +153,42 @@ const SECTIONS = [
 ] as const;
 
 type SectionId = typeof SECTIONS[number]["id"];
-const GROUPS = ["Core", "Story", "Visual", "Format"] as const;
+
+// ─── 3 workflow tabs replacing the old 4 groups ───────────────────────────────
+const WORKFLOWS = [
+  {
+    id: "faith",
+    label: "Faith & Language",
+    emoji: "🌙",
+    description: "Islamic values, du'as, vocabulary & topics to avoid",
+    color: "text-violet-700",
+    activeBg: "bg-violet-50 border-violet-300",
+    activeTab: "bg-gradient-to-r from-violet-500 to-indigo-500",
+    sections: ["islamicValues", "duas", "vocabulary", "avoidTopics"],
+  },
+  {
+    id: "story",
+    label: "Story & Style",
+    emoji: "✍️",
+    description: "Story themes, literary devices & character voices",
+    color: "text-pink-700",
+    activeBg: "bg-pink-50 border-pink-300",
+    activeTab: "bg-gradient-to-r from-pink-500 to-rose-500",
+    sections: ["themes", "literaryDevices", "characterGuides"],
+  },
+  {
+    id: "visual",
+    label: "Visual & Format",
+    emoji: "🎨",
+    description: "Backgrounds, cover design, illustrations & formatting",
+    color: "text-teal-700",
+    activeBg: "bg-teal-50 border-teal-300",
+    activeTab: "bg-gradient-to-r from-teal-500 to-cyan-500",
+    sections: ["backgroundSettings", "coverDesign", "illustrationRules", "bookFormatting", "underSixDesign", "customRules"],
+  },
+] as const;
+
+type WorkflowId = typeof WORKFLOWS[number]["id"];
 
 // Per-section color tokens (bg + icon background)
 const SECTION_STYLE: Record<string, { bg: string; iconBg: string; border: string; text: string }> = {
@@ -170,13 +205,6 @@ const SECTION_STYLE: Record<string, { bg: string; iconBg: string; border: string
   bookFormatting:     { bg: "bg-amber-50",   iconBg: "bg-amber-100",   border: "border-amber-200",   text: "text-amber-700"   },
   underSixDesign:     { bg: "bg-lime-50",    iconBg: "bg-lime-100",    border: "border-lime-200",    text: "text-lime-700"    },
   customRules:        { bg: "bg-slate-50",   iconBg: "bg-slate-100",   border: "border-slate-200",   text: "text-slate-700"   },
-};
-
-const GROUP_PILL: Record<string, string> = {
-  Core:   "bg-violet-100 text-violet-700",
-  Story:  "bg-pink-100 text-pink-700",
-  Visual: "bg-teal-100 text-teal-700",
-  Format: "bg-amber-100 text-amber-700",
 };
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -256,6 +284,7 @@ export default function KnowledgeBasePage() {
   const [search, setSearch]             = useState("");
   const [selectedKB, setSelectedKB]     = useState<KnowledgeBase | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("islamicValues");
+  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowId>("faith");
   const [showCreate, setShowCreate]     = useState(false);
   const [showDelete, setShowDelete]     = useState<string | null>(null);
   const [newItem, setNewItem]           = useState("");
@@ -1061,41 +1090,69 @@ export default function KnowledgeBasePage() {
 
               <div className="p-6 space-y-5">
 
-              {/* Section nav — colorful icon card grid */}
-              <div className="space-y-3">
-                {GROUPS.map(group => {
-                  const groupSections = SECTIONS.filter(s => s.group === group);
+              {/* ── 3 workflow tabs ── */}
+              <div className="space-y-4">
+                {/* Tab row */}
+                <div className="flex gap-2">
+                  {WORKFLOWS.map(wf => {
+                    const isWfActive = activeWorkflow === wf.id;
+                    return (
+                      <button
+                        key={wf.id}
+                        onClick={() => {
+                          setActiveWorkflow(wf.id as WorkflowId);
+                          // auto-select first section of this workflow
+                          const firstSection = wf.sections[0] as SectionId;
+                          setActiveSection(firstSection);
+                          setNewItem("");
+                        }}
+                        className={cn(
+                          "flex-1 flex flex-col items-center gap-1 px-3 py-3 rounded-2xl border-2 transition-all text-center",
+                          isWfActive
+                            ? cn(wf.activeBg, "shadow-sm")
+                            : "border-border hover:border-primary/30 bg-muted/30"
+                        )}
+                      >
+                        <span className="text-2xl">{wf.emoji}</span>
+                        <span className={cn("text-xs font-bold leading-tight", isWfActive ? wf.color : "text-muted-foreground")}>
+                          {wf.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Section cards for active workflow */}
+                {(() => {
+                  const wf = WORKFLOWS.find(w => w.id === activeWorkflow);
+                  if (!wf) return null;
+                  const wfSections = SECTIONS.filter(s => wf.sections.includes(s.id as any));
                   return (
-                    <div key={group}>
-                      <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2", GROUP_PILL[group])}>
-                        {group}
-                      </span>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {groupSections.map(({ id, label, icon: Icon, color }) => {
-                          const style = SECTION_STYLE[id];
-                          const isActive = activeSection === id;
-                          return (
-                            <button key={id}
-                              onClick={() => { setActiveSection(id as SectionId); setNewItem(""); }}
-                              className={cn(
-                                "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 text-center transition-all duration-150 hover:scale-105",
-                                isActive
-                                  ? cn(style.bg, style.border, "shadow-sm scale-105")
-                                  : "border-transparent bg-muted/50 hover:bg-muted"
-                              )}>
-                              <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-colors", isActive ? style.iconBg : "bg-background/80")}>
-                                <Icon className={cn("w-4 h-4 transition-colors", isActive ? color : "text-muted-foreground")} />
-                              </div>
-                              <span className={cn("text-[10px] font-semibold leading-tight", isActive ? style.text : "text-muted-foreground")}>
-                                {label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {wfSections.map(({ id, label, icon: Icon, color }) => {
+                        const style = SECTION_STYLE[id];
+                        const isActive = activeSection === id;
+                        return (
+                          <button key={id}
+                            onClick={() => { setActiveSection(id as SectionId); setNewItem(""); }}
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-3 rounded-xl border-2 text-left transition-all hover:scale-[1.02]",
+                              isActive
+                                ? cn(style.bg, style.border, "shadow-sm")
+                                : "border-border bg-card hover:border-primary/30"
+                            )}>
+                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", isActive ? style.iconBg : "bg-muted")}>
+                              <Icon className={cn("w-4 h-4", isActive ? color : "text-muted-foreground")} />
+                            </div>
+                            <span className={cn("text-xs font-semibold leading-snug", isActive ? style.text : "text-foreground")}>
+                              {label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   );
-                })}
+                })()}
               </div>
 
               {/* Section content */}
