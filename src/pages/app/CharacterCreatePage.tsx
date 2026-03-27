@@ -31,6 +31,7 @@ import {
   useGeneratePoseSheet,
 } from "@/hooks/useCharacters";
 import { useCredits, useAuthStore } from "@/hooks/useAuth";
+import { useUniverses } from "@/hooks/useUniverses";
 import type { Character } from "@/lib/api/types";
 
 const SKIN_TONES = [
@@ -160,7 +161,7 @@ export default function CharacterCreatePage() {
   const credits = useCredits();
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const [searchParams] = useSearchParams();
-  const universeId = searchParams.get("universeId") || undefined;
+  const { universes } = useUniverses();
 
   const createCharacter = useCreateCharacter();
 
@@ -175,6 +176,7 @@ export default function CharacterCreatePage() {
   const generatePoseSheet = useGeneratePoseSheet(characterId);
 
   const [form, setForm] = useState({
+    selectedUniverseId: searchParams.get("universeId") || "",
     name: "",
     role: "Protagonist",
     ageRange: "4-7",
@@ -242,7 +244,7 @@ export default function CharacterCreatePage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return !!form.name.trim() && !!form.role && !!form.ageRange;
+        return !!form.selectedUniverseId && !!form.name.trim() && !!form.role && !!form.ageRange;
       case 1:
         return !!form.skinTone && !!form.eyeColor && !!form.faceShape;
       case 2:
@@ -264,8 +266,8 @@ export default function CharacterCreatePage() {
       return;
     }
 
-    if (!universeId) {
-      toast({ title: "Universe is required", description: "Open this page from a universe flow.", variant: "destructive" });
+    if (!form.selectedUniverseId) {
+      toast({ title: "Universe is required", description: "Please select a universe for this character.", variant: "destructive" });
       return;
     }
 
@@ -291,7 +293,7 @@ export default function CharacterCreatePage() {
         ageRange: form.ageRange,
         traits: form.traits,
         speakingStyle: form.speakingStyle || undefined,
-        universeId,
+        universeId: form.selectedUniverseId,
         visualDNA: {
           style: form.style,
           gender: form.gender,
@@ -499,6 +501,35 @@ export default function CharacterCreatePage() {
           {currentStep === 0 && (
             <div className="space-y-5">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🧑 Persona</h2>
+
+              {/* Universe selector — required */}
+              <div className="space-y-2">
+                <Label>🌍 Universe <span className="text-destructive">*</span></Label>
+                <Select
+                  value={form.selectedUniverseId}
+                  onValueChange={(v) => updateForm("selectedUniverseId", v)}
+                >
+                  <SelectTrigger className={cn(!form.selectedUniverseId && "border-destructive/50")}>
+                    <SelectValue placeholder="Select a universe for this character…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {universes.length === 0 ? (
+                      <SelectItem value="__none__" disabled>No universes yet — create one first</SelectItem>
+                    ) : (
+                      universes.map((u) => (
+                        <SelectItem key={u._id ?? u.id} value={u._id ?? u.id ?? ""}>
+                          {u.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {!form.selectedUniverseId && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> Universe is required to generate a character
+                  </p>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label>Character Name *</Label>
@@ -994,9 +1025,27 @@ export default function CharacterCreatePage() {
                       </div>
 
                       {createdCharacter.status === "approved" && (
-                        <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
-                          <Check className="w-4 h-4" />
-                          Character approved — ready for books
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
+                            <Check className="w-4 h-4" />
+                            Character approved — ready for books!
+                          </div>
+                          <div className="flex flex-col gap-2 pt-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/app/characters/new?universeId=${form.selectedUniverseId}`)}
+                            >
+                              ✨ Add Another Character
+                            </Button>
+                            <Button
+                              variant="hero"
+                              size="sm"
+                              onClick={() => navigate("/app/books/new")}
+                            >
+                              📚 Start Creating a Book →
+                            </Button>
+                          </div>
                         </div>
                       )}
 

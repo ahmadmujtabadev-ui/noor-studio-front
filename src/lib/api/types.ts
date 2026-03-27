@@ -31,6 +31,8 @@ export interface Universe {
   seriesBible?: string;
   tags: string[];
   artStyle?: string;
+  ageRange?: string;
+  tone?: string;
   characterCount: number;
   bookCount: number;
   createdAt: string;

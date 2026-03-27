@@ -9,13 +9,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Plus, Search, Trash2, BookOpen, Shield, Type, Palette, Settings,
-  X, Loader2, Database, Mic2, Feather, Heart, Eye, Users,
-  Mountain, Sparkles, BookMarked, Lightbulb, Image, MessageSquare,
-  BookText, ChevronRight,
+  Plus, Search, Trash2, BookOpen, Loader2, Database, BookMarked,
+  // Faith & Language
+  Moon, HandHeart, Languages, Ban,
+  // Story & Style
+  Layers, Feather, UserRound,
+  // Visual & Format
+  TreePine, Brush, ListOrdered, Baby, SlidersHorizontal,
+  // Cover Design
+  Frame,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useKbNavStore } from "@/lib/store/kbNavStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   useKnowledgeBases, useCreateKnowledgeBase, useUpdateKnowledgeBase, useDeleteKnowledgeBase,
@@ -137,19 +143,19 @@ interface CharacterGuide {
 // ─── Section config ───────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { id: "islamicValues",      label: "Islamic Values",  icon: Shield,    color: "text-violet-600",  group: "Core"   },
-  { id: "duas",               label: "Du'as",           icon: BookOpen,  color: "text-blue-600",    group: "Core"   },
-  { id: "vocabulary",         label: "Vocabulary",      icon: Type,      color: "text-orange-600",  group: "Core"   },
-  { id: "avoidTopics",        label: "Avoid Topics",    icon: X,         color: "text-red-500",     group: "Core"   },
-  { id: "themes",             label: "Story Themes",    icon: Sparkles,  color: "text-yellow-600",  group: "Story"  },
-  { id: "literaryDevices",    label: "Literary",        icon: Feather,   color: "text-indigo-600",  group: "Story"  },
-  { id: "backgroundSettings", label: "Backgrounds",     icon: Mountain,  color: "text-teal-600",    group: "Visual" },
-  { id: "coverDesign",        label: "Cover Design",    icon: Palette,   color: "text-rose-600",    group: "Visual" },
-  { id: "illustrationRules",  label: "Illustrations",   icon: Image,     color: "text-cyan-600",    group: "Visual" },
-  { id: "characterGuides",    label: "Char. Voice",     icon: Mic2,      color: "text-emerald-600", group: "Visual" },
-  { id: "bookFormatting",     label: "Book Format",     icon: BookText,  color: "text-amber-600",   group: "Format" },
-  { id: "underSixDesign",     label: "Under-6 Design",  icon: Eye,       color: "text-lime-600",    group: "Format" },
-  { id: "customRules",        label: "Custom Rules",    icon: Settings,  color: "text-slate-600",   group: "Format" },
+  { id: "islamicValues",      label: "Islamic Values",  icon: Moon,              color: "text-violet-600",  group: "Core"   },
+  { id: "duas",               label: "Du'as",           icon: HandHeart,         color: "text-blue-600",    group: "Core"   },
+  { id: "vocabulary",         label: "Vocabulary",      icon: Languages,         color: "text-orange-600",  group: "Core"   },
+  { id: "avoidTopics",        label: "Avoid Topics",    icon: Ban,               color: "text-red-500",     group: "Core"   },
+  { id: "themes",             label: "Story Themes",    icon: Layers,            color: "text-yellow-600",  group: "Story"  },
+  { id: "literaryDevices",    label: "Literary Devices",icon: Feather,           color: "text-indigo-600",  group: "Story"  },
+  { id: "characterGuides",    label: "Character Voice", icon: UserRound,         color: "text-emerald-600", group: "Story"  },
+  { id: "backgroundSettings", label: "Backgrounds",     icon: TreePine,          color: "text-teal-600",    group: "Visual" },
+  { id: "illustrationRules",  label: "Illustrations",   icon: Brush,             color: "text-cyan-600",    group: "Visual" },
+  { id: "bookFormatting",     label: "Book Format",     icon: ListOrdered,       color: "text-amber-600",   group: "Visual" },
+  { id: "underSixDesign",     label: "Under-6 Design",  icon: Baby,              color: "text-lime-600",    group: "Visual" },
+  { id: "customRules",        label: "Custom Rules",    icon: SlidersHorizontal, color: "text-slate-600",   group: "Visual" },
+  { id: "coverDesign",        label: "Cover Design",    icon: Frame,             color: "text-rose-600",    group: "Cover"  },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]["id"];
@@ -159,32 +165,26 @@ const WORKFLOWS = [
   {
     id: "faith",
     label: "Faith & Language",
-    emoji: "🌙",
     description: "Islamic values, du'as, vocabulary & topics to avoid",
-    color: "text-violet-700",
-    activeBg: "bg-violet-50 border-violet-300",
-    activeTab: "bg-gradient-to-r from-violet-500 to-indigo-500",
     sections: ["islamicValues", "duas", "vocabulary", "avoidTopics"],
   },
   {
     id: "story",
     label: "Story & Style",
-    emoji: "✍️",
     description: "Story themes, literary devices & character voices",
-    color: "text-pink-700",
-    activeBg: "bg-pink-50 border-pink-300",
-    activeTab: "bg-gradient-to-r from-pink-500 to-rose-500",
     sections: ["themes", "literaryDevices", "characterGuides"],
   },
   {
     id: "visual",
     label: "Visual & Format",
-    emoji: "🎨",
-    description: "Backgrounds, cover design, illustrations & formatting",
-    color: "text-teal-700",
-    activeBg: "bg-teal-50 border-teal-300",
-    activeTab: "bg-gradient-to-r from-teal-500 to-cyan-500",
-    sections: ["backgroundSettings", "coverDesign", "illustrationRules", "bookFormatting", "underSixDesign", "customRules"],
+    description: "Backgrounds, illustrations, book formatting & layout rules",
+    sections: ["backgroundSettings", "illustrationRules", "bookFormatting", "underSixDesign", "customRules"],
+  },
+  {
+    id: "cover",
+    label: "Cover Design",
+    description: "Front & back cover composition, atmosphere & typography",
+    sections: ["coverDesign"],
   },
 ] as const;
 
@@ -281,13 +281,26 @@ export default function KnowledgeBasePage() {
   const [searchParams] = useSearchParams();
   const { universes } = useUniverses();
 
-  const [search, setSearch]             = useState("");
-  const [selectedKB, setSelectedKB]     = useState<KnowledgeBase | null>(null);
-  const [activeSection, setActiveSection] = useState<SectionId>("islamicValues");
-  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowId>("faith");
+  const [search, setSearch]         = useState("");
+  const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
+  const [newItem, setNewItem]       = useState("");
+
+  // Sync active workflow/section from the sidebar store
+  const kbNav = useKbNavStore();
+  const activeWorkflow = kbNav.activeWorkflow as WorkflowId;
+  const activeSection  = kbNav.activeSection  as SectionId;
+  const setActiveSection  = (id: SectionId)  => kbNav.setKbNav(activeWorkflow, id);
+  const setActiveWorkflow = (id: WorkflowId) => {
+    const wf = WORKFLOWS.find(w => w.id === id);
+    kbNav.setKbNav(id, wf ? (wf.sections[0] as SectionId) : activeSection);
+  };
+
+  // When a KB is selected, reset to first section
+  useEffect(() => {
+    if (selectedKB) kbNav.setKbNav("faith", "islamicValues");
+  }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showCreate, setShowCreate]     = useState(false);
   const [showDelete, setShowDelete]     = useState<string | null>(null);
-  const [newItem, setNewItem]           = useState("");
 
   // Structured new-item states
   const [newDua, setNewDua]             = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
@@ -1088,91 +1101,63 @@ export default function KnowledgeBasePage() {
                 </div>
               </div>
 
-              <div className="p-6 space-y-5">
-
-              {/* ── 3 workflow tabs ── */}
-              <div className="space-y-4">
-                {/* Tab row */}
-                <div className="flex gap-2">
-                  {WORKFLOWS.map(wf => {
-                    const isWfActive = activeWorkflow === wf.id;
-                    return (
-                      <button
-                        key={wf.id}
-                        onClick={() => {
-                          setActiveWorkflow(wf.id as WorkflowId);
-                          // auto-select first section of this workflow
-                          const firstSection = wf.sections[0] as SectionId;
-                          setActiveSection(firstSection);
-                          setNewItem("");
-                        }}
-                        className={cn(
-                          "flex-1 flex flex-col items-center gap-1 px-3 py-3 rounded-2xl border-2 transition-all text-center",
-                          isWfActive
-                            ? cn(wf.activeBg, "shadow-sm")
-                            : "border-border hover:border-primary/30 bg-muted/30"
-                        )}
-                      >
-                        <span className="text-2xl">{wf.emoji}</span>
-                        <span className={cn("text-xs font-bold leading-tight", isWfActive ? wf.color : "text-muted-foreground")}>
-                          {wf.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Section cards for active workflow */}
+              {/* ── Section tabs within active workflow + content ── */}
+              <div className="p-5 space-y-4">
+                {/* Section pills for current workflow */}
                 {(() => {
                   const wf = WORKFLOWS.find(w => w.id === activeWorkflow);
                   if (!wf) return null;
                   const wfSections = SECTIONS.filter(s => wf.sections.includes(s.id as any));
                   return (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {wfSections.map(({ id, label, icon: Icon, color }) => {
                         const style = SECTION_STYLE[id];
                         const isActive = activeSection === id;
                         return (
-                          <button key={id}
+                          <button
+                            key={id}
                             onClick={() => { setActiveSection(id as SectionId); setNewItem(""); }}
                             className={cn(
-                              "flex items-center gap-3 px-3 py-3 rounded-xl border-2 text-left transition-all hover:scale-[1.02]",
+                              "flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all",
                               isActive
-                                ? cn(style.bg, style.border, "shadow-sm")
-                                : "border-border bg-card hover:border-primary/30"
-                            )}>
-                            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", isActive ? style.iconBg : "bg-muted")}>
-                              <Icon className={cn("w-4 h-4", isActive ? color : "text-muted-foreground")} />
-                            </div>
-                            <span className={cn("text-xs font-semibold leading-snug", isActive ? style.text : "text-foreground")}>
-                              {label}
-                            </span>
+                                ? cn(style.bg, style.border, style.text, "shadow-sm")
+                                : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                            )}
+                          >
+                            <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? color : "text-muted-foreground")} />
+                            {label}
                           </button>
                         );
                       })}
                     </div>
                   );
                 })()}
-              </div>
 
-              {/* Section content */}
-              <div className="min-h-[320px]">
+                {/* Active section header */}
                 {(() => {
                   const sec = SECTIONS.find(s => s.id === activeSection);
                   if (!sec) return null;
                   const style = SECTION_STYLE[activeSection];
                   const Icon = sec.icon;
                   return (
-                    <div className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl mb-4 border", style.bg, style.border)}>
+                    <div className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl border", style.bg, style.border)}>
                       <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", style.iconBg)}>
-                        <Icon className={cn("w-4.5 h-4.5", sec.color)} />
+                        <Icon className={cn("w-4 h-4", sec.color)} />
                       </div>
-                      <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
+                      <div>
+                        <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {WORKFLOWS.find(w => w.sections.includes(sec.id as any))?.description}
+                        </p>
+                      </div>
                     </div>
                   );
                 })()}
-                {renderSection()}
-              </div>
+
+                {/* Section content */}
+                <div className="min-h-[280px]">
+                  {renderSection()}
+                </div>
               </div>
             </div>
           )}

@@ -2,13 +2,24 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, BookOpen, Library, FolderKanban, Globe,
   CreditCard, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight,
-  Plus, LogOut, Zap,
+  Plus, LogOut, Zap, Check,
+  Star, PenLine, Palette, LayoutTemplate,
+  Layers, Wand2, ImageIcon, BookMarked, Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useLanguage } from "@/lib/i18n/useLanguage";
 import { Button } from "@/components/ui/button";
 import { useUser, useCredits, useAuthStore } from "@/hooks/useAuth";
+import { useBookBuilderNavStore } from "@/lib/store/bookBuilderNavStore";
+import { useKbNavStore } from "@/lib/store/kbNavStore";
+
+const KB_WORKFLOWS = [
+  { id: "faith",  label: "Faith & Language", icon: Star,           iconColor: "text-violet-500", activeColor: "text-violet-700", activeBg: "bg-violet-50",  firstSection: "islamicValues" },
+  { id: "story",  label: "Story & Style",    icon: PenLine,        iconColor: "text-pink-500",   activeColor: "text-pink-700",   activeBg: "bg-pink-50",    firstSection: "themes"        },
+  { id: "visual", label: "Visual & Format",  icon: Palette,        iconColor: "text-teal-500",   activeColor: "text-teal-700",   activeBg: "bg-teal-50",    firstSection: "backgroundSettings" },
+  { id: "cover",  label: "Cover Design",     icon: LayoutTemplate, iconColor: "text-orange-500", activeColor: "text-orange-700", activeBg: "bg-orange-50",  firstSection: "coverDesign"   },
+] as const;
 
 const mainNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
@@ -37,6 +48,24 @@ export function AppSidebar() {
   const user = useUser();
   const credits = useCredits();
   const logout = useAuthStore((s) => s.logout);
+  const bookNav = useBookBuilderNavStore();
+  const isOnBookBuilder = location.pathname.startsWith('/app/books');
+
+  const kbNav = useKbNavStore();
+  const isOnKB = location.pathname.startsWith('/app/knowledge-base');
+
+  const illStep    = bookNav.isChapterBook ? 5 : 4;
+  const coverStep  = bookNav.isChapterBook ? 6 : 5;
+  const exportStep = bookNav.isChapterBook ? 7 : 6;
+  const BOOK_PHASES = [
+    { step: 1,         label: "Story",          icon: BookOpen   },
+    { step: 2,         label: "Structure",      icon: Layers     },
+    { step: 3,         label: "Style",          icon: Wand2      },
+    ...(bookNav.isChapterBook ? [{ step: 4, label: "Writing", icon: PenLine }] : []),
+    { step: illStep,   label: "Illustrations",  icon: ImageIcon  },
+    { step: coverStep, label: "Cover",          icon: BookMarked },
+    { step: exportStep,label: "Publish",        icon: Rocket     },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -128,7 +157,35 @@ export function AppSidebar() {
       <div className="flex-1 overflow-y-auto py-4 px-3">
         <nav className="space-y-1">
           {mainNavItems.map((item) => (
-            <NavLink key={item.href} item={item} />
+            <div key={item.href}>
+              <NavLink item={item} />
+
+              {/* Knowledge Base workflow sub-nav */}
+              {item.href === "/app/knowledge-base" && isOnKB && !collapsed && (
+                <div className="mt-1 ml-3 pl-3 border-l-2 border-primary/25 space-y-0.5 pb-1">
+                  {KB_WORKFLOWS.map((wf) => {
+                    const isActive = kbNav.activeWorkflow === wf.id;
+                    const Icon = wf.icon;
+                    return (
+                      <button
+                        key={wf.id}
+                        onClick={() => kbNav.setKbNav(wf.id, wf.firstSection)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
+                          isActive
+                            ? cn(wf.activeBg, wf.activeColor, "font-semibold")
+                            : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        )}
+                      >
+                        <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? wf.iconColor : "text-sidebar-foreground/40")} />
+                        <span className="truncate">{wf.label}</span>
+                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-auto animate-pulse" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
 
@@ -143,6 +200,34 @@ export function AppSidebar() {
               <NavLink key={item.href} item={item} highlight />
             ))}
           </nav>
+
+          {/* Book builder phase sub-nav */}
+          {isOnBookBuilder && !collapsed && (
+            <div className="mt-1 ml-3 pl-3 border-l-2 border-primary/25 space-y-0.5">
+              {BOOK_PHASES.map((phase) => {
+                const isDone   = bookNav.completedSteps.includes(phase.step);
+                const isActive = bookNav.step === phase.step;
+                return (
+                  <div
+                    key={phase.step}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all",
+                      isActive
+                        ? "bg-primary/15 text-primary"
+                        : isDone
+                        ? "text-emerald-500 dark:text-emerald-400"
+                        : "text-sidebar-foreground/40"
+                    )}
+                  >
+                    <phase.icon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="flex-1 truncate">{phase.label}</span>
+                    {isDone  && <Check className="w-3 h-3 shrink-0 text-emerald-500" />}
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 animate-pulse" />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

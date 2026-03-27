@@ -7,6 +7,8 @@ export interface CreateUniverseInput {
   seriesBible?: string;
   tags?: string[];
   artStyle?: string;
+  ageRange?: string;
+  tone?: string;
 }
 
 export type UpdateUniverseInput = Partial<CreateUniverseInput>;
