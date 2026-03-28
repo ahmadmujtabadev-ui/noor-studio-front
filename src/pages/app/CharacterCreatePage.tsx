@@ -119,13 +119,6 @@ const TRAIT_OPTIONS = [
 
 const AGE_RANGES = ["2-4", "4-7", "5-8", "6-9", "8-12", "12"];
 
-const WEIGHT_CATEGORIES = [
-  { value: "slim",    label: "Slim / Lean" },
-  { value: "average", label: "Average / Medium" },
-  { value: "stocky",  label: "Stocky / Sturdy" },
-  { value: "heavy",   label: "Heavy / Chubby" },
-];
-
 // Typical height ranges by age (cm) for helper text
 function suggestedHeightRange(ageRange: string): string {
   if (ageRange === "2-4")  return "85–105 cm";
@@ -181,7 +174,6 @@ export default function CharacterCreatePage() {
     role: "Protagonist",
     ageRange: "4-7",
     traits: [] as string[],
-    speakingStyle: "",
 
     style: "pixar-3d",
     gender: "girl" as "boy" | "girl",
@@ -216,7 +208,8 @@ export default function CharacterCreatePage() {
     bodyBuild: "",
     heightFeel: "",
     heightCm: 0,
-    weightCategory: "",
+    heightFeet: 0,
+    weightKg: 0,
 
     accessoriesText: "",
     paletteNotes: "",
@@ -292,7 +285,6 @@ export default function CharacterCreatePage() {
         role: form.role.toLowerCase(),
         ageRange: form.ageRange,
         traits: form.traits,
-        speakingStyle: form.speakingStyle || undefined,
         universeId: form.selectedUniverseId,
         visualDNA: {
           style: form.style,
@@ -326,7 +318,8 @@ export default function CharacterCreatePage() {
           bodyBuild: form.bodyBuild,
           heightFeel: form.heightFeel,
           heightCm: form.heightCm || undefined,
-          weightCategory: form.weightCategory || undefined,
+          heightFeet: form.heightFeet || undefined,
+          weightKg: form.weightKg || undefined,
 
           accessories,
           paletteNotes: form.paletteNotes,
@@ -589,14 +582,6 @@ export default function CharacterCreatePage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Speaking Style</Label>
-                <Input
-                  placeholder="e.g., gentle, thoughtful, asks careful questions"
-                  value={form.speakingStyle}
-                  onChange={(e) => updateForm("speakingStyle", e.target.value)}
-                />
-              </div>
             </div>
           )}
 
@@ -838,15 +823,25 @@ export default function CharacterCreatePage() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Body Type</Label>
-                    <Select value={form.weightCategory} onValueChange={(v) => updateForm("weightCategory", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select body type…" /></SelectTrigger>
-                      <SelectContent>
-                        {WEIGHT_CATEGORIES.map((w) => (
-                          <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Height (feet)</Label>
+                    <Input
+                      type="number"
+                      value={form.heightFeet}
+                      onChange={(e) => updateForm('heightFeet', parseFloat(e.target.value) || 0)}
+                      placeholder="e.g. 4.0"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Weight (kg)</Label>
+                    <Input
+                      type="number"
+                      value={form.weightKg}
+                      onChange={(e) => updateForm('weightKg', parseInt(e.target.value) || 0)}
+                      placeholder="e.g. 35"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1076,7 +1071,7 @@ export default function CharacterCreatePage() {
                 Costs {POSE_SHEET_COST} credits.
               </p>
 
-              {!createdCharacter?.poseSheetUrl ? (
+              {!(createdCharacter as any)?.poseSheetUrl ? (
                 <div className="text-center py-8 space-y-4">
                   <div className="w-full aspect-[4/3] max-w-sm mx-auto rounded-2xl bg-gradient-subtle grid grid-cols-4 gap-2 p-4">
                     {Array.from({ length: 12 }).map((_, i) => (
@@ -1119,7 +1114,7 @@ export default function CharacterCreatePage() {
               ) : (
                 <div className="space-y-4">
                   <img
-                    src={createdCharacter.poseSheetUrl}
+                    src={(createdCharacter as any).poseSheetUrl}
                     alt="Pose Sheet"
                     className="w-full rounded-2xl border border-border"
                   />

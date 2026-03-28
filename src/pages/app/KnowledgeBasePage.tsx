@@ -13,11 +13,13 @@ import {
   // Faith & Language
   Moon, HandHeart, Languages, Ban,
   // Story & Style
-  Layers, Feather, UserRound,
+  UserRound,
   // Visual & Format
-  TreePine, Brush, ListOrdered, Baby, SlidersHorizontal,
+  TreePine, ListOrdered, Baby,
   // Cover Design
   Frame,
+  Users,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -32,60 +34,6 @@ import type { KnowledgeBase } from "@/lib/api/types";
 import { useSearchParams } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Theme {
-  name: string;
-  coreConflict: string;
-  emotionalBeat: string;
-  anchorSymbol: string;
-}
-
-interface AgeGroupGuide {
-  ageGroup: string;
-  tone: string;
-  techniques: string[];
-  examples: string[];
-  avoid: string[];
-}
-
-interface BackgroundGuide {
-  series: string;
-  tone: string;
-  locations: string[];
-  style: string;
-  keyFeatures: string[];
-  avoid: string[];
-}
-
-interface DialogueGuide {
-  subject: string;
-  subjectType: 'ageGroup' | 'character';
-  rules: string[];
-  examples: string[];
-  avoid: string[];
-}
-
-interface LiteraryDevice {
-  type: 'metaphor' | 'symbol' | 'technique' | 'device';
-  name: string;
-  meaning: string;
-  example: string;
-  series: string;
-}
-
-interface CharacterGroup {
-  code: string;
-  name: string;
-  role: string;
-  background: string;
-  traits: string[];
-  strengths: string[];
-  weaknesses: string[];
-  fitrahNotes: string;
-  appearance: string;
-  loraTag: string;
-  samplePrompt: string;
-}
 
 interface BookStructure {
   type: 'activity' | 'educational' | 'story';
@@ -143,24 +91,20 @@ interface CharacterGuide {
 // ─── Section config ───────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { id: "islamicValues",      label: "Islamic Values",  icon: Moon,              color: "text-violet-600",  group: "Core"   },
-  { id: "duas",               label: "Du'as",           icon: HandHeart,         color: "text-blue-600",    group: "Core"   },
-  { id: "vocabulary",         label: "Vocabulary",      icon: Languages,         color: "text-orange-600",  group: "Core"   },
-  { id: "avoidTopics",        label: "Avoid Topics",    icon: Ban,               color: "text-red-500",     group: "Core"   },
-  { id: "themes",             label: "Story Themes",    icon: Layers,            color: "text-yellow-600",  group: "Story"  },
-  { id: "literaryDevices",    label: "Literary Devices",icon: Feather,           color: "text-indigo-600",  group: "Story"  },
-  { id: "characterGuides",    label: "Character Voice", icon: UserRound,         color: "text-emerald-600", group: "Story"  },
-  { id: "backgroundSettings", label: "Backgrounds",     icon: TreePine,          color: "text-teal-600",    group: "Visual" },
-  { id: "illustrationRules",  label: "Illustrations",   icon: Brush,             color: "text-cyan-600",    group: "Visual" },
-  { id: "bookFormatting",     label: "Book Format",     icon: ListOrdered,       color: "text-amber-600",   group: "Visual" },
-  { id: "underSixDesign",     label: "Under-6 Design",  icon: Baby,              color: "text-lime-600",    group: "Visual" },
-  { id: "customRules",        label: "Custom Rules",    icon: SlidersHorizontal, color: "text-slate-600",   group: "Visual" },
-  { id: "coverDesign",        label: "Cover Design",    icon: Frame,             color: "text-rose-600",    group: "Cover"  },
+  { id: "islamicValues",      label: "Islamic Values",  icon: Moon,        color: "text-violet-600",  group: "Core"   },
+  { id: "duas",               label: "Du'as",           icon: HandHeart,   color: "text-blue-600",    group: "Core"   },
+  { id: "vocabulary",         label: "Vocabulary",      icon: Languages,   color: "text-orange-600",  group: "Core"   },
+  { id: "avoidTopics",        label: "Avoid Topics",    icon: Ban,         color: "text-red-500",     group: "Core"   },
+  { id: "characterGuides",    label: "Character Voice", icon: UserRound,   color: "text-emerald-600", group: "Story"  },
+  { id: "backgroundSettings", label: "Background",      icon: TreePine,    color: "text-teal-600",    group: "Visual" },
+  { id: "bookFormatting",     label: "Book Format",     icon: ListOrdered, color: "text-amber-600",   group: "Visual" },
+  { id: "underSixDesign",     label: "Under-6 Design",  icon: Baby,        color: "text-lime-600",    group: "Visual" },
+  { id: "coverDesign",        label: "Cover Design",    icon: Frame,       color: "text-rose-600",    group: "Cover"  },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]["id"];
 
-// ─── 3 workflow tabs replacing the old 4 groups ───────────────────────────────
+// ─── Workflow tabs ────────────────────────────────────────────────────────────
 const WORKFLOWS = [
   {
     id: "faith",
@@ -170,15 +114,15 @@ const WORKFLOWS = [
   },
   {
     id: "story",
-    label: "Story & Style",
-    description: "Story themes, literary devices & character voices",
-    sections: ["themes", "literaryDevices", "characterGuides"],
+    label: "Character Voice",
+    description: "Per-character speaking style, background lore & faith integration",
+    sections: ["characterGuides"],
   },
   {
     id: "visual",
     label: "Visual & Format",
-    description: "Backgrounds, illustrations, book formatting & layout rules",
-    sections: ["backgroundSettings", "illustrationRules", "bookFormatting", "underSixDesign", "customRules"],
+    description: "Scene backgrounds, book formatting & layout rules",
+    sections: ["backgroundSettings", "bookFormatting", "underSixDesign"],
   },
   {
     id: "cover",
@@ -196,15 +140,11 @@ const SECTION_STYLE: Record<string, { bg: string; iconBg: string; border: string
   duas:               { bg: "bg-blue-50",    iconBg: "bg-blue-100",    border: "border-blue-200",    text: "text-blue-700"    },
   vocabulary:         { bg: "bg-orange-50",  iconBg: "bg-orange-100",  border: "border-orange-200",  text: "text-orange-700"  },
   avoidTopics:        { bg: "bg-red-50",     iconBg: "bg-red-100",     border: "border-red-200",     text: "text-red-700"     },
-  themes:             { bg: "bg-yellow-50",  iconBg: "bg-yellow-100",  border: "border-yellow-200",  text: "text-yellow-700"  },
-  literaryDevices:    { bg: "bg-indigo-50",  iconBg: "bg-indigo-100",  border: "border-indigo-200",  text: "text-indigo-700"  },
-  backgroundSettings: { bg: "bg-teal-50",    iconBg: "bg-teal-100",    border: "border-teal-200",    text: "text-teal-700"    },
-  coverDesign:        { bg: "bg-rose-50",    iconBg: "bg-rose-100",    border: "border-rose-200",    text: "text-rose-700"    },
-  illustrationRules:  { bg: "bg-cyan-50",    iconBg: "bg-cyan-100",    border: "border-cyan-200",    text: "text-cyan-700"    },
   characterGuides:    { bg: "bg-emerald-50", iconBg: "bg-emerald-100", border: "border-emerald-200", text: "text-emerald-700" },
+  backgroundSettings: { bg: "bg-teal-50",    iconBg: "bg-teal-100",    border: "border-teal-200",    text: "text-teal-700"    },
   bookFormatting:     { bg: "bg-amber-50",   iconBg: "bg-amber-100",   border: "border-amber-200",   text: "text-amber-700"   },
   underSixDesign:     { bg: "bg-lime-50",    iconBg: "bg-lime-100",    border: "border-lime-200",    text: "text-lime-700"    },
-  customRules:        { bg: "bg-slate-50",   iconBg: "bg-slate-100",   border: "border-slate-200",   text: "text-slate-700"   },
+  coverDesign:        { bg: "bg-rose-50",    iconBg: "bg-rose-100",    border: "border-rose-200",    text: "text-rose-700"    },
 };
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -305,8 +245,6 @@ export default function KnowledgeBasePage() {
   // Structured new-item states
   const [newDua, setNewDua]             = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
   const [newVocab, setNewVocab]         = useState({ word: "", definition: "", example: "" });
-  const [newTheme, setNewTheme]         = useState<Theme>({ name: "", coreConflict: "", emotionalBeat: "", anchorSymbol: "" });
-  const [newDevice, setNewDevice]       = useState<LiteraryDevice>({ type: "metaphor", name: "", meaning: "", example: "", series: "All" });
   const [newCharGuide, setNewCharGuide] = useState<CharacterGuide>({
     characterName: "", speakingStyle: "", dialogueExamples: [], moreInfo: "",
     personalityNotes: [], literaryRole: "", faithTone: "", faithExpressions: [],
@@ -464,91 +402,6 @@ export default function KnowledgeBasePage() {
         );
       }
 
-      case "themes": {
-        const themes = getArr<Theme>("themes");
-        return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Story themes. AI picks from these when building outlines and chapter conflicts.</p>
-            <ScrollArea className="h-44"><div className="space-y-2">
-              {themes.map((t, i) => (
-                <ItemRow key={i}
-                  text={`Conflict: ${t.coreConflict}\nEmotional beat: ${t.emotionalBeat}\nAnchor symbol: ${t.anchorSymbol}`}
-                  badge={t.name}
-                  onRemove={() => save({ themes: themes.filter((_, j) => j !== i) } as any)} />
-              ))}
-              {!themes.length && <p className="text-sm text-muted-foreground text-center py-6">No themes yet.</p>}
-            </div></ScrollArea>
-            <div className="border-t pt-3 space-y-2">
-              <SectionLabel>Add Theme</SectionLabel>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2"><Label className="text-xs">Theme Name *</Label><Input placeholder="Truth vs Comfort" value={newTheme.name} onChange={e => setNewTheme({ ...newTheme, name: e.target.value })} /></div>
-                <div><Label className="text-xs">Core Conflict *</Label><Textarea rows={2} className="resize-none text-xs" placeholder="Telling the truth even when it hurts" value={newTheme.coreConflict} onChange={e => setNewTheme({ ...newTheme, coreConflict: e.target.value })} /></div>
-                <div><Label className="text-xs">Emotional Beat</Label><Textarea rows={2} className="resize-none text-xs" placeholder="Risking disappointment to stay honest" value={newTheme.emotionalBeat} onChange={e => setNewTheme({ ...newTheme, emotionalBeat: e.target.value })} /></div>
-                <div className="col-span-2"><Label className="text-xs">Anchor Symbol (used in illustrations too)</Label><Input placeholder="Locked box, mirror, confession letter" value={newTheme.anchorSymbol} onChange={e => setNewTheme({ ...newTheme, anchorSymbol: e.target.value })} /></div>
-              </div>
-              <Button variant="outline" size="sm" disabled={!newTheme.name || !newTheme.coreConflict || updateMutation.isPending}
-                onClick={() => { save({ themes: [...themes, { ...newTheme }] } as any); setNewTheme({ name: "", coreConflict: "", emotionalBeat: "", anchorSymbol: "" }); }}>
-                <Plus className="w-4 h-4 mr-1" /> Add Theme
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
-
-      case "literaryDevices": {
-        const devices = getArr<LiteraryDevice>("literaryDevices");
-        return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Metaphors, symbols, and narrative techniques. AI uses these to create layered storytelling — matched to the book's age range.</p>
-            <ScrollArea className="h-44"><div className="space-y-2">
-              {devices.map((d, i) => (
-                <ItemRow key={i} badge={`${d.type}${d.series && d.series !== 'All' ? ' · ' + d.series : ''}`}
-                  text={`${d.name} = ${d.meaning}${d.example ? "\nExample: \"" + d.example + "\"" : ""}`}
-                  onRemove={() => save({ literaryDevices: devices.filter((_, j) => j !== i) } as any)} />
-              ))}
-              {!devices.length && <p className="text-sm text-muted-foreground text-center py-6">No devices yet.</p>}
-            </div></ScrollArea>
-            <div className="border-t pt-3 space-y-2">
-              <SectionLabel>Add Device</SectionLabel>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Type *</Label>
-                  <Select value={newDevice.type} onValueChange={(v: any) => setNewDevice({ ...newDevice, type: v })}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="metaphor">Metaphor (Natural World)</SelectItem>
-                      <SelectItem value="symbol">Symbol Anchor</SelectItem>
-                      <SelectItem value="technique">Narrative Technique</SelectItem>
-                      <SelectItem value="device">Literary Device</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Series</Label>
-                  <Select value={newDevice.series} onValueChange={v => setNewDevice({ ...newDevice, series: v })}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="All">All Series</SelectItem>
-                      <SelectItem value="Junior">Junior (5–8)</SelectItem>
-                      <SelectItem value="Middle Grade">Middle Grade (8–13)</SelectItem>
-                      <SelectItem value="Saeeda Series">Saeeda Series</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label className="text-xs">Name *</Label><Input placeholder="Puddle / Broken Compass / Repetition" value={newDevice.name} onChange={e => setNewDevice({ ...newDevice, name: e.target.value })} /></div>
-                <div><Label className="text-xs">Meaning / Function *</Label><Input placeholder="Temporary fear or reflection" value={newDevice.meaning} onChange={e => setNewDevice({ ...newDevice, meaning: e.target.value })} /></div>
-                <div className="col-span-2"><Label className="text-xs">Story Example</Label><Input placeholder="Saeeda stared at the puddle — it showed her what she feared" value={newDevice.example} onChange={e => setNewDevice({ ...newDevice, example: e.target.value })} /></div>
-              </div>
-              <Button variant="outline" size="sm" disabled={!newDevice.name || !newDevice.meaning || updateMutation.isPending}
-                onClick={() => { save({ literaryDevices: [...devices, { ...newDevice }] } as any); setNewDevice({ type: "metaphor", name: "", meaning: "", example: "", series: "All" }); }}>
-                <Plus className="w-4 h-4 mr-1" /> Add Device
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
       case "backgroundSettings": {
         const bs = (selectedKB as any)?.backgroundSettings || {};
         const patchBg = (groupKey: string, partial: object) =>
@@ -562,7 +415,7 @@ export default function KnowledgeBasePage() {
         ];
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Background environment rules per age group. Injected directly into every image generation prompt.</p>
+            <p className="text-sm text-muted-foreground">Background environment rules per age group. Injected directly into every image generation prompt. <strong>timeOfDay</strong> and <strong>cameraHint</strong> propagate to all illustration moments.</p>
             {AGE_GROUPS.map(({ key, label }) => {
               const g = bs[key] || {};
               const locs = g.locations || [];
@@ -580,6 +433,32 @@ export default function KnowledgeBasePage() {
                     <div><Label className="text-xs">Lighting Style</Label>
                       <Input placeholder="e.g. Golden hues for peace" defaultValue={g.lightingStyle || ""}
                         onBlur={e => patchBg(key, { lightingStyle: e.target.value })} /></div>
+                    <div>
+                      <Label className="text-xs">Default Time of Day</Label>
+                      <Select defaultValue={g.timeOfDay || ""} onValueChange={v => patchBg(key, { timeOfDay: v })}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select time..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="morning">Morning</SelectItem>
+                          <SelectItem value="afternoon">Afternoon</SelectItem>
+                          <SelectItem value="evening">Evening</SelectItem>
+                          <SelectItem value="golden-hour">Golden Hour</SelectItem>
+                          <SelectItem value="night">Night</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Default Camera Hint</Label>
+                      <Select defaultValue={g.cameraHint || ""} onValueChange={v => patchBg(key, { cameraHint: v })}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select camera..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="wide">Wide Shot</SelectItem>
+                          <SelectItem value="medium">Medium Shot</SelectItem>
+                          <SelectItem value="close">Close-Up</SelectItem>
+                          <SelectItem value="full-body">Full Body</SelectItem>
+                          <SelectItem value="over-shoulder">Over Shoulder</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div><Label className="text-xs">Additional Notes</Label>
                       <Input placeholder="Extra rules..." defaultValue={g.additionalNotes || ""}
                         onBlur={e => patchBg(key, { additionalNotes: e.target.value })} /></div>
@@ -604,22 +483,6 @@ export default function KnowledgeBasePage() {
                   defaultValue={bs.universalRules || ""} onBlur={e => patchBgRoot({ universalRules: e.target.value })} />
               </div>
             </div>
-          </div>
-        );
-      }
-
-      case "illustrationRules": {
-        const items = getArr<string>("illustrationRules");
-        return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Global illustration style rules — injected into every image generation prompt regardless of age or scene.</p>
-            <ScrollArea className="h-52"><div className="space-y-2">
-              {items.map((v, i) => <ItemRow key={i} text={v} onRemove={() => save({ illustrationRules: items.filter((_, j) => j !== i) })} />)}
-              {!items.length && <p className="text-sm text-muted-foreground text-center py-6">No illustration rules yet.</p>}
-            </div></ScrollArea>
-            <AddRow placeholder="e.g. All clothing must be loose and modest at all times" value={newItem} onChange={setNewItem}
-              onAdd={() => { if (!newItem.trim()) return; save({ illustrationRules: [...items, newItem.trim()] }); setNewItem(""); }}
-              loading={updateMutation.isPending} />
           </div>
         );
       }
@@ -968,19 +831,6 @@ export default function KnowledgeBasePage() {
         );
       }
 
-      case "customRules": {
-        const current = (selectedKB as any)?.customRules || "";
-        return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Free-form rules injected verbatim as the highest-priority block into every AI prompt — both text and image generation.</p>
-            <Textarea rows={10} className="resize-none text-sm font-mono"
-              placeholder="Write any additional rules, tone overrides, or hard constraints here. This overrides all other KB blocks..."
-              value={current} onChange={e => save({ customRules: e.target.value } as any)} />
-            <p className="text-xs text-muted-foreground">Changes are applied on next AI generation. This field has highest priority in all prompts.</p>
-          </div>
-        );
-      }
-
       default: return null;
     }
   };
@@ -1016,11 +866,8 @@ export default function KnowledgeBasePage() {
             </div>
           ) : (
             filteredKBs.map((kb: KnowledgeBase) => {
-              const themeCount  = (kb as any).themes?.length || 0;
-              const deviceCount = (kb as any).literaryDevices?.length || 0;
-              const groupCount  = (kb as any).characterGroups?.length || 0;
-              const toneCount   = (kb as any).toneSpectrum?.length || 0;
-              const isSelected  = selectedKB?.id === kb.id;
+              const charGuideCount = (kb as any).characterGuides?.length || 0;
+              const isSelected     = selectedKB?.id === kb.id;
               return (
                 <div key={kb.id}
                   onClick={() => { setSelectedKB(kb); setActiveSection("islamicValues"); setNewItem(""); }}
@@ -1054,12 +901,9 @@ export default function KnowledgeBasePage() {
                       </button>
                     </div>
 
-                    {(themeCount + toneCount + deviceCount + groupCount) > 0 && (
+                    {charGuideCount > 0 && (
                       <div className="flex flex-wrap gap-1 mt-3">
-                        {themeCount > 0  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">✦ {themeCount} themes</span>}
-                        {toneCount > 0   && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-700">♪ {toneCount} tone</span>}
-                        {deviceCount > 0 && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700">◆ {deviceCount} devices</span>}
-                        {groupCount > 0  && <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">● {groupCount} groups</span>}
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">● {charGuideCount} voice guides</span>
                       </div>
                     )}
                   </div>
@@ -1078,10 +922,10 @@ export default function KnowledgeBasePage() {
               </div>
               <h3 className="text-xl font-bold mb-2">Pick a Knowledge Base</h3>
               <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
-                Select one from the list to start adding themes, faith guides, character voices, illustration rules, and more.
+                Select one from the list to configure Islamic values, du'as, character voices, backgrounds, book format, and cover design.
               </p>
               <div className="flex gap-2 mt-6 flex-wrap justify-center">
-                {["🎨 Themes", "🕊️ Faith", "🗣️ Dialogue", "🏞️ Backgrounds"].map(t => (
+                {["🕌 Islamic Values", "🤲 Du'as", "🗣️ Character Voice", "🏞️ Background", "📖 Book Format", "🎨 Cover Design"].map(t => (
                   <span key={t} className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{t}</span>
                 ))}
               </div>

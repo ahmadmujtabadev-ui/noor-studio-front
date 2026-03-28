@@ -122,6 +122,25 @@ export interface VocabularyEntry {
   ageGroup?: string;
 }
 
+export interface AgeGroupBackground {
+  tone?: string;
+  locations?: string[];
+  colorStyle?: string;
+  lightingStyle?: string;
+  keyFeatures?: string[];
+  timeOfDay?: string;
+  cameraHint?: string;
+  additionalNotes?: string;
+}
+
+export interface KnowledgeBaseBackgroundSettings {
+  junior?: AgeGroupBackground;
+  middleGrade?: AgeGroupBackground;
+  saeeda?: AgeGroupBackground;
+  avoidBackgrounds?: string[];
+  universalRules?: string;
+}
+
 export interface KnowledgeBase {
   id: string;
   _id: string;
@@ -131,11 +150,40 @@ export interface KnowledgeBase {
   islamicValues: string[];
   duas: Dua[];
   vocabulary: VocabularyEntry[];
-  illustrationRules: string[];
   avoidTopics: string[];
-  customRules?: string;
+  backgroundSettings?: KnowledgeBaseBackgroundSettings;
+  characterGuides?: CharacterGuideEntry[];
+  bookFormatting?: {
+    middleGrade?: { wordCount?: string; chapterRange?: string; sceneLength?: string; };
+    junior?: { wordCount?: string; pageCount?: string; segmentCount?: string; };
+  };
+  coverDesign?: {
+    brandingRules?: string[];
+    titlePlacement?: string;
+    characterComposition?: string[];
+    islamicMotifs?: string[];
+    avoidCover?: string[];
+    extraNotes?: string;
+  };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CharacterGuideEntry {
+  characterId?: string;
+  characterName: string;
+  speakingStyle?: string;
+  dialogueExamples?: string[];
+  moreInfo?: string;
+  personalityNotes?: string[];
+  literaryRole?: string;
+  faithGuide?: {
+    faithTone?: string;
+    faithExpressions?: string[];
+    duaStyle?: string;
+    islamicTraits?: string[];
+    faithExamples?: string[];
+  };
 }
 
 // ─── Project — Spread types ───────────────────────────────────────────────────
@@ -619,7 +667,9 @@ export interface CharacterVisualDNA {
   bodyBuild?: string;
   heightFeel?: string;
   heightCm?: number;
-  weightCategory?: string;
+  heightFeet?: number;
+  weightCategory?: string; // derived from BMI, do not set directly
+  weightKg?: number;
 
   accessories?: string[];
   paletteNotes?: string;
@@ -674,12 +724,9 @@ export interface Character {
   role: string;
   ageRange?: string;
   traits: string[];
-  speakingStyle?: string;
   status: "draft" | "generated" | "approved" | "locked";
 
   imageUrl?: string;
-  poseSheetUrl?: string;
-  masterReferenceUrl?: string;
   selectedStyle?: string;
   styleApprovedAt?: string;
 
@@ -715,7 +762,9 @@ export interface Character {
     bodyBuild?: string;
     heightFeel?: string;
     heightCm?: number;
+    heightFeet?: number;
     weightCategory?: string;
+    weightKg?: number;
 
     accessories?: string[];
     paletteNotes?: string;

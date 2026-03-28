@@ -146,7 +146,7 @@ export default function CharacterDetailPage() {
 
   const isLocked = character.status === "locked";
   const hasPortrait = !!character.imageUrl;
-  const hasPoseSheet = !!character.poseSheetUrl;
+  const hasPoseSheet = !!(character as any).poseSheetUrl;
 
   const isWorking =
     generatePortrait.isPending ||
@@ -437,7 +437,6 @@ export default function CharacterDetailPage() {
                     ["Name", character.name],
                     ["Role", character.role],
                     ["Age Range", character.ageRange],
-                    ["Speaking Style", character.speakingStyle],
                   ].map(([label, value]) => value ? (
                     <div key={label as string}>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
@@ -519,7 +518,7 @@ export default function CharacterDetailPage() {
               {hasPoseSheet && (
                 <div className="card-glow p-4">
                   <img
-                    src={character.poseSheetUrl}
+                    src={(character as any).poseSheetUrl}
                     alt={`${character.name} Pose Sheet`}
                     className="w-full rounded-xl border border-border"
                   />

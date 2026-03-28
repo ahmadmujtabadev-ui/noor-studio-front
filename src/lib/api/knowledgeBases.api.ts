@@ -7,9 +7,7 @@ export interface CreateKBInput {
   islamicValues?: string[];
   duas?: Dua[];
   vocabulary?: VocabularyEntry[];
-  illustrationRules?: string[];
   avoidTopics?: string[];
-  customRules?: string;
 }
 
 export type UpdateKBInput = Partial<CreateKBInput>;
