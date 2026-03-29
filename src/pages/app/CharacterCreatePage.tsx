@@ -30,6 +30,7 @@ import {
   useApproveCharacter,
   useGeneratePoseSheet,
 } from "@/hooks/useCharacters";
+import { charactersApi } from "@/lib/api/characters.api";
 import { useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useUniverses } from "@/hooks/useUniverses";
 import type { Character } from "@/lib/api/types";
@@ -117,16 +118,83 @@ const TRAIT_OPTIONS = [
   "determined",
 ];
 
-const AGE_RANGES = ["2-4", "4-7", "5-8", "6-9", "8-12", "12"];
+const EYEBROW_STYLES = [
+  { value: "thick-arched",    label: "Thick & Arched" },
+  { value: "thin-straight",   label: "Thin & Straight" },
+  { value: "bushy-straight",  label: "Bushy & Straight" },
+  { value: "soft-rounded",    label: "Soft & Rounded" },
+  { value: "natural-full",    label: "Natural & Full" },
+];
 
-// Typical height ranges by age (cm) for helper text
-function suggestedHeightRange(ageRange: string): string {
-  if (ageRange === "2-4")  return "85–105 cm";
-  if (ageRange === "4-7")  return "100–125 cm";
-  if (ageRange === "5-8")  return "105–132 cm";
-  if (ageRange === "6-9")  return "112–138 cm";
-  if (ageRange === "8-12") return "128–160 cm";
-  return "150–180 cm";
+const NOSE_STYLES = [
+  { value: "button",          label: "Button" },
+  { value: "broad-flat",      label: "Broad & Flat" },
+  { value: "straight-narrow", label: "Straight & Narrow" },
+  { value: "rounded-soft",    label: "Rounded & Soft" },
+  { value: "wide-nostrils",   label: "Wide Nostrils" },
+];
+
+const CHEEK_STYLES = [
+  { value: "chubby-rosy",     label: "Chubby & Rosy" },
+  { value: "flat-smooth",     label: "Flat & Smooth" },
+  { value: "high-defined",    label: "High Cheekbones" },
+  { value: "dimpled",         label: "Dimpled" },
+  { value: "soft-round",      label: "Soft & Round" },
+];
+
+// Use "none" as sentinel — Radix SelectItem does not allow value=""
+const FACIAL_HAIR_OPTIONS = [
+  { value: "none",                    label: "Clean-shaven (none)" },
+  { value: "short white stubble",     label: "Short White Stubble" },
+  { value: "trimmed white mustache",  label: "Trimmed White Mustache" },
+  { value: "short white beard",       label: "Short White Beard" },
+  { value: "full white beard",        label: "Full White Beard" },
+  { value: "white goatee",            label: "White Goatee" },
+  { value: "full gray beard",         label: "Full Gray Beard" },
+  { value: "trimmed gray mustache",   label: "Trimmed Gray Mustache" },
+  { value: "black beard trimmed",     label: "Black Beard (Trimmed)" },
+  { value: "full black beard",        label: "Full Black Beard" },
+];
+
+const GLASSES_OPTIONS = [
+  { value: "none",                              label: "No Glasses" },
+  { value: "round black-frame glasses",         label: "Round Black Frame" },
+  { value: "round gold-frame glasses",          label: "Round Gold Frame" },
+  { value: "round wire-frame glasses",          label: "Round Wire Frame" },
+  { value: "rectangular black-frame glasses",   label: "Rectangular Black Frame" },
+  { value: "rectangular gold-frame glasses",    label: "Rectangular Gold Frame" },
+  { value: "small reading glasses dark-frame",  label: "Reading Glasses (Dark)" },
+];
+
+const HAIR_STYLES_ELDER_MALE = [
+  { value: "bald",                      label: "Bald" },
+  { value: "bald with white hair sides", label: "Bald — White Sides" },
+  { value: "short white hair",           label: "Short White Hair" },
+  { value: "short gray hair",            label: "Short Gray Hair" },
+  { value: "receding white hair",        label: "Receding White Hair" },
+  { value: "full white hair short",      label: "Full White Hair (Short)" },
+  { value: "full gray hair short",       label: "Full Gray Hair (Short)" },
+];
+
+// Suggested height by numeric age
+function suggestedHeightRange(age: number): string {
+  if (age <= 4)  return "85–105 cm";
+  if (age <= 7)  return "100–125 cm";
+  if (age <= 9)  return "112–138 cm";
+  if (age <= 12) return "128–155 cm";
+  if (age <= 17) return "150–175 cm";
+  return "155–185 cm";
+}
+
+function ageLabel(age: number): string {
+  if (!age) return "";
+  if (age <= 3)  return "Toddler";
+  if (age <= 7)  return "Young Child";
+  if (age <= 12) return "Child";
+  if (age <= 17) return "Teen";
+  if (age <= 30) return "Young Adult";
+  if (age <= 50) return "Adult";
+  return "Elder";
 }
 const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Other"];
 
@@ -172,7 +240,7 @@ export default function CharacterCreatePage() {
     selectedUniverseId: searchParams.get("universeId") || "",
     name: "",
     role: "Protagonist",
-    ageRange: "4-7",
+    ageRange: 6 as number | string,
     traits: [] as string[],
 
     style: "pixar-3d",
@@ -211,6 +279,9 @@ export default function CharacterCreatePage() {
     heightFeet: 0,
     weightKg: 0,
 
+    facialHair: "none",
+    glasses: "none",
+
     accessoriesText: "",
     paletteNotes: "",
     outfitRules: "",
@@ -237,7 +308,7 @@ export default function CharacterCreatePage() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return !!form.selectedUniverseId && !!form.name.trim() && !!form.role && !!form.ageRange;
+        return !!form.selectedUniverseId && !!form.name.trim() && !!form.role && Number(form.ageRange) > 0;
       case 1:
         return !!form.skinTone && !!form.eyeColor && !!form.faceShape;
       case 2:
@@ -247,8 +318,12 @@ export default function CharacterCreatePage() {
     }
   };
 
+  const ageNum = Number(form.ageRange) || 0;
+  const isElderAge = ageNum >= 18;
+  const isElderMale = form.gender === "boy" && ageNum >= 13;
+
   const hairOptions = form.gender === "boy"
-    ? HAIR_STYLES_BOY
+    ? (isElderMale ? HAIR_STYLES_ELDER_MALE : HAIR_STYLES_BOY)
     : form.wearHijab
       ? HIJAB_STYLES
       : HAIR_STYLES_GIRL;
@@ -283,7 +358,7 @@ export default function CharacterCreatePage() {
       const char = await createCharacter.mutateAsync({
         name: form.name.trim(),
         role: form.role.toLowerCase(),
-        ageRange: form.ageRange,
+        ageRange: String(form.ageRange),
         traits: form.traits,
         universeId: form.selectedUniverseId,
         visualDNA: {
@@ -321,6 +396,9 @@ export default function CharacterCreatePage() {
           heightFeet: form.heightFeet || undefined,
           weightKg: form.weightKg || undefined,
 
+          facialHair: form.facialHair === "none" ? "" : (form.facialHair || ""),
+          glasses: form.glasses === "none" ? "" : (form.glasses || ""),
+
           accessories,
           paletteNotes: form.paletteNotes,
           hairOrHijab: form.wearHijab ? form.hijabStyle : form.hairStyle,
@@ -336,7 +414,10 @@ export default function CharacterCreatePage() {
 
       setCreatedCharacter(char);
 
-      const portraitRes = await generatePortrait.mutateAsync({ style: form.style });
+      // Use the fresh char ID directly — the generatePortrait hook still has characterId=""
+      // from the initial render and React state hasn't updated yet at this point.
+      const charId = char.id || (char as any)._id || "";
+      const portraitRes = await charactersApi.generatePortrait(charId, { style: form.style });
       setCreatedCharacter(portraitRes.character);
 
       await refreshUser();
@@ -545,13 +626,27 @@ export default function CharacterCreatePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Age Range *</Label>
-                  <Select value={form.ageRange} onValueChange={(v) => updateForm("ageRange", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {AGE_RANGES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label>
+                    Age *
+                    {ageNum > 0 && (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {ageLabel(ageNum)}
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    placeholder="e.g. 7, 35, 65"
+                    value={form.ageRange === 0 || form.ageRange === "" ? "" : form.ageRange}
+                    onChange={(e) => updateForm("ageRange", e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                  {ageNum > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Typical height: {suggestedHeightRange(ageNum)}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -707,6 +802,57 @@ export default function CharacterCreatePage() {
                 </div>
               </div>
 
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Eyebrow Style</Label>
+                  <div className="flex flex-col gap-1.5">
+                    {EYEBROW_STYLES.map((e) => (
+                      <button key={e.value} type="button"
+                        onClick={() => updateForm("eyebrowStyle", e.value)}
+                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
+                          form.eyebrowStyle === e.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/30"
+                        )}>
+                        {e.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Nose Style</Label>
+                  <div className="flex flex-col gap-1.5">
+                    {NOSE_STYLES.map((n) => (
+                      <button key={n.value} type="button"
+                        onClick={() => updateForm("noseStyle", n.value)}
+                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
+                          form.noseStyle === n.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/30"
+                        )}>
+                        {n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cheek Style</Label>
+                  <div className="flex flex-col gap-1.5">
+                    {CHEEK_STYLES.map((c) => (
+                      <button key={c.value} type="button"
+                        onClick={() => updateForm("cheekStyle", c.value)}
+                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
+                          form.cheekStyle === c.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-primary/30"
+                        )}>
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Hair / Hijab Style</Label>
@@ -728,6 +874,44 @@ export default function CharacterCreatePage() {
                     value={form.wearHijab ? form.hijabColor : form.hairColor}
                     onChange={(e) => form.wearHijab ? updateForm("hijabColor", e.target.value) : updateForm("hairColor", e.target.value)}
                   />
+                </div>
+              </div>
+
+              {/* Facial Hair & Glasses — critical for elder/adult consistency */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>
+                    Facial Hair
+                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Required for elder characters</span>}
+                  </Label>
+                  <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select facial hair…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FACIAL_HAIR_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Lock this so every illustration shows exactly the same facial hair</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    Glasses
+                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Required for elder characters</span>}
+                  </Label>
+                  <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select glasses…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GLASSES_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Lock this so every illustration shows exact same glasses / no glasses</p>
                 </div>
               </div>
 
@@ -819,7 +1003,7 @@ export default function CharacterCreatePage() {
                       <span className="text-xs text-muted-foreground shrink-0">cm</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Typical for age {form.ageRange}: {suggestedHeightRange(form.ageRange)}
+                      Typical for age {form.ageRange}: {suggestedHeightRange(ageNum)}
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -1029,7 +1213,50 @@ export default function CharacterCreatePage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/app/characters/new?universeId=${form.selectedUniverseId}`)}
+                              onClick={() => {
+                                // Reset wizard in-place — navigating to same route won't remount
+                                setCurrentStep(0);
+                                setCreatedCharacter(null);
+                                setIsGenerating(false);
+                                setIsGeneratingPose(false);
+                                setForm((f) => ({
+                                  ...f,
+                                  name: "",
+                                  role: "Protagonist",
+                                  ageRange: "" as any,
+                                  traits: [],
+                                  ageLook: "",
+                                  skinTone: "",
+                                  eyeColor: "",
+                                  faceShape: "",
+                                  eyebrowStyle: "",
+                                  noseStyle: "",
+                                  cheekStyle: "",
+                                  hairStyle: "",
+                                  hairColor: "",
+                                  hairVisibility: "visible",
+                                  hijabStyle: "",
+                                  hijabColor: "",
+                                  topGarmentType: "",
+                                  topGarmentColor: "",
+                                  topGarmentDetails: "",
+                                  bottomGarmentType: "",
+                                  bottomGarmentColor: "",
+                                  shoeType: "",
+                                  shoeColor: "",
+                                  bodyBuild: "",
+                                  heightFeel: "",
+                                  heightCm: 0,
+                                  heightFeet: 0,
+                                  weightKg: 0,
+                                  facialHair: "none",
+                                  glasses: "none",
+                                  accessoriesText: "",
+                                  paletteNotes: "",
+                                  outfitRules: "",
+                                  modestyNotes: "",
+                                }));
+                              }}
                             >
                               ✨ Add Another Character
                             </Button>
@@ -1065,73 +1292,81 @@ export default function CharacterCreatePage() {
 
           {currentStep === 3 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Pose Sheet</h2>
+              <h2 className="text-xl font-bold">Pose Library</h2>
               <p className="text-muted-foreground text-sm">
-                Generate a pose sheet and structured pose prompts for consistent illustrations.
+                Generate all character poses at once for consistent illustrations across your book.
                 Costs {POSE_SHEET_COST} credits.
               </p>
 
-              {!(createdCharacter as any)?.poseSheetUrl ? (
-                <div className="text-center py-8 space-y-4">
-                  <div className="w-full aspect-[4/3] max-w-sm mx-auto rounded-2xl bg-gradient-subtle grid grid-cols-4 gap-2 p-4">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="rounded-lg bg-muted/50 aspect-square flex items-center justify-center text-xs text-muted-foreground/50 font-medium"
-                      >
-                        {i + 1}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-3 justify-center">
+              {(() => {
+                const poses = createdCharacter?.poseLibrary || [];
+                const posesGenerated = poses.length > 0 && poses.some((p: any) => p.imageUrl);
+                return posesGenerated ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {poses.map((pose: any) => (
+                        <div key={pose.poseKey} className="space-y-1">
+                          <div className="aspect-square rounded-xl overflow-hidden bg-muted border border-border">
+                            {pose.imageUrl ? (
+                              <img src={pose.imageUrl} alt={pose.label} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/40 text-xs">
+                                No image
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-center text-muted-foreground capitalize truncate">{pose.label || pose.poseKey}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
+                      <Check className="w-4 h-4" />
+                      {poses.length} poses generated — ready for books!
+                    </div>
                     <Button
                       variant="hero"
-                      onClick={handleGeneratePoseSheet}
-                      disabled={isGeneratingPose || credits < POSE_SHEET_COST}
+                      onClick={() => navigate(`/app/characters/${createdCharacter?.id || (createdCharacter as any)?._id}`)}
                     >
-                      {isGeneratingPose ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Pose Sheet ({POSE_SHEET_COST} cr)
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/app/characters/${createdCharacter?.id || createdCharacter?._id}`)}
-                    >
-                      Skip for now
+                      View Character Profile
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <img
-                    src={(createdCharacter as any).poseSheetUrl}
-                    alt="Pose Sheet"
-                    className="w-full rounded-2xl border border-border"
-                  />
-
-                  <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
-                    <Check className="w-4 h-4" />
-                    Pose sheet generated
+                ) : (
+                  <div className="text-center py-8 space-y-4">
+                    <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto">
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <div key={i} className="aspect-square rounded-xl bg-muted/50 flex items-center justify-center text-xs text-muted-foreground/40 font-medium border border-border">
+                          {i + 1}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-3 justify-center">
+                      <Button
+                        variant="hero"
+                        onClick={handleGeneratePoseSheet}
+                        disabled={isGeneratingPose || credits < POSE_SHEET_COST}
+                      >
+                        {isGeneratingPose ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating all poses...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate All Poses ({POSE_SHEET_COST} cr)
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate(`/app/characters/${createdCharacter?.id || (createdCharacter as any)?._id}`)}
+                      >
+                        Skip for now
+                      </Button>
+                    </div>
                   </div>
-
-                  <Button
-                    variant="hero"
-                    onClick={() => navigate(`/app/characters/${createdCharacter?.id || createdCharacter?._id}`)}
-                  >
-                    View Character Profile
-                  </Button>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 

@@ -104,10 +104,10 @@ export function EditorStep({ bb, onBack }: EditorStepProps) {
         <Button variant="ghost" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />Back
         </Button>
-        <Button onClick={bb.openEditor} disabled={bb.globalLoading} size="lg">
+        <Button onClick={bb.openEditor} disabled={bb.globalLoading} size="lg" className="gap-2">
           {bb.globalLoading
-            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Opening…</>
-            : <><Layout className="w-4 h-4 mr-2" />Open Book Editor</>
+            ? <><Loader2 className="w-4 h-4 animate-spin" />Opening Canvas…</>
+            : <><Layout className="w-4 h-4" />Open Canvas Editor</>
           }
         </Button>
       </div>

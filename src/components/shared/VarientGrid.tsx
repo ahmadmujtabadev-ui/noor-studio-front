@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import {
-  RefreshCw, CheckCircle2, Loader2, ImageIcon, Edit3, Check,
+  RefreshCw, CheckCircle2, Loader2, ImageIcon, Edit3, Check, Save,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
@@ -30,15 +30,18 @@ interface IllustrationCardProps {
   onGenerate: (key: string, prompt?: string) => void;
   onSelect: (key: string, variantIndex: number) => void;
   onApprove: (key: string) => void;
+  onSavePrompt?: (key: string, body: { illustrationHint?: string; prompt?: string }) => Promise<void>;
 }
 
 // ─── Single illustration card ─────────────────────────────────────────────────
 
 export function IllustrationCard({
-  slot, loadingKey, onGenerate, onSelect, onApprove,
+  slot, loadingKey, onGenerate, onSelect, onApprove, onSavePrompt,
 }: IllustrationCardProps) {
   const [localPrompt, setLocalPrompt] = useState(slot.prompt ?? "");
+  const [localHint, setLocalHint] = useState(slot.illustrationHint ?? "");
   const [promptOpen, setPromptOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   // Optimistic local selected index — updates instantly on click, stays in sync with slot on reload
   const [localSelected, setLocalSelected] = useState(slot.selectedVariantIndex ?? 0);
 
@@ -46,6 +49,24 @@ export function IllustrationCard({
   React.useEffect(() => {
     setLocalSelected(slot.selectedVariantIndex ?? 0);
   }, [slot.selectedVariantIndex]);
+
+  React.useEffect(() => {
+    setLocalHint(slot.illustrationHint ?? "");
+    setLocalPrompt(slot.prompt ?? "");
+  }, [slot.illustrationHint, slot.prompt]);
+
+  const handleSave = async () => {
+    if (!onSavePrompt) return;
+    setSaving(true);
+    try {
+      await onSavePrompt(slot.key, {
+        illustrationHint: localHint,
+        prompt: localPrompt,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const isGenerating = loadingKey === `ill-${slot.key}`;
   const isApproving  = loadingKey === `ill-approve-${slot.key}`;
@@ -122,19 +143,56 @@ export function IllustrationCard({
 
       {/* ── Prompt editor ── */}
       {promptOpen && (
-        <div className="px-5 py-3 border-b border-border bg-muted/20">
-          <Textarea
-            value={localPrompt}
-            onChange={(e) => setLocalPrompt(e.target.value)}
-            rows={3}
-            placeholder="Override illustration prompt…"
-            className="font-mono text-xs resize-none"
-          />
+        <div className="px-5 py-3 border-b border-border bg-muted/20 space-y-3">
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Scene Description
+            </p>
+            <Textarea
+              value={localHint}
+              onChange={(e) => setLocalHint(e.target.value)}
+              rows={3}
+              placeholder="Describe what should happen in this illustration…"
+              className="text-xs resize-none"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              This is the main scene text the AI uses. Edit it to fix details (e.g. remove jacket, change pose).
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Override Prompt <span className="font-normal normal-case">(advanced — replaces everything)</span>
+            </p>
+            <Textarea
+              value={localPrompt}
+              onChange={(e) => setLocalPrompt(e.target.value)}
+              rows={2}
+              placeholder="Leave empty to use Scene Description above…"
+              className="font-mono text-xs resize-none"
+            />
+          </div>
+          {onSavePrompt && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 px-3 text-xs"
+                disabled={saving}
+                onClick={handleSave}
+              >
+                {saving ? (
+                  <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving…</>
+                ) : (
+                  <><Save className="w-3 h-3 mr-1" />Save</>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Illustration hint ── */}
-      {slot.illustrationHint && (
+      {/* ── Illustration hint (read-only when prompt panel closed) ── */}
+      {!promptOpen && slot.illustrationHint && (
         <div className="px-5 py-2 border-b border-border bg-muted/10">
           <p className="text-xs text-muted-foreground italic line-clamp-2">{slot.illustrationHint}</p>
         </div>

@@ -158,6 +158,12 @@ export const charactersApi = {
   regeneratePose: (id: string, poseKey: string, body?: RegeneratePoseInput) =>
     api.post<CharacterWrappedResponse>(`/api/characters/${id}/poses/${poseKey}/regenerate`, body || {}),
 
+  generateAllPoseImages: (id: string, body?: { style?: string; force?: boolean }) =>
+    api.post<{ character: Character; generated: number; total: number; message?: string }>(
+      `/api/characters/${id}/poses/generate-all-images`,
+      body || {}
+    ),
+
   fixStorage: (id: string) =>
     api.post<{ character: Character; migrated: boolean }>(`/api/characters/${id}/fix-storage`, {}),
 };

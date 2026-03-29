@@ -244,11 +244,10 @@ export function useBookBuilder() {
     if (!unapproved.length) return;
     setLoadingKey("approve-all-structure");
     try {
-      await Promise.all(
-        unapproved.map((item) =>
-          reviewApi.approveStructureItem(pid, item.key)
-        )
-      );
+      // Sequential — parallel writes hit the same MongoDB doc and race-overwrite each other
+      for (const item of unapproved) {
+        await reviewApi.approveStructureItem(pid, item.key);
+      }
       await refreshReview();
       toast({ title: `All ${unapproved.length} items approved ✓` });
     } catch (err) {
@@ -306,6 +305,27 @@ export function useBookBuilder() {
       setLoadingKey(null);
     }
   }, [getPid, refreshReview, toast]);
+
+  const generateAllChapterProse = useCallback(async () => {
+    const pid = getPid();
+    const items = normArr<StructureItem>(structureReview?.items).filter(
+      (i) => i.unitType === "chapter-outline"
+    );
+    if (!items.length) return;
+    setLoadingKey("prose-gen-all");
+    try {
+      for (let i = 0; i < items.length; i++) {
+        setLoadingKey(`prose-gen-${i}`);
+        await reviewApi.regenerateChapterProse(pid, i);
+        await refreshReview();
+      }
+      toast({ title: `All ${items.length} chapters written ✓` });
+    } catch (err) {
+      toast({ title: "Write all chapters failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setLoadingKey(null);
+    }
+  }, [getPid, structureReview, refreshReview, toast]);
 
   const humanizeChapterProse = useCallback(async (chapterIndex: number) => {
     const pid = getPid();
@@ -428,6 +448,26 @@ export function useBookBuilder() {
     }
   }, [getPid, loadIllustrations, toast]);
 
+  const saveIllustrationPrompt = useCallback(async (
+    key: string,
+    body: { illustrationHint?: string; prompt?: string }
+  ) => {
+    const pid = getPid();
+    try {
+      await reviewApi.patchIllustrationPrompt(pid, key, body);
+      setIllustrationNodes((prev) =>
+        prev.map((n) =>
+          n.key === key
+            ? { ...n, current: { ...n.current, ...body }, status: "edited" as const }
+            : n
+        )
+      );
+      toast({ title: "Prompt saved ✓" });
+    } catch (err) {
+      toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" });
+    }
+  }, [getPid, toast]);
+
   const allIllusApproved = useMemo(() => {
     return illustrationNodes.length > 0 && illustrationNodes.every((n) => n.status === "approved");
   }, [illustrationNodes]);
@@ -437,16 +477,41 @@ export function useBookBuilder() {
     setGlobalLoading(true);
     setLoadingKey("generate-all-illustrations");
     try {
-      await aiApi.generateAllIllustrations(pid, artStyle, force);
-      await loadIllustrations();
-      toast({ title: force ? "All illustrations regenerated ✓" : "All illustrations generated ✓" });
+      // Fetch current nodes first
+      const res = await reviewApi.getIllustrations(pid);
+      const allNodes = normArr<IllustrationNode>(res.illustrations);
+
+      const toGenerate = force
+        ? allNodes
+        : allNodes.filter((n) => !n.current?.variants?.length && !n.current?.imageUrl);
+
+      if (!toGenerate.length) {
+        toast({ title: "All illustrations already generated. Use Regenerate All to refresh." });
+        return;
+      }
+
+      setIllustrationNodes(allNodes);
+
+      for (const node of toGenerate) {
+        setLoadingKey(`ill-${node.key}`);
+        await reviewApi.regenerateIllustration(pid, node.key, { variantCount: 4, style: artStyle });
+        // Refresh to show progressive updates
+        const updated = await reviewApi.getIllustrations(pid);
+        const updatedNodes = normArr<IllustrationNode>(updated.illustrations);
+        setIllustrationNodes(updatedNodes);
+        const sv: Record<string, number> = {};
+        updatedNodes.forEach((n) => { sv[n.key] = n.current.selectedVariantIndex ?? 0; });
+        setSelectedVariants(sv);
+      }
+
+      toast({ title: force ? `${toGenerate.length} illustrations regenerated ✓` : `${toGenerate.length} illustrations generated ✓` });
     } catch (err) {
       toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
     } finally {
       setGlobalLoading(false);
       setLoadingKey(null);
     }
-  }, [getPid, artStyle, loadIllustrations, toast]);
+  }, [getPid, artStyle, toast]);
 
   // ─── STEP 5/6: Cover ──────────────────────────────────────────────────────
   const loadCover = useCallback(async () => {
@@ -501,6 +566,74 @@ export function useBookBuilder() {
     if (!coverReview) return false;
     return coverReview.front?.status === "approved" && coverReview.back?.status === "approved";
   }, [coverReview]);
+
+  // ─── Load existing project ──────────────────────────────────────────────────
+  const loadExistingProject = useCallback(async (id: string) => {
+    pidRef.current = id;
+    setGlobalLoading(true);
+    try {
+      // Fetch project metadata
+      const project = await projectsApi.get(id);
+
+      // Hydrate project fields
+      if (project.ageRange)          setAgeRange(project.ageRange);
+      if (project.universeId)        setUniverseId(project.universeId);
+      if (project.knowledgeBaseId)   setKnowledgeBaseId(project.knowledgeBaseId);
+      if (project.learningObjective) setTheme(project.learningObjective);
+      if (project.authorName)        setAuthorName(project.authorName);
+      if (project.language)          setLanguage(project.language);
+      const storedStyle = (project as any).bookStyle?.artStyle || (project as any).bookStyle?.style;
+      if (storedStyle) setArtStyle(storedStyle);
+
+      // Hydrate story idea from artifacts or title
+      const storyIdeaVal = (project as any).storyIdea || (project as any).artifacts?.storyIdea || "";
+      if (storyIdeaVal) setStoryIdea(storyIdeaVal);
+
+      // Extract character IDs (handles both string[] and populated Character[])
+      const ids: string[] = ((project.characterIds || []) as Array<string | { id?: string; _id?: string }>)
+        .map((c) => (typeof c === "string" ? c : c.id || c._id || ""))
+        .filter(Boolean);
+      if (ids.length) setCharacterIds(ids);
+
+      // Fetch review data (bootstrap if needed)
+      let reviewData: ReviewResponse;
+      try {
+        reviewData = await reviewApi.get(id);
+      } catch {
+        reviewData = await reviewApi.bootstrap(id);
+      }
+      hydrateReview(reviewData);
+
+      // Map workflow stage → step number
+      const stage = reviewData.workflow?.currentStage || "story";
+      const isChBook = getAgeMode(project.ageRange) === "chapter-book";
+      const illStepN  = isChBook ? 5 : 4;
+      const covStepN  = isChBook ? 6 : 5;
+      const edStepN   = isChBook ? 7 : 6;
+      const stageMap: Record<string, number> = {
+        story:         1,
+        structure:     2,
+        style:         3,
+        prose:         isChBook ? 4 : 3,
+        humanize:      isChBook ? 4 : 3,
+        illustrations: illStepN,
+        cover:         covStepN,
+        editor:        edStepN,
+        layout:        edStepN,
+      };
+      const targetStep = stageMap[stage] ?? 1;
+
+      // Mark earlier steps as complete
+      const done = new Set<number>();
+      for (let i = 1; i < targetStep; i++) done.add(i);
+      setCompletedSteps(done);
+      setStep(targetStep);
+    } catch (err) {
+      toast({ title: "Failed to load project", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setGlobalLoading(false);
+    }
+  }, [hydrateReview, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Editor ────────────────────────────────────────────────────────────────
   const openEditor = useCallback(async () => {
@@ -564,6 +697,7 @@ export function useBookBuilder() {
     saveProseNode,          // ← NEW: exposed for ProseStep save-before-regenerate
     allProseApproved,
     generateChapterProse,
+    generateAllChapterProse,
     humanizeChapterProse,
     saveAndApproveChapterProse,
 
@@ -574,6 +708,7 @@ export function useBookBuilder() {
     loadIllustrations,
     generateAllIllustrations,
     regenerateIllustration,
+    saveIllustrationPrompt,
     selectIllustrationVariant,
     approveIllustration,
 
@@ -588,6 +723,7 @@ export function useBookBuilder() {
     // Misc
     globalLoading,
     loadingKey,
+    loadExistingProject,
     openEditor,
     refreshReview,
   };

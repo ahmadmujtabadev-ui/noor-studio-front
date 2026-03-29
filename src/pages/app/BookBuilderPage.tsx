@@ -4,7 +4,7 @@
 "use client";
 
 import React, { useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -56,10 +56,19 @@ function LoadingOverlay({ message }: { message?: string }) {
 
 export default function BookBuilderPage() {
   const navigate = useNavigate();
+  const { id: existingProjectId } = useParams<{ id?: string }>();
   const bb = useBookBuilder();
 
+  // If opened with an existing project ID, load it
+  useEffect(() => {
+    if (existingProjectId) {
+      bb.loadExistingProject(existingProjectId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingProjectId]);
+
   const { universes = [] } = useUniverses();
-  const { data: allChars = [] } = useCharacters();
+  const { data: allChars = [], isLoading: charsLoading } = useCharacters();
 
   const selectedCharacters = useMemo(() =>
     (allChars as Character[]).filter((c) =>
@@ -158,6 +167,7 @@ export default function BookBuilderPage() {
           <StyleStep
             bb={bb}
             selectedCharacters={selectedCharacters}
+            charsLoading={charsLoading}
             onBack={() => back(2)}
             onContinue={() => advance(bb.isChapterBook ? 4 : illStep)}
           />

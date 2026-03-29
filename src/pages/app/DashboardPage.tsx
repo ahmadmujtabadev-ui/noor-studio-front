@@ -77,32 +77,71 @@ function formatTimeAgo(dateString?: string): string {
   return date.toLocaleDateString();
 }
 
-function getProjectStatus(project: Project): "Draft" | "In Progress" | "Completed" {
-  const pipeline = Array.isArray(project.pipeline) ? project.pipeline : [];
-  const total = pipeline.length;
+const STAGE_LABEL: Record<string, string> = {
+  story: "Story",
+  structure: "Structure",
+  style: "Style",
+  prose: "Writing",
+  humanize: "Writing",
+  illustrations: "Illustrations",
+  cover: "Cover",
+  editor: "Editor",
+  layout: "Editor",
+};
 
-  if (!total) return "Draft";
+// Stages that count toward progress (excludes humanize/layout which are sub-steps)
+const CORE_STAGES_CHAPTER  = ["story", "structure", "style", "prose", "illustrations", "cover", "editor"];
+const CORE_STAGES_OTHER    = ["story", "structure", "style", "illustrations", "cover", "editor"];
 
-  const completed = pipeline.filter(
-    (stage: PipelineStage) => stage?.status === "completed"
-  ).length;
-
-  if (completed === 0) return "Draft";
-  if (completed === total) return "Completed";
-  return "In Progress";
+interface ProjectInfo {
+  status: string;
+  progress: number;
+  isCompleted: boolean;
+  isInProgress: boolean;
 }
 
-function getProgress(project: Project): number {
+function getProjectInfo(project: Project): ProjectInfo {
+  // ── New workflow (book builder) ──────────────────────────────────────────
+  const wf = (project as any).workflow as {
+    mode?: string;
+    currentStage?: string;
+    stages?: Record<string, boolean>;
+  } | undefined;
+
+  if (wf?.stages) {
+    const stages = wf.stages;
+    const isChapter = wf.mode === "chapter-book";
+    const coreStages = isChapter ? CORE_STAGES_CHAPTER : CORE_STAGES_OTHER;
+
+    const done  = coreStages.filter((s) => stages[s]).length;
+    const total = coreStages.length;
+    const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    const isCompleted  = done === total;
+    const isInProgress = done > 0 && !isCompleted;
+    const currentStage = wf.currentStage || "story";
+
+    const status = isCompleted
+      ? "Completed"
+      : isInProgress
+      ? STAGE_LABEL[currentStage] || "In Progress"
+      : "Draft";
+
+    return { status, progress, isCompleted, isInProgress };
+  }
+
+  // ── Legacy pipeline fallback ─────────────────────────────────────────────
   const pipeline = Array.isArray(project.pipeline) ? project.pipeline : [];
-  const total = pipeline.length;
+  if (pipeline.length > 0) {
+    const completed = pipeline.filter((s: PipelineStage) => s?.status === "completed").length;
+    const progress  = Math.round((completed / pipeline.length) * 100);
+    const isCompleted  = completed === pipeline.length;
+    const isInProgress = completed > 0 && !isCompleted;
+    const status = isCompleted ? "Completed" : isInProgress ? "In Progress" : "Draft";
+    return { status, progress, isCompleted, isInProgress };
+  }
 
-  if (!total) return 0;
-
-  const completed = pipeline.filter(
-    (stage: PipelineStage) => stage?.status === "completed"
-  ).length;
-
-  return Math.max(0, Math.min(100, Math.round((completed / total) * 100)));
+  return { status: "Draft", progress: 0, isCompleted: false, isInProgress: false };
 }
 
 function getProjectId(project: Project): string {
@@ -280,22 +319,21 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {sortedProjects.slice(0, 5).map((project) => {
                 const projectId = getProjectId(project);
-                const status = getProjectStatus(project);
-                const progress = getProgress(project);
+                const { status, progress, isCompleted, isInProgress } = getProjectInfo(project);
 
                 return (
                   <div
                     key={projectId || getProjectTitle(project)}
                     className="flex cursor-pointer items-center justify-between rounded-xl bg-muted/50 p-4 transition-colors hover:bg-muted"
                     onClick={() => {
-                      if (projectId) navigate(`/app/projects/${projectId}`);
+                      if (projectId) navigate(`/app/books/${projectId}`);
                     }}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if ((e.key === "Enter" || e.key === " ") && projectId) {
                         e.preventDefault();
-                        navigate(`/app/projects/${projectId}`);
+                        navigate(`/app/books/${projectId}`);
                       }
                     }}
                   >
@@ -335,12 +373,10 @@ export default function DashboardPage() {
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-xs",
-                          status === "Completed" &&
-                            "border-primary/30 bg-primary/10 text-primary",
-                          status === "In Progress" &&
-                            "border-gold-200 bg-gold-100 text-gold-600",
-                          status === "Draft" && "bg-muted text-muted-foreground"
+                          "text-xs whitespace-nowrap",
+                          isCompleted  && "border-primary/30 bg-primary/10 text-primary",
+                          isInProgress && "border-gold-200 bg-gold-100 text-gold-600 dark:bg-gold-900/20 dark:text-gold-400",
+                          !isCompleted && !isInProgress && "bg-muted text-muted-foreground"
                         )}
                       >
                         {status}
@@ -351,7 +387,7 @@ export default function DashboardPage() {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (projectId) navigate(`/app/projects/${projectId}`);
+                          if (projectId) navigate(`/app/books/${projectId}`);
                         }}
                         disabled={!projectId}
                       >

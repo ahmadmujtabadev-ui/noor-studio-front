@@ -143,6 +143,19 @@ export function useUpdatePoseLibrary(characterId: string) {
   });
 }
 
+export function useGenerateAllPoseImages(characterId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: { style?: string; force?: boolean }) =>
+      charactersApi.generateAllPoseImages(characterId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: characterKey(characterId) });
+      qc.invalidateQueries({ queryKey: CHARACTERS_KEY });
+      useAuthStore.getState().refreshUser();
+    },
+  });
+}
+
 export function useRegeneratePose(characterId: string) {
   const qc = useQueryClient();
   return useMutation({

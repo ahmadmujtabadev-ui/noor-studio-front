@@ -151,6 +151,7 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
               }
               onSelect={(key, vi) => bb.selectIllustrationVariant(key, vi)}
               onApprove={(key) => bb.approveIllustration(key)}
+              onSavePrompt={(key, body) => bb.saveIllustrationPrompt(key, body)}
             />
           ))}
         </div>

@@ -5,7 +5,7 @@ import React, { useState, useCallback, useRef } from "react";
 import {
   PenLine, ArrowLeft, ArrowRight, RefreshCw, Sparkles,
   Loader2, Check, GitCompare, Save, BookOpen, ChevronDown,
-  ChevronUp,
+  ChevronUp, CheckCheck,
 } from "lucide-react";
 import { Button }   from "@/components/ui/button";
 import { Label }    from "@/components/ui/label";
@@ -148,7 +148,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
         </div>
 
         {/* Progress row */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-1.5">
             {chapters.map((_, i) => {
               const approved = getActiveProseNode(i)?.status === "approved";
@@ -168,10 +168,24 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
           <span className="text-sm text-muted-foreground">
             <span className="font-bold text-foreground">{approvedCount}</span>/{chapters.length} approved
           </span>
-          {bb.allProseApproved && (
+          {bb.allProseApproved ? (
             <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
               All approved ✓
             </Badge>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1.5 ml-auto"
+              disabled={bb.loadingKey?.startsWith("prose-gen") || bb.globalLoading}
+              onClick={() => (bb as any).generateAllChapterProse()}
+            >
+              {bb.loadingKey?.startsWith("prose-gen") ? (
+                <><Loader2 className="w-3 h-3 animate-spin" />Writing…</>
+              ) : (
+                <><Sparkles className="w-3 h-3" />Write All Chapters</>
+              )}
+            </Button>
           )}
         </div>
       </div>

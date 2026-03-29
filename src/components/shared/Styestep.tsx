@@ -18,11 +18,12 @@ const ART_STYLES = [
 interface StyleStepProps {
   bb: BookBuilderHook;
   selectedCharacters: Array<{ id?: string; _id?: string; name: string; role?: string; masterReferenceUrl?: string }>;
+  charsLoading?: boolean;
   onBack: () => void;
   onContinue: () => void;
 }
 
-export function StyleStep({ bb, selectedCharacters, onBack, onContinue }: StyleStepProps) {
+export function StyleStep({ bb, selectedCharacters, charsLoading, onBack, onContinue }: StyleStepProps) {
   const allReady = selectedCharacters.length === 0 || selectedCharacters.every((c) => {
     const id = c.id || c._id || "";
     return bb.portraits[id] || c.masterReferenceUrl;
@@ -60,7 +61,12 @@ export function StyleStep({ bb, selectedCharacters, onBack, onContinue }: StyleS
       </div>
 
       {/* Characters */}
-      {selectedCharacters.length === 0 ? (
+      {charsLoading ? (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+          <Loader2 className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2 animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading characters…</p>
+        </div>
+      ) : selectedCharacters.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center">
           <Users className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No characters selected — you can continue without portraits.</p>

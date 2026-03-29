@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
 import {
@@ -33,6 +34,7 @@ import {
   useDeleteCharacter,
   useGeneratePortrait,
   useGeneratePoseSheet,
+  useGenerateAllPoseImages,
   useApproveCharacter,
   useUpdateCharacter,
   useUpdatePromptConfig,
@@ -69,10 +71,15 @@ export default function CharacterDetailPage() {
   const applyMasterToPoses = useApplyMasterToPoses(id!);
   const updatePosePrompt = useUpdatePosePrompt(id!);
   const regeneratePose = useRegeneratePose(id!);
+  const generateAllImages = useGenerateAllPoseImages(id!);
 
   const [showGeneratePoses, setShowGeneratePoses] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
+
+  // Inline edit for consistency-critical fields
+  const [dnaEdit, setDnaEdit] = useState({ facialHair: "none", glasses: "none" });
+  const [savingDna, setSavingDna] = useState(false);
 
   // Simplified prompt config — 3 fields instead of 7
   const [promptForm, setPromptForm] = useState({
@@ -98,6 +105,10 @@ export default function CharacterDetailPage() {
       masterNote: character.promptConfig?.masterSystemNote || "",
       portraitNote: character.promptConfig?.portraitPromptPrefix || "",
       sceneNote: character.promptConfig?.scenePromptPrefix || "",
+    });
+    setDnaEdit({
+      facialHair: (character.visualDNA as any)?.facialHair || "none",
+      glasses: (character.visualDNA as any)?.glasses || "none",
     });
   }, [character]);
 
@@ -151,6 +162,7 @@ export default function CharacterDetailPage() {
   const isWorking =
     generatePortrait.isPending ||
     generatePoseSheet.isPending ||
+    generateAllImages.isPending ||
     approveCharacter.isPending ||
     updateCharacter.isPending ||
     updatePromptConfig.isPending ||
@@ -188,11 +200,38 @@ export default function CharacterDetailPage() {
     }
     try {
       await generatePoseSheet.mutateAsync();
-      toast({ title: "Pose sheet generated!", description: `Pose sheet created for ${character.name}.` });
+      toast({ title: "Pose prompts ready!", description: `Pose structure created. Now generating all images...` });
       setShowGeneratePoses(false);
+      // Auto-trigger image generation for all poses
+      const poseCount = character?.poseLibrary?.length || 12;
+      const imgCost = poseCount * 4;
+      if (credits - POSE_SHEET_COST >= imgCost) {
+        await generateAllImages.mutateAsync({});
+        toast({ title: "All pose images generated!", description: `${poseCount} poses ready for ${character.name}.` });
+      }
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
       setShowGeneratePoses(false);
+    }
+  };
+
+  const handleGenerateAllImages = async (force = false) => {
+    const poses = character?.poseLibrary || [];
+    const toGenerate = force ? poses.filter((p: any) => p.approved !== false) : poses.filter((p: any) => p.approved !== false && !p.imageUrl);
+    const cost = toGenerate.length * 4;
+    if (cost === 0) {
+      toast({ title: "All images exist", description: "Use Regenerate All to force-refresh existing images." });
+      return;
+    }
+    if (credits < cost) {
+      toast({ title: "Insufficient credits", description: `Need ${cost} credits for ${toGenerate.length} poses.`, variant: "destructive" });
+      return;
+    }
+    try {
+      const result = await generateAllImages.mutateAsync({ force });
+      toast({ title: "Done!", description: `Generated ${result.generated} of ${result.total} pose images.` });
+    } catch (err) {
+      toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
     }
   };
 
@@ -222,6 +261,24 @@ export default function CharacterDetailPage() {
       navigate("/app/characters");
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveDna = async () => {
+    setSavingDna(true);
+    try {
+      await updateCharacter.mutateAsync({
+        visualDNA: {
+          ...(character?.visualDNA as any || {}),
+          facialHair: dnaEdit.facialHair === "none" ? "" : dnaEdit.facialHair,
+          glasses: dnaEdit.glasses === "none" ? "" : dnaEdit.glasses,
+        },
+      } as any);
+      toast({ title: "Facial DNA saved", description: "Regenerate portrait to lock these changes into illustrations." });
+    } catch (err) {
+      toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSavingDna(false);
     }
   };
 
@@ -457,6 +514,8 @@ export default function CharacterDetailPage() {
                     ["Skin Tone", character.visualDNA?.skinTone],
                     ["Eye Color", character.visualDNA?.eyeColor],
                     ["Face Shape", character.visualDNA?.faceShape],
+                    ["Facial Hair", character.visualDNA?.facialHair || "Clean-shaven"],
+                    ["Glasses", character.visualDNA?.glasses || "None"],
                     ["Hair Style", character.visualDNA?.hairStyle],
                     ["Hair Color", character.visualDNA?.hairColor],
                     ["Hijab Style", character.visualDNA?.hijabStyle],
@@ -479,40 +538,111 @@ export default function CharacterDetailPage() {
                     <p className="text-sm">{character.visualDNA.paletteNotes}</p>
                   </div>
                 )}
+
+                {/* Consistency locks — editable inline */}
+                <div className="mt-4 pt-4 border-t border-border space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-0.5">Consistency Locks</p>
+                    <p className="text-xs text-muted-foreground">Set these exactly to prevent the AI from randomising beard/glasses across illustrations.</p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Facial Hair</Label>
+                      <Select value={dnaEdit.facialHair} onValueChange={(v) => setDnaEdit((s) => ({ ...s, facialHair: v }))}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            { value: "none", label: "Clean-shaven (none)" },
+                            { value: "short white stubble", label: "Short White Stubble" },
+                            { value: "trimmed white mustache", label: "Trimmed White Mustache" },
+                            { value: "short white beard", label: "Short White Beard" },
+                            { value: "full white beard", label: "Full White Beard" },
+                            { value: "white goatee", label: "White Goatee" },
+                            { value: "full gray beard", label: "Full Gray Beard" },
+                            { value: "trimmed gray mustache", label: "Trimmed Gray Mustache" },
+                            { value: "black beard trimmed", label: "Black Beard (Trimmed)" },
+                            { value: "full black beard", label: "Full Black Beard" },
+                          ].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Glasses</Label>
+                      <Select value={dnaEdit.glasses} onValueChange={(v) => setDnaEdit((s) => ({ ...s, glasses: v }))}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            { value: "none", label: "No Glasses" },
+                            { value: "round black-frame glasses", label: "Round Black Frame" },
+                            { value: "round gold-frame glasses", label: "Round Gold Frame" },
+                            { value: "round wire-frame glasses", label: "Round Wire Frame" },
+                            { value: "rectangular black-frame glasses", label: "Rectangular Black Frame" },
+                            { value: "rectangular gold-frame glasses", label: "Rectangular Gold Frame" },
+                            { value: "small reading glasses dark-frame", label: "Reading Glasses (Dark)" },
+                          ].map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={handleSaveDna} disabled={savingDna}>
+                    {savingDna ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Saving…</> : <><Save className="w-3 h-3 mr-1.5" />Save & Regenerate Portrait</>}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">After saving, regenerate the portrait so the new reference image matches these locks.</p>
+                </div>
               </div>
             </TabsContent>
 
             {/* ── Poses Tab ── */}
             <TabsContent value="poses" className="space-y-6">
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Pose Library</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {sortedPoses.length} poses · click any pose to edit or regenerate
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {hasPoseSheet && (
-                    <Button variant="outline" size="sm" onClick={() => applyMasterToPoses.mutate()} disabled={isWorking || isLocked}>
-                      <Wand2 className="w-4 h-4 mr-2" />
-                      Apply Master
-                    </Button>
-                  )}
-                  <Button
-                    variant={hasPoseSheet ? "outline" : "hero"}
-                    size="sm"
-                    onClick={() => setShowGeneratePoses(true)}
-                    disabled={isWorking || isLocked}
-                  >
-                    {hasPoseSheet ? (
-                      <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Sheet</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 mr-2" />Generate Poses ({POSE_SHEET_COST} cr)</>
-                    )}
-                  </Button>
-                </div>
-              </div>
+              {(() => {
+                const allPoses = character?.poseLibrary || [];
+                const missingImages = allPoses.filter((p: any) => p.approved !== false && !p.imageUrl).length;
+                const approvedCount = allPoses.filter((p: any) => p.approved !== false).length;
+                const missingCost = missingImages * 4;
+                const regenAllCost = approvedCount * 4;
+                return (
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h3 className="font-semibold">Pose Library</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {sortedPoses.length} poses · {missingImages > 0 ? `${missingImages} need images` : "all images ready"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {allPoses.length === 0 ? (
+                        <Button variant="hero" size="sm" onClick={() => setShowGeneratePoses(true)} disabled={isWorking || isLocked}>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Setup Poses ({POSE_SHEET_COST} cr)
+                        </Button>
+                      ) : (
+                        <>
+                          {missingImages > 0 && (
+                            <Button variant="hero" size="sm" onClick={() => handleGenerateAllImages(false)} disabled={isWorking || isLocked}>
+                              {generateAllImages.isPending ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
+                              ) : (
+                                <><Sparkles className="w-4 h-4 mr-2" />Generate {missingImages} Images ({missingCost} cr)</>
+                              )}
+                            </Button>
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => handleGenerateAllImages(true)} disabled={isWorking || isLocked}>
+                            {generateAllImages.isPending ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</>
+                            ) : (
+                              <><RefreshCw className="w-4 h-4 mr-2" />Regen All ({regenAllCost} cr)</>
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Pose sheet image */}
               {hasPoseSheet && (
