@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Sparkles, Users, Loader2 } from "lucide-react";
+import { Plus, Search, Sparkles, Users, Loader2, LayoutGrid } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -44,12 +44,20 @@ export default function CharactersPage() {
       title="Character Studio"
       subtitle="Create and manage characters with consistent visual DNA and pose prompts"
       actions={
-        <Link to="/app/characters/new">
-          <Button variant="hero" size="default">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Character
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/app/character-templates">
+            <Button variant="outline" size="default">
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              Templates
+            </Button>
+          </Link>
+          <Link to="/app/characters/new">
+            <Button variant="hero" size="default">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Character
+            </Button>
+          </Link>
+        </div>
       }
     >
       <div className="flex flex-col sm:flex-row gap-4 mb-6">

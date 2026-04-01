@@ -27,7 +27,7 @@ export interface VariantSlot {
 interface IllustrationCardProps {
   slot: VariantSlot;
   loadingKey: string | null;
-  onGenerate: (key: string, prompt?: string) => void;
+  onGenerate: (key: string, prompt?: string, variantCount?: number) => void;
   onSelect: (key: string, variantIndex: number) => void;
   onApprove: (key: string) => void;
   onSavePrompt?: (key: string, body: { illustrationHint?: string; prompt?: string }) => Promise<void>;
@@ -42,6 +42,7 @@ export function IllustrationCard({
   const [localHint, setLocalHint] = useState(slot.illustrationHint ?? "");
   const [promptOpen, setPromptOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [variantCount, setVariantCount] = useState(1);
   // Optimistic local selected index — updates instantly on click, stays in sync with slot on reload
   const [localSelected, setLocalSelected] = useState(slot.selectedVariantIndex ?? 0);
 
@@ -108,13 +109,35 @@ export function IllustrationCard({
             Prompt
           </Button>
 
+          {/* Variant count selector */}
+          {!approved && (
+            <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+              {[1, 2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setVariantCount(n)}
+                  disabled={isGenerating}
+                  className={cn(
+                    "w-6 h-6 rounded text-[11px] font-semibold transition-colors",
+                    variantCount === n
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                  title={`Generate ${n} variant${n > 1 ? "s" : ""}`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Generate */}
           <Button
             size="sm"
             variant="outline"
             className="h-7 px-2.5 text-xs"
             disabled={isGenerating || isApproving}
-            onClick={() => onGenerate(slot.key, localPrompt !== slot.prompt ? localPrompt : undefined)}
+            onClick={() => onGenerate(slot.key, localPrompt !== slot.prompt ? localPrompt : undefined, variantCount)}
           >
             {isGenerating ? (
               <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Generating</>
@@ -318,7 +341,7 @@ export function IllustrationCard({
 interface VariantGridProps {
   slots: VariantSlot[];
   loadingKey: string | null;
-  onGenerate: (key: string, prompt?: string) => void;
+  onGenerate: (key: string, prompt?: string, variantCount?: number) => void;
   onSelect: (key: string, variantIndex: number) => void;
   onApprove: (key: string) => void;
   onPromptEdit?: (key: string, prompt: string) => void;

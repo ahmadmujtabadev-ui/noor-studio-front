@@ -20,6 +20,7 @@ import {
   Frame,
   Users,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -239,8 +240,9 @@ export default function KnowledgeBasePage() {
   useEffect(() => {
     if (selectedKB) kbNav.setKbNav("faith", "islamicValues");
   }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [showCreate, setShowCreate]     = useState(false);
-  const [showDelete, setShowDelete]     = useState<string | null>(null);
+  const [showCreate, setShowCreate]         = useState(false);
+  const [showDelete, setShowDelete]         = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   // Structured new-item states
   const [newDua, setNewDua]             = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
@@ -303,12 +305,49 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  const toggleCollapse = (id: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  function getSectionCount(sectionId: string): number {
+    if (!selectedKB) return 0;
+    const kb = selectedKB as any;
+    switch (sectionId) {
+      case "islamicValues":      return kb.islamicValues?.length || 0;
+      case "duas":               return kb.duas?.length || 0;
+      case "vocabulary":         return kb.vocabulary?.length || 0;
+      case "avoidTopics":        return kb.avoidTopics?.length || 0;
+      case "characterGuides":    return kb.characterGuides?.length || 0;
+      case "backgroundSettings": {
+        const bs = kb.backgroundSettings || {};
+        return ["junior", "middleGrade", "saeeda"].filter(k => bs[k]?.tone || bs[k]?.locations?.length).length;
+      }
+      case "bookFormatting": {
+        const bf = kb.bookFormatting || {};
+        return (bf.middleGrade?.wordCount ? 1 : 0) + (bf.junior?.wordCount ? 1 : 0);
+      }
+      case "underSixDesign": {
+        const u = kb.underSixDesign || {};
+        return u.maxWordsPerSpread || u.pageLayout ? 1 : 0;
+      }
+      case "coverDesign": {
+        const cd = kb.coverDesign || {};
+        return (cd.brandingRules?.length || 0) + (cd.islamicMotifs?.length || 0);
+      }
+      default: return 0;
+    }
+  }
+
   // ─── Section renderers ────────────────────────────────────────────────────
 
-  const renderSection = () => {
+  const renderSectionContent = (sectionId: SectionId) => {
     if (!selectedKB) return null;
 
-    switch (activeSection) {
+    switch (sectionId) {
 
       case "islamicValues": {
         const items = getArr<string>("islamicValues");
@@ -837,176 +876,188 @@ export default function KnowledgeBasePage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const activeWorkflowDef  = WORKFLOWS.find(w => w.id === activeWorkflow);
+  const currentSections    = SECTIONS.filter(s => activeWorkflowDef?.sections.includes(s.id as any));
+  const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "underSixDesign", "coverDesign"]);
+
   return (
     <AppLayout
       title="Knowledge Base"
       subtitle="Define the universe rules that shape every story, chapter, and illustration"
       actions={
-        <Button variant="hero" onClick={() => { setShowCreate(true); }}>
+        <Button variant="hero" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-2" />New Knowledge Base
         </Button>
       }
     >
-      <div className="grid lg:grid-cols-3 gap-6">
-
-        {/* ── KB List ─────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-          </div>
-
+      {/* ── KB Pill Bar ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 overflow-x-auto pb-0.5 min-w-0">
           {isLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-          ) : filteredKBs.length === 0 ? (
-            <div className="text-center py-12">
-              <Database className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">{search ? "No results." : "No knowledge bases yet."}</p>
-              {!search && <Button variant="hero" size="sm" onClick={() => setShowCreate(true)}><Plus className="w-4 h-4 mr-2" />Create First KB</Button>}
+            <div className="flex items-center gap-2 py-1 px-1">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading...</span>
             </div>
           ) : (
             filteredKBs.map((kb: KnowledgeBase) => {
-              const charGuideCount = (kb as any).characterGuides?.length || 0;
-              const isSelected     = selectedKB?.id === kb.id;
+              const isSelected = selectedKB?.id === kb.id;
               return (
-                <div key={kb.id}
-                  onClick={() => { setSelectedKB(kb); setActiveSection("islamicValues"); setNewItem(""); }}
+                <button
+                  key={kb.id}
+                  onClick={() => { setSelectedKB(kb); kbNav.setKbNav("faith", "islamicValues"); setNewItem(""); setCollapsedSections(new Set()); }}
                   className={cn(
-                    "group relative overflow-hidden rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md",
+                    "group relative flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium whitespace-nowrap transition-all shrink-0",
                     isSelected
-                      ? "border-primary shadow-md shadow-primary/10 bg-primary/5"
-                      : "border-border hover:border-primary/40 bg-card"
-                  )}>
-                  {/* Top accent strip */}
-                  <div className={cn("h-1.5 w-full transition-all", isSelected ? "bg-gradient-to-r from-primary via-violet-400 to-pink-400" : "bg-gradient-to-r from-muted to-muted/30 group-hover:from-primary/30 group-hover:to-violet-300/30")} />
-
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors", isSelected ? "bg-primary/15 border border-primary/20" : "bg-muted border border-border group-hover:bg-primary/10")}>
-                          <BookMarked className={cn("w-5 h-5 transition-colors", isSelected ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm truncate">{kb.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-violet-600">{kb.islamicValues.length}</span> values ·{" "}
-                            <span className="font-medium text-blue-600">{kb.duas.length}</span> du'as ·{" "}
-                            <span className="font-medium text-orange-600">{kb.vocabulary.length}</span> words
-                          </p>
-                        </div>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); setShowDelete(kb.id); }}
-                        className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 opacity-0 group-hover:opacity-100 shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {charGuideCount > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-3">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">● {charGuideCount} voice guides</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  <BookMarked className="w-3.5 h-3.5 shrink-0" />
+                  {kb.name}
+                  {isSelected && (
+                    <span
+                      role="button"
+                      onClick={e => { e.stopPropagation(); setShowDelete(kb.id); }}
+                      className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
               );
             })
           )}
         </div>
-
-        {/* ── KB Detail ────────────────────────────────────────────────────── */}
-        <div className="lg:col-span-2">
-          {!selectedKB ? (
-            <div className="relative overflow-hidden rounded-3xl border-2 border-dashed border-muted-foreground/20 p-14 text-center flex flex-col items-center justify-center min-h-[480px] bg-gradient-to-br from-violet-50/50 via-background to-pink-50/30">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center mb-5 shadow-sm">
-                <Database className="w-9 h-9 text-violet-400" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Pick a Knowledge Base</h3>
-              <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
-                Select one from the list to configure Islamic values, du'as, character voices, backgrounds, book format, and cover design.
-              </p>
-              <div className="flex gap-2 mt-6 flex-wrap justify-center">
-                {["🕌 Islamic Values", "🤲 Du'as", "🗣️ Character Voice", "🏞️ Background", "📖 Book Format", "🎨 Cover Design"].map(t => (
-                  <span key={t} className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{t}</span>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-3xl border bg-card shadow-sm overflow-hidden">
-              {/* KB detail header */}
-              <div className="px-6 pt-5 pb-4 border-b bg-gradient-to-r from-primary/5 via-violet-50/30 to-pink-50/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-violet-200/60 flex items-center justify-center shadow-sm">
-                    <BookMarked className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold leading-tight">{selectedKB.name}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Updated {new Date(selectedKB.updatedAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Section tabs within active workflow + content ── */}
-              <div className="p-5 space-y-4">
-                {/* Section pills for current workflow */}
-                {(() => {
-                  const wf = WORKFLOWS.find(w => w.id === activeWorkflow);
-                  if (!wf) return null;
-                  const wfSections = SECTIONS.filter(s => wf.sections.includes(s.id as any));
-                  return (
-                    <div className="flex gap-2 flex-wrap">
-                      {wfSections.map(({ id, label, icon: Icon, color }) => {
-                        const style = SECTION_STYLE[id];
-                        const isActive = activeSection === id;
-                        return (
-                          <button
-                            key={id}
-                            onClick={() => { setActiveSection(id as SectionId); setNewItem(""); }}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all",
-                              isActive
-                                ? cn(style.bg, style.border, style.text, "shadow-sm")
-                                : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                            )}
-                          >
-                            <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? color : "text-muted-foreground")} />
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-
-                {/* Active section header */}
-                {(() => {
-                  const sec = SECTIONS.find(s => s.id === activeSection);
-                  if (!sec) return null;
-                  const style = SECTION_STYLE[activeSection];
-                  const Icon = sec.icon;
-                  return (
-                    <div className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl border", style.bg, style.border)}>
-                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", style.iconBg)}>
-                        <Icon className={cn("w-4 h-4", sec.color)} />
-                      </div>
-                      <div>
-                        <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {WORKFLOWS.find(w => w.sections.includes(sec.id as any))?.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Section content */}
-                <div className="min-h-[280px]">
-                  {renderSection()}
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="relative shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-9 w-44 text-sm"
+          />
         </div>
       </div>
+
+      {/* ── No KB empty state ───────────────────────────────────────────────── */}
+      {!selectedKB && !isLoading && (
+        <div className="relative overflow-hidden rounded-3xl border-2 border-dashed border-muted-foreground/20 p-16 text-center flex flex-col items-center justify-center min-h-[480px] bg-gradient-to-br from-violet-50/50 via-background to-pink-50/30">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center mb-5 shadow-sm">
+            <Database className="w-9 h-9 text-violet-400" />
+          </div>
+          <h3 className="text-xl font-bold mb-2">No Knowledge Base Selected</h3>
+          <p className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-6">
+            Create a knowledge base to define Islamic values, du'as, character voices, backgrounds, book format, and cover design rules for your universe.
+          </p>
+          <Button variant="hero" onClick={() => setShowCreate(true)}>
+            <Plus className="w-4 h-4 mr-2" />Create First Knowledge Base
+          </Button>
+          <div className="flex gap-2 mt-6 flex-wrap justify-center">
+            {["🕌 Islamic Values", "🤲 Du'as", "🗣️ Character Voice", "🏞️ Background", "📖 Book Format", "🎨 Cover Design"].map(t => (
+              <span key={t} className="px-3 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{t}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── KB Content ──────────────────────────────────────────────────────── */}
+      {selectedKB && (
+        <>
+          {/* KB identity strip */}
+          <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl border bg-gradient-to-r from-primary/5 via-violet-50/30 to-pink-50/20 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-violet-200/60 flex items-center justify-center shadow-sm shrink-0">
+              <BookMarked className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold leading-tight truncate">{selectedKB.name}</h2>
+              <p className="text-xs text-muted-foreground">Updated {new Date(selectedKB.updatedAt).toLocaleDateString()}</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <span className="font-semibold text-violet-600">{selectedKB.islamicValues.length}</span> values ·{" "}
+              <span className="font-semibold text-blue-600">{selectedKB.duas.length}</span> du'as ·{" "}
+              <span className="font-semibold text-orange-600">{selectedKB.vocabulary.length}</span> words
+            </div>
+          </div>
+
+          {/* Workflow tabs */}
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 w-fit flex-wrap">
+            {WORKFLOWS.map(wf => (
+              <button
+                key={wf.id}
+                onClick={() => setActiveWorkflow(wf.id as WorkflowId)}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  activeWorkflow === wf.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {wf.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Section cards grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {currentSections.map(sec => {
+              const style      = SECTION_STYLE[sec.id];
+              const Icon       = sec.icon;
+              const count      = getSectionCount(sec.id);
+              const isCollapsed = collapsedSections.has(sec.id);
+              const isFullWidth = FULL_WIDTH_SECTIONS.has(sec.id);
+
+              return (
+                <div
+                  key={sec.id}
+                  className={cn(
+                    "rounded-2xl border overflow-hidden bg-card shadow-sm",
+                    isFullWidth && "xl:col-span-2"
+                  )}
+                >
+                  {/* Card header — click to collapse */}
+                  <button
+                    onClick={() => toggleCollapse(sec.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-5 py-4 transition-colors text-left",
+                      style.bg,
+                      isCollapsed ? "" : "border-b " + style.border
+                    )}
+                  >
+                    <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", style.iconBg)}>
+                      <Icon className={cn("w-4 h-4", sec.color)} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
+                      <p className="text-xs text-muted-foreground leading-tight truncate">
+                        {WORKFLOWS.find(w => w.sections.includes(sec.id as any))?.description}
+                      </p>
+                    </div>
+                    {count > 0 && (
+                      <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0", style.iconBg, style.text)}>
+                        {count}
+                      </span>
+                    )}
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0",
+                        isCollapsed && "-rotate-90"
+                      )}
+                    />
+                  </button>
+
+                  {/* Card body */}
+                  {!isCollapsed && (
+                    <div className="p-5">
+                      {renderSectionContent(sec.id as SectionId)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
 
       {/* ── Create Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

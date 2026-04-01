@@ -17,6 +17,7 @@ import DashboardPage from "./pages/app/DashboardPage";
 import CharactersPage from "./pages/app/CharactersPage";
 import CharacterDetailPage from "./pages/app/CharacterDetailPage";
 import CharacterCreatePage from "./pages/app/CharacterCreatePage";
+import CharacterTemplatesPage from "./pages/app/CharacterTemplatesPage";
 import UniversesPage from "./pages/app/UniversesPage";
 import UniverseDetailPage from "./pages/app/UniverseDetailPage";
 import UniverseFormPage from "./pages/app/UniverseFormPage";
@@ -103,6 +104,7 @@ const App = () => (
                     <Route path="characters" element={<CharactersPage />} />
                     <Route path="characters/new" element={<CharacterCreatePage />} />
                     <Route path="characters/:id" element={<CharacterDetailPage />} />
+                    <Route path="character-templates" element={<CharacterTemplatesPage />} />
                     <Route path="knowledge-base" element={<KnowledgeBasePage />} />
                     <Route path="books/new" element={<BookBuilderPage />} />
                     <Route path="books/:id" element={<BookBuilderPage />} />

@@ -18,6 +18,7 @@ interface IllustrationsStepProps {
 
 export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepProps) {
   const [loaded, setLoaded] = useState(false);
+  const [globalVariantCount, setGlobalVariantCount] = useState(1);
 
   const load = async () => {
     await bb.loadIllustrations();
@@ -85,14 +86,35 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
           </div>
         </div>
 
-        {/* Generate all button */}
+        {/* Generate all controls */}
         {slots.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {/* Variant count selector for bulk generate */}
+            <div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
+              <span className="px-1.5 text-[11px] text-muted-foreground font-medium">Variants:</span>
+              {[1, 2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setGlobalVariantCount(n)}
+                  disabled={bb.globalLoading || isGeneratingAll}
+                  className={cn(
+                    "w-6 h-6 rounded text-[11px] font-semibold transition-colors",
+                    globalVariantCount === n
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                  title={`Generate ${n} variant${n > 1 ? "s" : ""} per illustration`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
             <Button
               variant={isGeneratingAll ? "default" : "outline"}
               size="sm"
               disabled={bb.globalLoading || isGeneratingAll}
-              onClick={() => bb.generateAllIllustrations(false)}
+              onClick={() => bb.generateAllIllustrations(false, globalVariantCount)}
             >
               {isGeneratingAll ? (
                 <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Generating all…</>
@@ -100,13 +122,12 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
                 <><Sparkles className="w-3.5 h-3.5 mr-2" />Generate All</>
               )}
             </Button>
-            {/* Regenerate All — forces fresh images even if already generated (picks up updated characters) */}
             <Button
               variant="ghost"
               size="sm"
               disabled={bb.globalLoading || isGeneratingAll}
-              onClick={() => bb.generateAllIllustrations(true)}
-              title="Regenerate all illustrations from scratch — use this after updating characters"
+              onClick={() => bb.generateAllIllustrations(true, globalVariantCount)}
+              title="Regenerate all from scratch — use this after updating characters"
             >
               <RefreshCw className="w-3.5 h-3.5 mr-2" />
               Regenerate All
@@ -146,8 +167,8 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
               key={slot.key}
               slot={slot}
               loadingKey={bb.loadingKey}
-              onGenerate={(key, prompt) =>
-                bb.regenerateIllustration(key, { prompt, variantCount: 4 })
+              onGenerate={(key, prompt, variantCount) =>
+                bb.regenerateIllustration(key, { prompt, variantCount: variantCount ?? 1 })
               }
               onSelect={(key, vi) => bb.selectIllustrationVariant(key, vi)}
               onApprove={(key) => bb.approveIllustration(key)}

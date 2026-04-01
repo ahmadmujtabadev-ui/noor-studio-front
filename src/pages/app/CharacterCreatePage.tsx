@@ -8,10 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import type { CharacterTemplate } from "@/lib/api/characterTemplates.api";
 import {
   ArrowLeft,
   ArrowRight,
+  LayoutGrid,
   User,
   Palette,
   Sparkles,
@@ -176,6 +179,111 @@ const HAIR_STYLES_ELDER_MALE = [
   { value: "full gray hair short",       label: "Full Gray Hair (Short)" },
 ];
 
+// For non-human / creature / animal characters
+const HAIR_STYLES_OTHER = [
+  { value: "feathered crest on head",  label: "Feathered Crest" },
+  { value: "no hair (feathers)",       label: "Feathers (no hair)" },
+  { value: "no hair (scales)",         label: "Scales (no hair)" },
+  { value: "no hair (fur)",            label: "Fur coat" },
+  { value: "mane",                     label: "Mane" },
+  { value: "fin on head",              label: "Fin on Head" },
+  { value: "spikes on head",           label: "Spikes" },
+  { value: "none",                     label: "None / N/A" },
+];
+
+const BODY_BUILDS = [
+  "small toddler round tummy",
+  "slim and lean",
+  "average build",
+  "athletic and fit",
+  "stocky and strong",
+  "petite and light",
+  "tall and slender",
+  "broad-shouldered",
+  "chubby and soft",
+  "round and full",
+];
+
+const HEIGHT_FEELS = [
+  "very small",
+  "small",
+  "slightly short",
+  "average height",
+  "slightly tall",
+  "tall",
+  "very tall",
+  "towers over others",
+];
+
+const TOP_GARMENT_PRESETS_BOY = [
+  "t-shirt",
+  "long-sleeve shirt",
+  "collared shirt",
+  "hoodie",
+  "thobe",
+  "kurta",
+  "qamis",
+  "school uniform shirt",
+  "jacket",
+];
+
+const TOP_GARMENT_PRESETS_GIRL = [
+  "long-sleeve tunic",
+  "abaya",
+  "modest blouse",
+  "salwar kameez top",
+  "long-sleeve dress",
+  "school uniform blouse",
+  "long cardigan",
+  "jilbab top",
+];
+
+const BOTTOM_GARMENT_PRESETS_BOY = [
+  "trousers",
+  "jeans",
+  "shorts",
+  "wide-leg pants",
+  "school uniform trousers",
+  "shalwar",
+];
+
+const BOTTOM_GARMENT_PRESETS_GIRL = [
+  "wide-leg trousers",
+  "long skirt",
+  "maxi skirt",
+  "school uniform skirt",
+  "shalwar",
+  "palazzo pants",
+];
+
+const SHOE_PRESETS = [
+  "sneakers",
+  "velcro sneakers",
+  "school shoes",
+  "Mary-Jane flats",
+  "sandals",
+  "leather sandals",
+  "running shoes",
+  "Oxford shoes",
+  "indoor slippers",
+  "boots",
+];
+
+const ACCESSORIES_PRESETS = [
+  "round glasses",
+  "small backpack",
+  "wristband",
+  "tasbih beads",
+  "small book in hand",
+  "kite",
+  "water bottle",
+  "silver compass",
+  "notebook",
+  "smartwatch",
+  "headband",
+  "small badge / pin",
+];
+
 // Suggested height by numeric age
 function suggestedHeightRange(age: number): string {
   if (age <= 4)  return "85–105 cm";
@@ -218,12 +326,19 @@ const steps = [
 
 export default function CharacterCreatePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const credits = useCredits();
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const [searchParams] = useSearchParams();
   const { universes } = useUniverses();
 
+  // Pre-fill from template if navigated from template gallery
+  const fromTemplate = (location.state as { fromTemplate?: CharacterTemplate } | null)?.fromTemplate;
+  const tplVd = fromTemplate?.visualDNA || {};
+  const tplMr = fromTemplate?.modestyRules || {};
+
+  const queryClient = useQueryClient();
   const createCharacter = useCreateCharacter();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -238,57 +353,58 @@ export default function CharacterCreatePage() {
 
   const [form, setForm] = useState({
     selectedUniverseId: searchParams.get("universeId") || "",
-    name: "",
-    role: "Protagonist",
-    ageRange: 6 as number | string,
-    traits: [] as string[],
+    name: fromTemplate?.name ? `${fromTemplate.name} (copy)` : "",
+    role: fromTemplate?.role ? (fromTemplate.role.charAt(0).toUpperCase() + fromTemplate.role.slice(1)) : "Protagonist",
+    ageRange: fromTemplate?.ageRange ? (parseInt(fromTemplate.ageRange) || 6) : 6 as number | string,
+    traits: fromTemplate?.traits || [] as string[],
 
-    style: "pixar-3d",
-    gender: "girl" as "boy" | "girl",
-    ageLook: "",
+    style: tplVd.style || "pixar-3d",
+    gender: (tplVd.gender === "boy" || tplVd.gender === "male" ? "boy" : tplVd.gender === "other" || tplVd.gender === "neutral" ? "other" : "girl") as "boy" | "girl" | "other",
+    ageLook: tplVd.ageLook || "",
 
-    wearHijab: false,
+    wearHijab: !!(tplVd.hijabStyle || tplVd.hijabColor || tplMr.hijabAlways),
 
-    skinTone: "",
-    eyeColor: "",
-    faceShape: "",
-    eyebrowStyle: "",
-    noseStyle: "",
-    cheekStyle: "",
+    skinTone: tplVd.skinTone || "",
+    eyeColor: tplVd.eyeColor || "",
+    faceShape: tplVd.faceShape || "",
+    eyebrowStyle: tplVd.eyebrowStyle || "",
+    noseStyle: tplVd.noseStyle || "",
+    cheekStyle: tplVd.cheekStyle || "",
 
-    hairStyle: "",
-    hairColor: "",
-    hairVisibility: "visible" as "visible" | "partially-visible" | "hidden",
+    hairStyle: tplVd.hairStyle || "",
+    hairColor: tplVd.hairColor || "",
+    hairVisibility: (tplVd.hairVisibility || "visible") as "visible" | "partially-visible" | "hidden",
 
-    hijabStyle: "",
-    hijabColor: "",
+    hijabStyle: tplVd.hijabStyle || "",
+    hijabColor: tplVd.hijabColor || "",
 
-    topGarmentType: "",
-    topGarmentColor: "",
-    topGarmentDetails: "",
+    topGarmentType: tplVd.topGarmentType || "",
+    topGarmentColor: tplVd.topGarmentColor || "",
+    topGarmentDetails: tplVd.topGarmentDetails || "",
 
-    bottomGarmentType: "",
-    bottomGarmentColor: "",
+    bottomGarmentType: tplVd.bottomGarmentType || "",
+    bottomGarmentColor: tplVd.bottomGarmentColor || "",
 
-    shoeType: "",
-    shoeColor: "",
+    shoeType: tplVd.shoeType || "",
+    shoeColor: tplVd.shoeColor || "",
 
-    bodyBuild: "",
-    heightFeel: "",
-    heightCm: 0,
+    bodyBuild: tplVd.bodyBuild || "",
+    heightFeel: tplVd.heightFeel || "",
+    heightCm: tplVd.heightCm || 0,
     heightFeet: 0,
-    weightKg: 0,
+    weightKg: tplVd.weightKg || 0,
 
-    facialHair: "none",
-    glasses: "none",
+    facialHair: tplVd.facialHair || "none",
+    glasses: tplVd.glasses || "none",
 
     accessoriesText: "",
-    paletteNotes: "",
+    accessoriesList: tplVd.accessories || [] as string[],
+    paletteNotes: tplVd.paletteNotes || "",
     outfitRules: "",
 
-    longSleeves: true,
-    looseClothing: true,
-    modestyNotes: "",
+    longSleeves: tplMr.longSleeves ?? true,
+    looseClothing: tplMr.looseClothing ?? true,
+    modestyNotes: tplMr.notes || "",
   });
 
   const updateForm = (field: string, value: unknown) =>
@@ -321,12 +437,15 @@ export default function CharacterCreatePage() {
   const ageNum = Number(form.ageRange) || 0;
   const isElderAge = ageNum >= 18;
   const isElderMale = form.gender === "boy" && ageNum >= 13;
+  const isOther = form.gender === "other";
 
-  const hairOptions = form.gender === "boy"
-    ? (isElderMale ? HAIR_STYLES_ELDER_MALE : HAIR_STYLES_BOY)
-    : form.wearHijab
-      ? HIJAB_STYLES
-      : HAIR_STYLES_GIRL;
+  const hairOptions = isOther
+    ? HAIR_STYLES_OTHER
+    : form.gender === "boy"
+      ? (isElderMale ? HAIR_STYLES_ELDER_MALE : HAIR_STYLES_BOY)
+      : form.wearHijab
+        ? HIJAB_STYLES
+        : HAIR_STYLES_GIRL;
 
   const handleCreateAndGenerate = async () => {
     if (!form.name.trim()) {
@@ -350,10 +469,12 @@ export default function CharacterCreatePage() {
 
     setIsGenerating(true);
     try {
-      const accessories = form.accessoriesText
+      // Merge preset chips + any custom comma-separated extras
+      const customExtras = form.accessoriesText
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+      const accessories = [...new Set([...form.accessoriesList, ...customExtras])];
 
       const char = await createCharacter.mutateAsync({
         name: form.name.trim(),
@@ -419,6 +540,17 @@ export default function CharacterCreatePage() {
       const charId = char.id || (char as any)._id || "";
       const portraitRes = await charactersApi.generatePortrait(charId, { style: form.style });
       setCreatedCharacter(portraitRes.character);
+
+      // Auto-update template thumbnail with the newly generated portrait
+      const generatedImageUrl = portraitRes.character?.imageUrl || portraitRes.imageUrl;
+      if (fromTemplate && generatedImageUrl) {
+        try {
+          await characterTemplatesApi.updateThumbnail(fromTemplate._id, generatedImageUrl);
+          queryClient.invalidateQueries({ queryKey: ["character-templates"] });
+        } catch (_) {
+          // non-critical — don't block the user flow
+        }
+      }
 
       await refreshUser();
       toast({
@@ -515,10 +647,20 @@ export default function CharacterCreatePage() {
       title="✨ Create Character"
       subtitle="Design your character's look — it stays consistent in every illustration!"
       actions={
-        <Button variant="outline" onClick={() => navigate("/app/characters")}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Cancel
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-orange-300 text-orange-600 hover:bg-orange-50"
+            onClick={() => navigate("/app/character-templates")}
+          >
+            <LayoutGrid className="w-4 h-4 mr-2" />
+            Browse Templates
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/app/characters")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Cancel
+          </Button>
+        </div>
       }
     >
       <div className="max-w-4xl mx-auto">
@@ -570,6 +712,40 @@ export default function CharacterCreatePage() {
             />
           </div>
         </div>
+
+        {/* Template banner — shown when a template was selected */}
+        {fromTemplate ? (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-2">
+            <span className="text-2xl">✨</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800">
+                Pre-filled from template: <span className="italic">{fromTemplate.name}</span>
+              </p>
+              <p className="text-xs text-amber-600">All fields are editable — customise before generating.</p>
+            </div>
+            <button
+              onClick={() => navigate("/app/character-templates")}
+              className="text-xs text-amber-600 underline hover:text-amber-800 shrink-0"
+            >
+              Change template
+            </button>
+          </div>
+        ) : (
+          /* No template selected — prompt user to browse */
+          <div className="flex items-center gap-3 bg-orange-50 border border-dashed border-orange-300 rounded-2xl px-4 py-3 mb-2">
+            <span className="text-2xl">🎨</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-orange-700">Start faster with a template</p>
+              <p className="text-xs text-orange-500">Pre-filled visual DNA, colours, outfit — customise in seconds.</p>
+            </div>
+            <button
+              onClick={() => navigate("/app/character-templates")}
+              className="shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+            >
+              Browse Templates →
+            </button>
+          </div>
+        )}
 
         <div className="card-glow p-8 space-y-6 rounded-3xl border-2 border-border">
           {currentStep === 0 && (
@@ -710,8 +886,16 @@ export default function CharacterCreatePage() {
                   <Label>Gender</Label>
                   <RadioGroup
                     value={form.gender}
-                    onValueChange={(v) => updateForm("gender", v)}
-                    className="flex gap-4"
+                    onValueChange={(v) => {
+                      updateForm("gender", v);
+                      // Clear hijab settings when switching away from girl
+                      if (v !== "girl") {
+                        updateForm("wearHijab", false);
+                        updateForm("hijabStyle", "");
+                        updateForm("hijabColor", "");
+                      }
+                    }}
+                    className="flex gap-4 flex-wrap"
                   >
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="girl" id="gender-girl" />
@@ -720,6 +904,10 @@ export default function CharacterCreatePage() {
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="boy" id="gender-boy" />
                       <label htmlFor="gender-boy" className="text-sm cursor-pointer">Boy</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="other" id="gender-other" />
+                      <label htmlFor="gender-other" className="text-sm cursor-pointer">Other / Creature</label>
                     </div>
                   </RadioGroup>
                 </div>
@@ -740,24 +928,54 @@ export default function CharacterCreatePage() {
                   </div>
                 )}
 
+                {isOther && (
+                  <div className="col-span-1 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-700 dark:text-yellow-300">
+                    🐦 <strong>Non-human character.</strong> Use <em>Age Look</em> to describe the creature type (e.g. "small cartoon bird"). Skin Tone = fur/feather/scale colour. Hair = crest or texture.
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label>Age Look</Label>
+                  <Label>{isOther ? "Creature Description" : "Age Look"}</Label>
                   <Input
-                    placeholder="e.g. 12 year old girl"
+                    placeholder={isOther ? "e.g. small cartoon bird, plump and round" : "e.g. 12 year old girl"}
                     value={form.ageLook}
                     onChange={(e) => updateForm("ageLook", e.target.value)}
                   />
                 </div>
               </div>
 
+              {/* Creature tip banner */}
+              {isOther && (
+                <div className="rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-sm text-yellow-800 dark:text-yellow-200 space-y-1">
+                  <p className="font-semibold">🐾 Tips for animal / creature characters:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                    <li><strong>Skin Tone</strong> → describe fur / feather / scale colour (e.g. "bright golden-yellow feathers")</li>
+                    <li><strong>Eye Color</strong> → pick the closest match or use Palette Notes for a custom description</li>
+                    <li><strong>Face Shape</strong> → pick whichever is closest (Round & Friendly works for most cartoon animals)</li>
+                    <li><strong>Hair / Texture</strong> → select a crest, fur, or scale option from the dropdown</li>
+                    <li><strong>Top Garment</strong> → type "none (feathers)" or leave blank if the character wears no clothes</li>
+                    <li><strong>Accessories</strong> → use for key props (e.g. "small red seed in beak")</li>
+                    <li><strong>Palette Notes</strong> → describe the full colour scheme (e.g. "golden yellow body, orange wingtips, white belly")</li>
+                  </ul>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label>Skin Tone *</Label>
-                <Select value={form.skinTone} onValueChange={(v) => updateForm("skinTone", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select skin tone..." /></SelectTrigger>
-                  <SelectContent>
-                    {SKIN_TONES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>{isOther ? "Fur / Feather / Scale Colour *" : "Skin Tone *"}</Label>
+                {isOther ? (
+                  <Input
+                    placeholder="e.g. bright golden-yellow feathers, orange wingtips"
+                    value={form.skinTone}
+                    onChange={(e) => updateForm("skinTone", e.target.value)}
+                  />
+                ) : (
+                  <Select value={form.skinTone} onValueChange={(v) => updateForm("skinTone", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select skin tone..." /></SelectTrigger>
+                    <SelectContent>
+                      {SKIN_TONES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -855,10 +1073,16 @@ export default function CharacterCreatePage() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Hair / Hijab Style</Label>
+                  <Label>
+                    {isOther ? "Head Texture / Crest" : form.wearHijab ? "Hijab Style" : "Hair Style"}
+                  </Label>
                   <Select
-                    value={form.wearHijab ? form.hijabStyle : form.hairStyle}
-                    onValueChange={(v) => form.wearHijab ? updateForm("hijabStyle", v) : updateForm("hairStyle", v)}
+                    value={isOther ? form.hairStyle : form.wearHijab ? form.hijabStyle : form.hairStyle}
+                    onValueChange={(v) =>
+                      isOther ? updateForm("hairStyle", v)
+                      : form.wearHijab ? updateForm("hijabStyle", v)
+                      : updateForm("hairStyle", v)
+                    }
                   >
                     <SelectTrigger><SelectValue placeholder="Select style..." /></SelectTrigger>
                     <SelectContent>
@@ -868,17 +1092,23 @@ export default function CharacterCreatePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{form.wearHijab ? "Hijab Color" : "Hair Color"}</Label>
+                  <Label>
+                    {isOther ? "Crest / Texture Colour" : form.wearHijab ? "Hijab Color" : "Hair Color"}
+                  </Label>
                   <Input
-                    placeholder={form.wearHijab ? "e.g. soft blue" : "e.g. dark brown"}
-                    value={form.wearHijab ? form.hijabColor : form.hairColor}
-                    onChange={(e) => form.wearHijab ? updateForm("hijabColor", e.target.value) : updateForm("hairColor", e.target.value)}
+                    placeholder={isOther ? "e.g. orange crest" : form.wearHijab ? "e.g. soft blue" : "e.g. dark brown"}
+                    value={isOther ? form.hairColor : form.wearHijab ? form.hijabColor : form.hairColor}
+                    onChange={(e) =>
+                      isOther ? updateForm("hairColor", e.target.value)
+                      : form.wearHijab ? updateForm("hijabColor", e.target.value)
+                      : updateForm("hairColor", e.target.value)
+                    }
                   />
                 </div>
               </div>
 
-              {/* Facial Hair & Glasses — critical for elder/adult consistency */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              {/* Facial Hair & Glasses — critical for elder/adult consistency; hidden for non-human */}
+              {!isOther && <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>
                     Facial Hair
@@ -913,138 +1143,204 @@ export default function CharacterCreatePage() {
                   </Select>
                   <p className="text-xs text-muted-foreground">Lock this so every illustration shows exact same glasses / no glasses</p>
                 </div>
-              </div>
+              </div>}
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              {/* ── Outfit ─────────────────────────────────────────────────── */}
+              <div className="space-y-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">👕 Outfit</p>
+
+                {/* Top Garment */}
                 <div className="space-y-2">
                   <Label>Top Garment Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateForm("topGarmentType", form.topGarmentType === opt ? "" : opt)}
+                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                          form.topGarmentType === opt
+                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                            : "border-border hover:border-amber-300"
+                        )}>{opt}</button>
+                    ))}
+                  </div>
                   <Input
-                    placeholder="e.g. salwar kameez top, abaya, shirt"
-                    value={form.topGarmentType}
+                    placeholder="Or type a custom garment type…"
+                    value={(form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).includes(form.topGarmentType) ? "" : form.topGarmentType}
                     onChange={(e) => updateForm("topGarmentType", e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Top Garment Color</Label>
-                  <Input
-                    placeholder="e.g. cream, blue, olive"
-                    value={form.topGarmentColor}
-                    onChange={(e) => updateForm("topGarmentColor", e.target.value)}
-                  />
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Top Color</Label>
+                    <Input placeholder="e.g. mint green, cream" value={form.topGarmentColor}
+                      onChange={(e) => updateForm("topGarmentColor", e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Top Details <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                    <Input placeholder="e.g. embroidered collar, plain fabric" value={form.topGarmentDetails}
+                      onChange={(e) => updateForm("topGarmentDetails", e.target.value)} />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Top Garment Details</Label>
-                <Input
-                  placeholder="e.g. embroidered cuffs, simple plain fabric"
-                  value={form.topGarmentDetails}
-                  onChange={(e) => updateForm("topGarmentDetails", e.target.value)}
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Bottom Garment */}
                 <div className="space-y-2">
                   <Label>Bottom Garment Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateForm("bottomGarmentType", form.bottomGarmentType === opt ? "" : opt)}
+                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                          form.bottomGarmentType === opt
+                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                            : "border-border hover:border-amber-300"
+                        )}>{opt}</button>
+                    ))}
+                  </div>
                   <Input
-                    placeholder="e.g. pants, skirt, shalwar"
-                    value={form.bottomGarmentType}
+                    placeholder="Or type a custom bottom garment…"
+                    value={(form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).includes(form.bottomGarmentType) ? "" : form.bottomGarmentType}
                     onChange={(e) => updateForm("bottomGarmentType", e.target.value)}
+                    className="mt-1"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Bottom Garment Color</Label>
-                  <Input
-                    placeholder="e.g. dark blue, beige"
-                    value={form.bottomGarmentColor}
-                    onChange={(e) => updateForm("bottomGarmentColor", e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Bottom Color</Label>
+                  <Input placeholder="e.g. dark navy, beige" value={form.bottomGarmentColor}
+                    onChange={(e) => updateForm("bottomGarmentColor", e.target.value)} />
+                </div>
+
+                {/* Shoes */}
                 <div className="space-y-2">
                   <Label>Shoe Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SHOE_PRESETS.map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateForm("shoeType", form.shoeType === opt ? "" : opt)}
+                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                          form.shoeType === opt
+                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                            : "border-border hover:border-amber-300"
+                        )}>{opt}</button>
+                    ))}
+                  </div>
                   <Input
-                    placeholder="e.g. sandals, joggers, flats"
-                    value={form.shoeType}
+                    placeholder="Or type a custom shoe type…"
+                    value={SHOE_PRESETS.includes(form.shoeType) ? "" : form.shoeType}
                     onChange={(e) => updateForm("shoeType", e.target.value)}
+                    className="mt-1"
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label>Shoe Color</Label>
-                  <Input
-                    placeholder="e.g. white, brown"
-                    value={form.shoeColor}
-                    onChange={(e) => updateForm("shoeColor", e.target.value)}
-                  />
+                  <Input placeholder="e.g. white, brown, forest green" value={form.shoeColor}
+                    onChange={(e) => updateForm("shoeColor", e.target.value)} />
                 </div>
               </div>
 
-              {/* Height & Weight — used to lock character proportions across all illustrations */}
-              <div className="space-y-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+              {/* ── Body Proportions ───────────────────────────────────────── */}
+              <div className="space-y-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
                 <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
                   📏 Body Proportions
-                  <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks character size across all illustrations)</span>
+                  <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks size across all illustrations)</span>
                 </p>
-                <div className="grid sm:grid-cols-2 gap-4">
+
+                <div className="space-y-2">
+                  <Label>Height Feel</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {HEIGHT_FEELS.map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateForm("heightFeel", form.heightFeel === opt ? "" : opt)}
+                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                          form.heightFeel === opt
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                            : "border-border hover:border-blue-300"
+                        )}>{opt}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Height (cm)</Label>
                     <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={40}
-                        max={220}
-                        placeholder="e.g. 115"
+                      <Input type="number" min={40} max={220} placeholder="e.g. 115"
                         value={form.heightCm || ""}
                         onChange={(e) => updateForm("heightCm", parseInt(e.target.value, 10) || 0)}
-                        className="flex-1"
-                      />
+                        className="flex-1" />
                       <span className="text-xs text-muted-foreground shrink-0">cm</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Typical for age {form.ageRange}: {suggestedHeightRange(ageNum)}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Typical: {suggestedHeightRange(ageNum)}</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Height (feet)</Label>
-                    <Input
-                      type="number"
-                      value={form.heightFeet}
-                      onChange={(e) => updateForm('heightFeet', parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 4.0"
-                      step="0.1"
-                    />
+                    <Label>Height (ft)</Label>
+                    <Input type="number" value={form.heightFeet || ""}
+                      onChange={(e) => updateForm("heightFeet", parseFloat(e.target.value) || 0)}
+                      placeholder="e.g. 4.0" step="0.1" />
                   </div>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Weight (kg)</Label>
-                    <Input
-                      type="number"
-                      value={form.weightKg}
-                      onChange={(e) => updateForm('weightKg', parseInt(e.target.value) || 0)}
-                      placeholder="e.g. 35"
-                    />
+                    <Input type="number" value={form.weightKg || ""}
+                      onChange={(e) => updateForm("weightKg", parseInt(e.target.value) || 0)}
+                      placeholder="e.g. 35" />
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Build Notes <span className="text-xs text-muted-foreground">(optional extra description)</span></Label>
+                  <Label>Body Build</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {BODY_BUILDS.map((opt) => (
+                      <button key={opt} type="button"
+                        onClick={() => updateForm("bodyBuild", form.bodyBuild === opt ? "" : opt)}
+                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                          form.bodyBuild === opt
+                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                            : "border-border hover:border-blue-300"
+                        )}>{opt}</button>
+                    ))}
+                  </div>
                   <Input
-                    placeholder="e.g. broad shoulders, petite frame"
-                    value={form.bodyBuild}
+                    placeholder="Or describe a custom build…"
+                    value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
                     onChange={(e) => updateForm("bodyBuild", e.target.value)}
+                    className="mt-1"
                   />
                 </div>
               </div>
 
+              {/* ── Accessories ────────────────────────────────────────────── */}
               <div className="space-y-2">
                 <Label>Accessories</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ACCESSORIES_PRESETS.map((opt) => (
+                    <button key={opt} type="button"
+                      onClick={() => {
+                        const list = form.accessoriesList.includes(opt)
+                          ? form.accessoriesList.filter((a) => a !== opt)
+                          : [...form.accessoriesList, opt];
+                        updateForm("accessoriesList", list);
+                      }}
+                      className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                        form.accessoriesList.includes(opt)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border hover:border-primary/30"
+                      )}>{opt}</button>
+                  ))}
+                </div>
                 <Input
-                  placeholder="e.g. round glasses, small bracelet"
+                  placeholder="Add more accessories (comma-separated)…"
                   value={form.accessoriesText}
                   onChange={(e) => updateForm("accessoriesText", e.target.value)}
+                  className="mt-1"
                 />
+                {(form.accessoriesList.length > 0 || form.accessoriesText) && (
+                  <p className="text-xs text-primary">
+                    Selected: {[...form.accessoriesList, ...form.accessoriesText.split(",").map(s=>s.trim()).filter(Boolean)].join(", ")}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -1057,10 +1353,10 @@ export default function CharacterCreatePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Legacy Outfit Rules</Label>
+                <Label>Outfit Rules <span className="text-xs text-muted-foreground">(extra locking rules for AI)</span></Label>
                 <Textarea
-                  rows={3}
-                  placeholder="e.g. traditional modest dress, no random color changes"
+                  rows={2}
+                  placeholder="e.g. always wears the same uniform, no random color changes"
                   value={form.outfitRules}
                   onChange={(e) => updateForm("outfitRules", e.target.value)}
                 />

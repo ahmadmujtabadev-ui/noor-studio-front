@@ -472,7 +472,7 @@ export function useBookBuilder() {
     return illustrationNodes.length > 0 && illustrationNodes.every((n) => n.status === "approved");
   }, [illustrationNodes]);
 
-  const generateAllIllustrations = useCallback(async (force = false) => {
+  const generateAllIllustrations = useCallback(async (force = false, variantCount = 1) => {
     const pid = getPid();
     setGlobalLoading(true);
     setLoadingKey("generate-all-illustrations");
@@ -494,7 +494,7 @@ export function useBookBuilder() {
 
       for (const node of toGenerate) {
         setLoadingKey(`ill-${node.key}`);
-        await reviewApi.regenerateIllustration(pid, node.key, { variantCount: 4, style: artStyle });
+        await reviewApi.regenerateIllustration(pid, node.key, { variantCount, style: artStyle });
         // Refresh to show progressive updates
         const updated = await reviewApi.getIllustrations(pid);
         const updatedNodes = normArr<IllustrationNode>(updated.illustrations);
@@ -577,8 +577,14 @@ export function useBookBuilder() {
 
       // Hydrate project fields
       if (project.ageRange)          setAgeRange(project.ageRange);
-      if (project.universeId)        setUniverseId(project.universeId);
-      if (project.knowledgeBaseId)   setKnowledgeBaseId(project.knowledgeBaseId);
+      if (project.universeId) {
+        const uid = project.universeId as any;
+        setUniverseId(typeof uid === 'string' ? uid : uid?._id?.toString() || uid?.id || '');
+      }
+      if (project.knowledgeBaseId) {
+        const kid = project.knowledgeBaseId as any;
+        setKnowledgeBaseId(typeof kid === 'string' ? kid : kid?._id?.toString() || kid?.id || '');
+      }
       if (project.learningObjective) setTheme(project.learningObjective);
       if (project.authorName)        setAuthorName(project.authorName);
       if (project.language)          setLanguage(project.language);

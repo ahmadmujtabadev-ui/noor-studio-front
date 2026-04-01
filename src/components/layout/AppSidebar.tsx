@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight,
   Plus, LogOut, Zap, Check,
   Star, PenLine, Palette, LayoutTemplate,
-  Layers, Wand2, ImageIcon, BookMarked, Rocket,
+  Layers, Wand2, ImageIcon, BookMarked, Rocket, LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -22,11 +22,12 @@ const KB_WORKFLOWS = [
 ] as const;
 
 const mainNavItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
-  { icon: Globe, label: "Universes", href: "/app/universes" },
-  { icon: Users, label: "Characters", href: "/app/characters" },
-  { icon: Library, label: "Knowledge Base", href: "/app/knowledge-base" },
-  { icon: FolderKanban, label: "Projects", href: "/app/projects" },
+  { icon: LayoutDashboard, label: "Dashboard",           href: "/app/dashboard" },
+  { icon: Globe,           label: "Universes",           href: "/app/universes" },
+  { icon: Users,           label: "Characters",          href: "/app/characters" },
+  { icon: LayoutGrid,      label: "Char. Templates",     href: "/app/character-templates" },
+  { icon: Library,         label: "Knowledge Base",      href: "/app/knowledge-base" },
+  { icon: FolderKanban,    label: "Projects",            href: "/app/projects" },
 ];
 
 const createNavItems = [
