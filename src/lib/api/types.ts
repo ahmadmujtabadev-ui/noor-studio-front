@@ -790,6 +790,9 @@ export interface Character {
     poseCount?: number;
   };
 
+  // Set when this character has been published to the shared template library
+  publishedAsTemplateId?: string | null;
+
   updatedAt: string;
   createdAt?: string;
 

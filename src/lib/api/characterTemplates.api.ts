@@ -5,7 +5,7 @@ export interface CharacterTemplate {
   _id: string;
   name: string;
   description: string;
-  category: 'girl' | 'boy' | 'elder-female' | 'elder-male' | 'animal' | 'toddler' | 'teen-girl' | 'teen-boy';
+  category: 'girl' | 'boy' | 'elder-female' | 'elder-male' | 'animal' | 'toddler' | 'teen-girl' | 'teen-boy' | 'adult-male' | 'adult-female';
   thumbnailUrl: string;
   tags: string[];
   isDefault: boolean;

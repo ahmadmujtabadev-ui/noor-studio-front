@@ -6,10 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { characterTemplatesApi } from "@/lib/api/characterTemplates.api";
 import type { CharacterTemplate } from "@/lib/api/characterTemplates.api";
 import {
   ArrowLeft,
@@ -37,6 +37,29 @@ import { charactersApi } from "@/lib/api/characters.api";
 import { useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useUniverses } from "@/hooks/useUniverses";
 import type { Character } from "@/lib/api/types";
+import { VisualPicker } from "@/components/shared/VisualPicker";
+import {
+  Pixar3DSvg, WatercolorSvg, FlatIllustrationSvg, StorybookSvg, GhibliSvg,
+  GirlSvg, BoySvg, CreatureSvg,
+  SkinToneSwatch, SKIN_TONE_COLORS,
+  EyeSwatch, EYE_COLOR_MAP,
+  RoundFaceSvg, OvalFaceSvg, HeartFaceSvg, SquareFaceSvg, OvalBalancedFaceSvg, RoundYouthfulFaceSvg,
+  ThickArchedBrowSvg, ThinStraightBrowSvg, BushyStraightBrowSvg, SoftRoundedBrowSvg, NaturalFullBrowSvg,
+  ButtonNoseSvg, BroadFlatNoseSvg, StraightNarrowNoseSvg, RoundedSoftNoseSvg, WideNostrilsNoseSvg,
+  ChubbyRosyCheekSvg, FlatSmoothCheekSvg, HighDefinedCheekSvg, DimpledCheekSvg, SoftRoundCheekSvg,
+  ShortHairBoySvg, CurlyHairBoySvg, WavyHairBoySvg, SpikyHairBoySvg, AfroHairSvg, BuzzCutSvg,
+  LongHairGirlSvg, CurlyLongHairSvg, BraidedHairSvg, PonytailHairSvg, BunHairSvg,
+  HijabSvg, BaldSvg, WhiteShortHairSvg, GrayShortHairSvg, FeatheredCrestSvg, FurBodySvg,
+  SlimBodySvg, AverageBodySvg, ChubbyBodySvg, AthleticBodySvg, StockyBodySvg,
+  TallSlenderBodySvg, PetiteBodySvg, BroadShoulderBodySvg, ToddlerBodySvg, RoundFullBodySvg,
+  HeightFeelSvg,
+  OUTFIT_COLORS,
+  LongSleeveTunicSvg, AbayaSvg, ModestBlouseSvg, SalwarKameezTopSvg, LongSleeveDressSvg, SchoolUniformBlouseSvg, LongCardiganSvg,
+  TShirtSvg, LongSleeveShirtSvg, CollarShirtSvg, HoodieSvg, ThobeSvg, KurtaSvg, JacketSvg,
+  WideLegTrousersSvg, LongSkirtSvg, MaxiSkirtSvg, SchoolSkirtSvg, ShalwarSvg, PalazzoPantsSvg,
+  TrousersSvg, JeansSvg, ShortsSvg,
+  SneakersSvg, SchoolShoesSvg, MaryJaneFlats, SandalsSvg, LeatherSandalsSvg, BootsSvg, SlippersSvg, OxfordShoesSvg,
+} from "@/components/shared/CharacterSvgIcons";
 
 const SKIN_TONES = [
   { value: "porcelain", label: "Porcelain" },
@@ -267,6 +290,9 @@ const SHOE_PRESETS = [
   "Oxford shoes",
   "indoor slippers",
   "boots",
+  "slippers",
+  "mary jane flats",
+  "oxford shoes",
 ];
 
 const ACCESSORIES_PRESETS = [
@@ -857,83 +883,70 @@ export default function CharacterCreatePage() {
           )}
 
           {currentStep === 1 && (
-            <div className="space-y-5">
+            <div className="space-y-6">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
 
+              {/* ── Art Style ─────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label>Art Style</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {STYLES.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => updateForm("style", s.id)}
-                      className={cn(
-                        "p-3 rounded-xl border-2 text-sm text-center transition-all",
-                        form.style === s.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/30"
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
+                <Label className="text-base font-bold">🎬 Art Style</Label>
+                <VisualPicker
+                  columns={5}
+                  iconSize="lg"
+                  value={form.style}
+                  onChange={(v) => updateForm("style", v)}
+                  options={[
+                    { value: "pixar-3d",          label: "Pixar 3D",       icon: <Pixar3DSvg /> },
+                    { value: "watercolor",         label: "Watercolor",     icon: <WatercolorSvg /> },
+                    { value: "flat-illustration",  label: "Flat Illus.",    icon: <FlatIllustrationSvg /> },
+                    { value: "storybook",          label: "Storybook",      icon: <StorybookSvg /> },
+                    { value: "ghibli",             label: "Ghibli",         icon: <GhibliSvg /> },
+                  ]}
+                />
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Gender</Label>
-                  <RadioGroup
-                    value={form.gender}
-                    onValueChange={(v) => {
-                      updateForm("gender", v);
-                      // Clear hijab settings when switching away from girl
-                      if (v !== "girl") {
-                        updateForm("wearHijab", false);
-                        updateForm("hijabStyle", "");
-                        updateForm("hijabColor", "");
-                      }
-                    }}
-                    className="flex gap-4 flex-wrap"
-                  >
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="girl" id="gender-girl" />
-                      <label htmlFor="gender-girl" className="text-sm cursor-pointer">Girl</label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="boy" id="gender-boy" />
-                      <label htmlFor="gender-boy" className="text-sm cursor-pointer">Boy</label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="other" id="gender-other" />
-                      <label htmlFor="gender-other" className="text-sm cursor-pointer">Other / Creature</label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
+              {/* ── Gender + Hijab + Age Look ─────────────────────────────── */}
+              <div className="space-y-3">
+                <Label className="text-base font-bold">👤 Gender</Label>
+                <VisualPicker
+                  columns={3}
+                  iconSize="lg"
+                  value={form.gender}
+                  onChange={(v) => {
+                    updateForm("gender", v);
+                    if (v !== "girl") {
+                      updateForm("wearHijab", false);
+                      updateForm("hijabStyle", "");
+                      updateForm("hijabColor", "");
+                    }
+                  }}
+                  options={[
+                    { value: "girl",  label: "Girl",            icon: <GirlSvg /> },
+                    { value: "boy",   label: "Boy",             icon: <BoySvg /> },
+                    { value: "other", label: "Other / Creature",icon: <CreatureSvg /> },
+                  ]}
+                />
                 {form.gender === "girl" && (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 pt-1">
                     <Switch
                       checked={form.wearHijab}
                       onCheckedChange={(v) => {
                         updateForm("wearHijab", v);
-                        if (!v) {
-                          updateForm("hijabStyle", "");
-                          updateForm("hijabColor", "");
-                        }
+                        if (!v) { updateForm("hijabStyle", ""); updateForm("hijabColor", ""); }
                       }}
                     />
-                    <Label>Wears Hijab</Label>
+                    <Label>Wears Hijab 🧕</Label>
                   </div>
                 )}
-
                 {isOther && (
-                  <div className="col-span-1 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-700 dark:text-yellow-300">
-                    🐦 <strong>Non-human character.</strong> Use <em>Age Look</em> to describe the creature type (e.g. "small cartoon bird"). Skin Tone = fur/feather/scale colour. Hair = crest or texture.
+                  <div className="rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
+                    <p className="font-semibold">🐾 Tips for animal / creature characters:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><strong>Skin Tone</strong> → describe fur / feather / scale colour</li>
+                      <li><strong>Hair / Texture</strong> → select a crest, fur, or scale option</li>
+                      <li><strong>Palette Notes</strong> → full colour scheme description</li>
+                    </ul>
                   </div>
                 )}
-
                 <div className="space-y-2">
                   <Label>{isOther ? "Creature Description" : "Age Look"}</Label>
                   <Input
@@ -944,24 +957,11 @@ export default function CharacterCreatePage() {
                 </div>
               </div>
 
-              {/* Creature tip banner */}
-              {isOther && (
-                <div className="rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-sm text-yellow-800 dark:text-yellow-200 space-y-1">
-                  <p className="font-semibold">🐾 Tips for animal / creature characters:</p>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs">
-                    <li><strong>Skin Tone</strong> → describe fur / feather / scale colour (e.g. "bright golden-yellow feathers")</li>
-                    <li><strong>Eye Color</strong> → pick the closest match or use Palette Notes for a custom description</li>
-                    <li><strong>Face Shape</strong> → pick whichever is closest (Round & Friendly works for most cartoon animals)</li>
-                    <li><strong>Hair / Texture</strong> → select a crest, fur, or scale option from the dropdown</li>
-                    <li><strong>Top Garment</strong> → type "none (feathers)" or leave blank if the character wears no clothes</li>
-                    <li><strong>Accessories</strong> → use for key props (e.g. "small red seed in beak")</li>
-                    <li><strong>Palette Notes</strong> → describe the full colour scheme (e.g. "golden yellow body, orange wingtips, white belly")</li>
-                  </ul>
-                </div>
-              )}
-
+              {/* ── Skin Tone ─────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label>{isOther ? "Fur / Feather / Scale Colour *" : "Skin Tone *"}</Label>
+                <Label className="text-base font-bold">
+                  {isOther ? "🐾 Fur / Feather / Scale Colour *" : "🎨 Skin Tone *"}
+                </Label>
                 {isOther ? (
                   <Input
                     placeholder="e.g. bright golden-yellow feathers, orange wingtips"
@@ -969,263 +969,450 @@ export default function CharacterCreatePage() {
                     onChange={(e) => updateForm("skinTone", e.target.value)}
                   />
                 ) : (
-                  <Select value={form.skinTone} onValueChange={(v) => updateForm("skinTone", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select skin tone..." /></SelectTrigger>
-                    <SelectContent>
-                      {SKIN_TONES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <VisualPicker
+                    columns={7}
+                    iconSize="md"
+                    value={form.skinTone}
+                    onChange={(v) => updateForm("skinTone", v)}
+                    options={Object.entries(SKIN_TONE_COLORS).map(([value, { label }]) => ({
+                      value,
+                      label,
+                      icon: <SkinToneSwatch color={value} />,
+                    }))}
+                  />
                 )}
               </div>
 
+              {/* ── Eye Color ─────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label>Eye Color *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {EYE_COLORS.map((ec) => (
-                    <button
-                      key={ec.value}
-                      type="button"
-                      onClick={() => updateForm("eyeColor", ec.value)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm border-2 transition-all",
-                        form.eyeColor === ec.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/30"
-                      )}
-                    >
-                      {ec.label}
-                    </button>
-                  ))}
-                </div>
+                <Label className="text-base font-bold">👁️ Eye Color *</Label>
+                <VisualPicker
+                  columns={7}
+                  iconSize="md"
+                  value={form.eyeColor}
+                  onChange={(v) => updateForm("eyeColor", v)}
+                  options={Object.entries(EYE_COLOR_MAP).map(([value]) => ({
+                    value,
+                    label: value.split("-").map(w => w[0].toUpperCase() + w.slice(1)).join(" "),
+                    icon: <EyeSwatch color={value} />,
+                  }))}
+                />
               </div>
 
+              {/* ── Face Shape ────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label>Face Shape *</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {FACE_SHAPES.map((fs) => (
-                    <button
-                      key={fs.value}
-                      type="button"
-                      onClick={() => updateForm("faceShape", fs.value)}
-                      className={cn(
-                        "p-2 rounded-lg text-sm border-2 text-center transition-all",
-                        form.faceShape === fs.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/30"
-                      )}
-                    >
-                      {fs.label}
-                    </button>
-                  ))}
-                </div>
+                <Label className="text-base font-bold">😊 Face Shape *</Label>
+                <VisualPicker
+                  columns={6}
+                  iconSize="md"
+                  value={form.faceShape}
+                  onChange={(v) => updateForm("faceShape", v)}
+                  options={[
+                    { value: "round-friendly",  label: "Round",        icon: <RoundFaceSvg /> },
+                    { value: "oval-gentle",      label: "Oval Gentle",  icon: <OvalFaceSvg /> },
+                    { value: "heart-creative",   label: "Heart",        icon: <HeartFaceSvg /> },
+                    { value: "square-determined",label: "Square",       icon: <SquareFaceSvg /> },
+                    { value: "oval-balanced",    label: "Oval",         icon: <OvalBalancedFaceSvg /> },
+                    { value: "round-youthful",   label: "Round Young",  icon: <RoundYouthfulFaceSvg /> },
+                  ]}
+                />
               </div>
 
+              {/* ── Eyebrow / Nose / Cheek ────────────────────────────────── */}
               <div className="grid sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Eyebrow Style</Label>
-                  <div className="flex flex-col gap-1.5">
-                    {EYEBROW_STYLES.map((e) => (
-                      <button key={e.value} type="button"
-                        onClick={() => updateForm("eyebrowStyle", e.value)}
-                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
-                          form.eyebrowStyle === e.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/30"
-                        )}>
-                        {e.label}
-                      </button>
-                    ))}
-                  </div>
+                  <Label className="font-bold">🪮 Eyebrow Style</Label>
+                  <VisualPicker
+                    columns={3}
+                    iconSize="sm"
+                    value={form.eyebrowStyle}
+                    onChange={(v) => updateForm("eyebrowStyle", v)}
+                    allowDeselect
+                    options={[
+                      { value: "thick-arched",   label: "Thick Arch",  icon: <ThickArchedBrowSvg /> },
+                      { value: "thin-straight",  label: "Thin Straight",icon: <ThinStraightBrowSvg /> },
+                      { value: "bushy-straight", label: "Bushy",       icon: <BushyStraightBrowSvg /> },
+                      { value: "soft-rounded",   label: "Soft",        icon: <SoftRoundedBrowSvg /> },
+                      { value: "natural-full",   label: "Natural",     icon: <NaturalFullBrowSvg /> },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Nose Style</Label>
-                  <div className="flex flex-col gap-1.5">
-                    {NOSE_STYLES.map((n) => (
-                      <button key={n.value} type="button"
-                        onClick={() => updateForm("noseStyle", n.value)}
-                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
-                          form.noseStyle === n.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/30"
-                        )}>
-                        {n.label}
-                      </button>
-                    ))}
-                  </div>
+                  <Label className="font-bold">👃 Nose Style</Label>
+                  <VisualPicker
+                    columns={3}
+                    iconSize="sm"
+                    value={form.noseStyle}
+                    onChange={(v) => updateForm("noseStyle", v)}
+                    allowDeselect
+                    options={[
+                      { value: "button",          label: "Button",   icon: <ButtonNoseSvg /> },
+                      { value: "broad-flat",      label: "Broad",    icon: <BroadFlatNoseSvg /> },
+                      { value: "straight-narrow", label: "Straight", icon: <StraightNarrowNoseSvg /> },
+                      { value: "rounded-soft",    label: "Rounded",  icon: <RoundedSoftNoseSvg /> },
+                      { value: "wide-nostrils",   label: "Wide",     icon: <WideNostrilsNoseSvg /> },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cheek Style</Label>
-                  <div className="flex flex-col gap-1.5">
-                    {CHEEK_STYLES.map((c) => (
-                      <button key={c.value} type="button"
-                        onClick={() => updateForm("cheekStyle", c.value)}
-                        className={cn("px-3 py-1.5 rounded-lg text-sm border-2 text-left transition-all",
-                          form.cheekStyle === c.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border hover:border-primary/30"
-                        )}>
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    {isOther ? "Head Texture / Crest" : form.wearHijab ? "Hijab Style" : "Hair Style"}
-                  </Label>
-                  <Select
-                    value={isOther ? form.hairStyle : form.wearHijab ? form.hijabStyle : form.hairStyle}
-                    onValueChange={(v) =>
-                      isOther ? updateForm("hairStyle", v)
-                      : form.wearHijab ? updateForm("hijabStyle", v)
-                      : updateForm("hairStyle", v)
-                    }
-                  >
-                    <SelectTrigger><SelectValue placeholder="Select style..." /></SelectTrigger>
-                    <SelectContent>
-                      {hairOptions.map((h) => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>
-                    {isOther ? "Crest / Texture Colour" : form.wearHijab ? "Hijab Color" : "Hair Color"}
-                  </Label>
-                  <Input
-                    placeholder={isOther ? "e.g. orange crest" : form.wearHijab ? "e.g. soft blue" : "e.g. dark brown"}
-                    value={isOther ? form.hairColor : form.wearHijab ? form.hijabColor : form.hairColor}
-                    onChange={(e) =>
-                      isOther ? updateForm("hairColor", e.target.value)
-                      : form.wearHijab ? updateForm("hijabColor", e.target.value)
-                      : updateForm("hairColor", e.target.value)
-                    }
+                  <Label className="font-bold">😊 Cheek Style</Label>
+                  <VisualPicker
+                    columns={3}
+                    iconSize="sm"
+                    value={form.cheekStyle}
+                    onChange={(v) => updateForm("cheekStyle", v)}
+                    allowDeselect
+                    options={[
+                      { value: "chubby-rosy",  label: "Chubby",  icon: <ChubbyRosyCheekSvg /> },
+                      { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
+                      { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
+                      { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
+                      { value: "soft-round",   label: "Soft",    icon: <SoftRoundCheekSvg /> },
+                    ]}
                   />
                 </div>
               </div>
 
-              {/* Facial Hair & Glasses — critical for elder/adult consistency; hidden for non-human */}
-              {!isOther && <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>
-                    Facial Hair
-                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Required for elder characters</span>}
-                  </Label>
-                  <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select facial hair…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FACIAL_HAIR_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Lock this so every illustration shows exactly the same facial hair</p>
+              {/* ── Hair / Hijab ──────────────────────────────────────────── */}
+              <div className="space-y-2">
+                <Label className="text-base font-bold">
+                  {isOther ? "🪺 Head Texture / Crest" : form.wearHijab ? "🧕 Hijab Style" : "💇 Hair Style"}
+                </Label>
+                {/* GIRL — HIJAB */}
+                {!isOther && form.gender === "girl" && form.wearHijab && (
+                  <>
+                    <VisualPicker
+                      columns={6}
+                      iconSize="md"
+                      value={form.hijabStyle}
+                      onChange={(v) => updateForm("hijabStyle", v)}
+                      options={[
+                        { value: "simple-white",  label: "White",  icon: <HijabSvg color="white" /> },
+                        { value: "simple-black",  label: "Black",  icon: <HijabSvg color="black" /> },
+                        { value: "simple-beige",  label: "Beige",  icon: <HijabSvg color="beige" /> },
+                        { value: "blue-solid",    label: "Blue",   icon: <HijabSvg color="blue" /> },
+                        { value: "pink-solid",    label: "Pink",   icon: <HijabSvg color="pink" /> },
+                        { value: "purple-solid",  label: "Purple", icon: <HijabSvg color="purple" /> },
+                      ]}
+                    />
+                    <Input placeholder="Hijab colour or custom description…" value={form.hijabColor}
+                      onChange={(e) => updateForm("hijabColor", e.target.value)} className="mt-2" />
+                  </>
+                )}
+                {/* GIRL — HAIR */}
+                {!isOther && form.gender === "girl" && !form.wearHijab && (
+                  <>
+                    <VisualPicker
+                      columns={5}
+                      iconSize="md"
+                      value={form.hairStyle}
+                      onChange={(v) => updateForm("hairStyle", v)}
+                      options={[
+                        { value: "long-black",      label: "Long",         icon: <LongHairGirlSvg /> },
+                        { value: "curly-long",      label: "Long Curly",   icon: <CurlyLongHairSvg /> },
+                        { value: "braided-long",    label: "Braided",      icon: <BraidedHairSvg /> },
+                        { value: "ponytail-high",   label: "Ponytail",     icon: <PonytailHairSvg /> },
+                        { value: "bun-top",         label: "Bun",          icon: <BunHairSvg /> },
+                        { value: "long-dark-brown", label: "Dark Brown",   icon: <LongHairGirlSvg /> },
+                        { value: "long-brown",      label: "Brown",        icon: <LongHairGirlSvg /> },
+                      ]}
+                    />
+                    <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
+                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                  </>
+                )}
+                {/* BOY — HAIR */}
+                {!isOther && form.gender === "boy" && !isElderMale && (
+                  <>
+                    <VisualPicker
+                      columns={5}
+                      iconSize="md"
+                      value={form.hairStyle}
+                      onChange={(v) => updateForm("hairStyle", v)}
+                      options={[
+                        { value: "short-black",      label: "Short",       icon: <ShortHairBoySvg /> },
+                        { value: "short-dark-brown", label: "Short Brown", icon: <ShortHairBoySvg /> },
+                        { value: "curly-black",      label: "Curly",       icon: <CurlyHairBoySvg /> },
+                        { value: "wavy-dark",        label: "Wavy",        icon: <WavyHairBoySvg /> },
+                        { value: "spiky-black",      label: "Spiky",       icon: <SpikyHairBoySvg /> },
+                        { value: "afro",             label: "Afro",        icon: <AfroHairSvg /> },
+                        { value: "buzz-cut",         label: "Buzz Cut",    icon: <BuzzCutSvg /> },
+                      ]}
+                    />
+                    <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
+                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                  </>
+                )}
+                {/* ELDER MALE — HAIR */}
+                {!isOther && form.gender === "boy" && isElderMale && (
+                  <>
+                    <VisualPicker
+                      columns={4}
+                      iconSize="md"
+                      value={form.hairStyle}
+                      onChange={(v) => updateForm("hairStyle", v)}
+                      options={[
+                        { value: "bald",                        label: "Bald",          icon: <BaldSvg /> },
+                        { value: "bald with white hair sides",  label: "Bald + Sides",  icon: <BaldSvg /> },
+                        { value: "short white hair",            label: "White Short",   icon: <WhiteShortHairSvg /> },
+                        { value: "short gray hair",             label: "Gray Short",    icon: <GrayShortHairSvg /> },
+                        { value: "full white hair short",       label: "White Full",    icon: <WhiteShortHairSvg /> },
+                        { value: "full gray hair short",        label: "Gray Full",     icon: <GrayShortHairSvg /> },
+                      ]}
+                    />
+                  </>
+                )}
+                {/* OTHER / CREATURE */}
+                {isOther && (
+                  <>
+                    <VisualPicker
+                      columns={4}
+                      iconSize="md"
+                      value={form.hairStyle}
+                      onChange={(v) => updateForm("hairStyle", v)}
+                      options={[
+                        { value: "feathered crest on head", label: "Feather Crest", icon: <FeatheredCrestSvg /> },
+                        { value: "no hair (feathers)",      label: "Feathers",       icon: <FeatheredCrestSvg /> },
+                        { value: "no hair (fur)",           label: "Fur",            icon: <FurBodySvg /> },
+                        { value: "mane",                    label: "Mane",           icon: <AfroHairSvg /> },
+                        { value: "spikes on head",          label: "Spikes",         icon: <SpikyHairBoySvg /> },
+                        { value: "none",                    label: "None / N/A",     icon: <BaldSvg /> },
+                      ]}
+                    />
+                    <Input placeholder="Crest / texture colour (e.g. orange crest)…" value={form.hairColor}
+                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                  </>
+                )}
+              </div>
+
+              {/* ── Facial Hair & Glasses ─────────────────────────────────── */}
+              {!isOther && (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-bold">
+                      🧔 Facial Hair
+                      {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
+                    </Label>
+                    <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
+                      <SelectTrigger><SelectValue placeholder="Select facial hair…" /></SelectTrigger>
+                      <SelectContent>
+                        {FACIAL_HAIR_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Locks in every illustration</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold">
+                      👓 Glasses
+                      {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
+                    </Label>
+                    <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
+                      <SelectTrigger><SelectValue placeholder="Select glasses…" /></SelectTrigger>
+                      <SelectContent>
+                        {GLASSES_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Locks in every illustration</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>
-                    Glasses
-                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Required for elder characters</span>}
-                  </Label>
-                  <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select glasses…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GLASSES_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Lock this so every illustration shows exact same glasses / no glasses</p>
-                </div>
-              </div>}
+              )}
 
               {/* ── Outfit ─────────────────────────────────────────────────── */}
-              <div className="space-y-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+              <div className="space-y-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">👕 Outfit</p>
 
                 {/* Top Garment */}
                 <div className="space-y-2">
-                  <Label>Top Garment Type</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).map((opt) => (
-                      <button key={opt} type="button"
-                        onClick={() => updateForm("topGarmentType", form.topGarmentType === opt ? "" : opt)}
-                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                          form.topGarmentType === opt
-                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                            : "border-border hover:border-amber-300"
-                        )}>{opt}</button>
-                    ))}
-                  </div>
+                  <Label>Top Garment</Label>
+                  {form.gender === "girl" ? (
+                    <VisualPicker
+                      accent="amber"
+                      columns={4}
+                      iconSize="lg"
+                      allowDeselect
+                      value={form.topGarmentType}
+                      onChange={(v) => updateForm("topGarmentType", v)}
+                      options={[
+                        { value: "long-sleeve tunic",      label: "Tunic",        icon: <LongSleeveTunicSvg /> },
+                        { value: "abaya",                  label: "Abaya",        icon: <AbayaSvg /> },
+                        { value: "modest blouse",          label: "Blouse",       icon: <ModestBlouseSvg /> },
+                        { value: "salwar kameez top",      label: "Kameez",       icon: <SalwarKameezTopSvg /> },
+                        { value: "long-sleeve dress",      label: "Dress",        icon: <LongSleeveDressSvg /> },
+                        { value: "school uniform blouse",  label: "Uniform",      icon: <SchoolUniformBlouseSvg /> },
+                        { value: "long cardigan",          label: "Cardigan",     icon: <LongCardiganSvg /> },
+                      ]}
+                    />
+                  ) : (
+                    <VisualPicker
+                      accent="amber"
+                      columns={4}
+                      iconSize="lg"
+                      allowDeselect
+                      value={form.topGarmentType}
+                      onChange={(v) => updateForm("topGarmentType", v)}
+                      options={[
+                        { value: "t-shirt",          label: "T-Shirt",   icon: <TShirtSvg /> },
+                        { value: "long-sleeve shirt", label: "Long Sleeve", icon: <LongSleeveShirtSvg /> },
+                        { value: "collared shirt",   label: "Collar",    icon: <CollarShirtSvg /> },
+                        { value: "hoodie",           label: "Hoodie",    icon: <HoodieSvg /> },
+                        { value: "thobe",            label: "Thobe",     icon: <ThobeSvg /> },
+                        { value: "kurta",            label: "Kurta",     icon: <KurtaSvg /> },
+                        { value: "jacket",           label: "Jacket",    icon: <JacketSvg /> },
+                      ]}
+                    />
+                  )}
                   <Input
                     placeholder="Or type a custom garment type…"
-                    value={(form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).includes(form.topGarmentType) ? "" : form.topGarmentType}
+                    value={
+                      (form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).includes(form.topGarmentType)
+                        ? ""
+                        : form.topGarmentType
+                    }
                     onChange={(e) => updateForm("topGarmentType", e.target.value)}
                     className="mt-1"
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Top Color</Label>
-                    <Input placeholder="e.g. mint green, cream" value={form.topGarmentColor}
-                      onChange={(e) => updateForm("topGarmentColor", e.target.value)} />
+                {/* Top Color */}
+                <div className="space-y-2">
+                  <Label>Top Color</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {OUTFIT_COLORS.map((c) => {
+                      const isSelected = form.topGarmentColor === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          onClick={() => updateForm("topGarmentColor", isSelected ? "" : c.name)}
+                          className={cn(
+                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
+                          )}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      );
+                    })}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Top Details <span className="text-xs text-muted-foreground">(optional)</span></Label>
-                    <Input placeholder="e.g. embroidered collar, plain fabric" value={form.topGarmentDetails}
-                      onChange={(e) => updateForm("topGarmentDetails", e.target.value)} />
-                  </div>
+                  <Input
+                    placeholder="Or type a custom color…"
+                    value={OUTFIT_COLORS.some((c) => c.name === form.topGarmentColor) ? "" : form.topGarmentColor}
+                    onChange={(e) => updateForm("topGarmentColor", e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Top Details */}
+                <div className="space-y-2">
+                  <Label>Top Details <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                  <Input
+                    placeholder="e.g. embroidered collar, plain fabric"
+                    value={form.topGarmentDetails}
+                    onChange={(e) => updateForm("topGarmentDetails", e.target.value)}
+                  />
                 </div>
 
                 {/* Bottom Garment */}
                 <div className="space-y-2">
-                  <Label>Bottom Garment Type</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).map((opt) => (
-                      <button key={opt} type="button"
-                        onClick={() => updateForm("bottomGarmentType", form.bottomGarmentType === opt ? "" : opt)}
-                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                          form.bottomGarmentType === opt
-                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                            : "border-border hover:border-amber-300"
-                        )}>{opt}</button>
-                    ))}
-                  </div>
+                  <Label>Bottom Garment</Label>
+                  {form.gender === "girl" ? (
+                    <VisualPicker
+                      accent="amber"
+                      columns={4}
+                      iconSize="lg"
+                      allowDeselect
+                      value={form.bottomGarmentType}
+                      onChange={(v) => updateForm("bottomGarmentType", v)}
+                      options={[
+                        { value: "wide-leg trousers", label: "Wide Leg",   icon: <WideLegTrousersSvg /> },
+                        { value: "long skirt",        label: "Long Skirt", icon: <LongSkirtSvg /> },
+                        { value: "maxi skirt",        label: "Maxi Skirt", icon: <MaxiSkirtSvg /> },
+                        { value: "school uniform skirt", label: "Uniform",  icon: <SchoolSkirtSvg /> },
+                        { value: "shalwar",           label: "Shalwar",    icon: <ShalwarSvg /> },
+                        { value: "palazzo pants",     label: "Palazzo",    icon: <PalazzoPantsSvg /> },
+                      ]}
+                    />
+                  ) : (
+                    <VisualPicker
+                      accent="amber"
+                      columns={4}
+                      iconSize="lg"
+                      allowDeselect
+                      value={form.bottomGarmentType}
+                      onChange={(v) => updateForm("bottomGarmentType", v)}
+                      options={[
+                        { value: "trousers", label: "Trousers", icon: <TrousersSvg /> },
+                        { value: "jeans",    label: "Jeans",    icon: <JeansSvg /> },
+                        { value: "shorts",   label: "Shorts",   icon: <ShortsSvg /> },
+                      ]}
+                    />
+                  )}
                   <Input
                     placeholder="Or type a custom bottom garment…"
-                    value={(form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).includes(form.bottomGarmentType) ? "" : form.bottomGarmentType}
+                    value={
+                      (form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).includes(form.bottomGarmentType)
+                        ? ""
+                        : form.bottomGarmentType
+                    }
                     onChange={(e) => updateForm("bottomGarmentType", e.target.value)}
                     className="mt-1"
                   />
                 </div>
 
+                {/* Bottom Color */}
                 <div className="space-y-2">
                   <Label>Bottom Color</Label>
-                  <Input placeholder="e.g. dark navy, beige" value={form.bottomGarmentColor}
-                    onChange={(e) => updateForm("bottomGarmentColor", e.target.value)} />
+                  <div className="flex flex-wrap gap-2">
+                    {OUTFIT_COLORS.map((c) => {
+                      const isSelected = form.bottomGarmentColor === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          onClick={() => updateForm("bottomGarmentColor", isSelected ? "" : c.name)}
+                          className={cn(
+                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
+                          )}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <Input
+                    placeholder="Or type a custom color…"
+                    value={OUTFIT_COLORS.some((c) => c.name === form.bottomGarmentColor) ? "" : form.bottomGarmentColor}
+                    onChange={(e) => updateForm("bottomGarmentColor", e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
 
                 {/* Shoes */}
                 <div className="space-y-2">
                   <Label>Shoe Type</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {SHOE_PRESETS.map((opt) => (
-                      <button key={opt} type="button"
-                        onClick={() => updateForm("shoeType", form.shoeType === opt ? "" : opt)}
-                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                          form.shoeType === opt
-                            ? "border-amber-500 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-                            : "border-border hover:border-amber-300"
-                        )}>{opt}</button>
-                    ))}
-                  </div>
+                  <VisualPicker
+                    accent="amber"
+                    columns={4}
+                    iconSize="lg"
+                    allowDeselect
+                    value={form.shoeType}
+                    onChange={(v) => updateForm("shoeType", v)}
+                    options={[
+                      { value: "sneakers",        label: "Sneakers",     icon: <SneakersSvg /> },
+                      { value: "school shoes",    label: "School",       icon: <SchoolShoesSvg /> },
+                      { value: "mary jane flats", label: "Mary Jane",    icon: <MaryJaneFlats /> },
+                      { value: "sandals",         label: "Sandals",      icon: <SandalsSvg /> },
+                      { value: "leather sandals", label: "Leather Sand", icon: <LeatherSandalsSvg /> },
+                      { value: "boots",           label: "Boots",        icon: <BootsSvg /> },
+                      { value: "slippers",        label: "Slippers",     icon: <SlippersSvg /> },
+                      { value: "oxford shoes",    label: "Oxford",       icon: <OxfordShoesSvg /> },
+                    ]}
+                  />
                   <Input
                     placeholder="Or type a custom shoe type…"
                     value={SHOE_PRESETS.includes(form.shoeType) ? "" : form.shoeType}
@@ -1234,10 +1421,33 @@ export default function CharacterCreatePage() {
                   />
                 </div>
 
+                {/* Shoe Color */}
                 <div className="space-y-2">
                   <Label>Shoe Color</Label>
-                  <Input placeholder="e.g. white, brown, forest green" value={form.shoeColor}
-                    onChange={(e) => updateForm("shoeColor", e.target.value)} />
+                  <div className="flex flex-wrap gap-2">
+                    {OUTFIT_COLORS.map((c) => {
+                      const isSelected = form.shoeColor === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          title={c.name}
+                          onClick={() => updateForm("shoeColor", isSelected ? "" : c.name)}
+                          className={cn(
+                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
+                          )}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <Input
+                    placeholder="Or type a custom color…"
+                    value={OUTFIT_COLORS.some((c) => c.name === form.shoeColor) ? "" : form.shoeColor}
+                    onChange={(e) => updateForm("shoeColor", e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
               </div>
 
@@ -1248,19 +1458,53 @@ export default function CharacterCreatePage() {
                   <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks size across all illustrations)</span>
                 </p>
 
+                {/* Body Build — visual silhouettes */}
                 <div className="space-y-2">
-                  <Label>Height Feel</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {HEIGHT_FEELS.map((opt) => (
-                      <button key={opt} type="button"
-                        onClick={() => updateForm("heightFeel", form.heightFeel === opt ? "" : opt)}
-                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                          form.heightFeel === opt
-                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                            : "border-border hover:border-blue-300"
-                        )}>{opt}</button>
-                    ))}
-                  </div>
+                  <Label className="font-bold">🧍 Body Build</Label>
+                  <VisualPicker
+                    columns={5}
+                    iconSize="md"
+                    accent="blue"
+                    value={form.bodyBuild}
+                    onChange={(v) => updateForm("bodyBuild", v)}
+                    allowDeselect
+                    options={[
+                      { value: "slim and lean",             label: "Slim",          icon: <SlimBodySvg /> },
+                      { value: "average build",             label: "Average",       icon: <AverageBodySvg /> },
+                      { value: "chubby and soft",           label: "Chubby",        icon: <ChubbyBodySvg /> },
+                      { value: "athletic and fit",          label: "Athletic",      icon: <AthleticBodySvg /> },
+                      { value: "stocky and strong",         label: "Stocky",        icon: <StockyBodySvg /> },
+                      { value: "tall and slender",          label: "Tall Slim",     icon: <TallSlenderBodySvg /> },
+                      { value: "petite and light",          label: "Petite",        icon: <PetiteBodySvg /> },
+                      { value: "broad-shouldered",          label: "Broad",         icon: <BroadShoulderBodySvg /> },
+                      { value: "small toddler round tummy", label: "Toddler",       icon: <ToddlerBodySvg /> },
+                      { value: "round and full",            label: "Round",         icon: <RoundFullBodySvg /> },
+                    ]}
+                  />
+                  <Input
+                    placeholder="Or describe a custom build…"
+                    value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
+                    onChange={(e) => updateForm("bodyBuild", e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Height Feel — visual ruler tiles */}
+                <div className="space-y-2">
+                  <Label className="font-bold">📐 Height Feel</Label>
+                  <VisualPicker
+                    columns={8}
+                    iconSize="sm"
+                    accent="blue"
+                    value={form.heightFeel}
+                    onChange={(v) => updateForm("heightFeel", v)}
+                    allowDeselect
+                    options={HEIGHT_FEELS.map((opt, i) => ({
+                      value: opt,
+                      label: opt,
+                      icon: <HeightFeelSvg level={i} />,
+                    }))}
+                  />
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
@@ -1287,27 +1531,6 @@ export default function CharacterCreatePage() {
                       onChange={(e) => updateForm("weightKg", parseInt(e.target.value) || 0)}
                       placeholder="e.g. 35" />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Body Build</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {BODY_BUILDS.map((opt) => (
-                      <button key={opt} type="button"
-                        onClick={() => updateForm("bodyBuild", form.bodyBuild === opt ? "" : opt)}
-                        className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                          form.bodyBuild === opt
-                            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                            : "border-border hover:border-blue-300"
-                        )}>{opt}</button>
-                    ))}
-                  </div>
-                  <Input
-                    placeholder="Or describe a custom build…"
-                    value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
-                    onChange={(e) => updateForm("bodyBuild", e.target.value)}
-                    className="mt-1"
-                  />
                 </div>
               </div>
 

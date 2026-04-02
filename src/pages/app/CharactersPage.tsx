@@ -2,11 +2,15 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Sparkles, Users, Loader2, LayoutGrid } from "lucide-react";
+import { Plus, Search, Sparkles, Users, Loader2, LayoutGrid, Upload, Check } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useCharacters } from "@/hooks/useCharacters";
+import { useToast } from "@/hooks/use-toast";
+import { characterTemplatesApi } from "@/lib/api/characterTemplates.api";
+import type { CharacterTemplate } from "@/lib/api/characterTemplates.api";
 import type { Character } from "@/lib/api/types";
 
 type StatusFilter = "draft" | "approved" | "generated";
@@ -18,16 +22,36 @@ const statusColors: Record<string, string> = {
   locked: "bg-muted text-muted-foreground",
 };
 
+function deriveCategory(char: Character): CharacterTemplate["category"] {
+  const gender = (char.visualDNA?.gender || "").toLowerCase();
+  const parts = (char.ageRange || "").split("-");
+  const ageLow = parseInt(parts[0]) || 0;
+
+  if (gender === "neutral" || gender === "other") return "animal";
+  const isFemale = gender === "female" || gender === "girl";
+  if (ageLow > 0 && ageLow <= 5) return "toddler";
+  if (ageLow >= 55) return isFemale ? "elder-female" : "elder-male";
+  if (ageLow >= 30 && ageLow <= 54) return isFemale ? "adult-female" : "adult-male";
+  if (ageLow >= 12 && ageLow <= 17) return isFemale ? "teen-girl" : "teen-boy";
+  return isFemale ? "girl" : "boy";
+}
+
 export default function CharactersPage() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  // optimistic published set — chars that were just published this session
+  const [localPublished, setLocalPublished] = useState<Set<string>>(new Set());
+
   const { data: characters = [], isLoading, error } = useCharacters();
 
   const filteredCharacters = characters.filter((char: Character) => {
     const matchesSearch =
       char.name.toLowerCase().includes(search.toLowerCase()) ||
       char.role.toLowerCase().includes(search.toLowerCase());
-
     const matchesStatus = !statusFilter || char.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -37,6 +61,32 @@ export default function CharactersPage() {
     draft: characters.filter((c: Character) => c.status === "draft").length,
     approved: characters.filter((c: Character) => c.status === "approved").length,
     generated: characters.filter((c: Character) => c.status === "generated").length,
+  };
+
+  const handlePublish = async (e: React.MouseEvent, char: Character) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const charId = (char.id || char._id || "") as string;
+    if (publishingId || localPublished.has(charId) || char.publishedAsTemplateId) return;
+
+    setPublishingId(charId);
+    try {
+      await characterTemplatesApi.save({
+        name: char.name,
+        description: `${char.role} character — ${char.ageRange || ""}`.trim().replace(/—\s*$/, ""),
+        category: deriveCategory(char),
+        characterId: charId,
+        isPublic: true,
+      });
+      setLocalPublished((prev) => new Set([...prev, charId]));
+      queryClient.invalidateQueries({ queryKey: ["characters"] });
+      queryClient.invalidateQueries({ queryKey: ["character-templates"] });
+      toast({ title: "Published to templates!", description: `${char.name} is now in the shared template library.` });
+    } catch {
+      toast({ title: "Failed to publish", variant: "destructive" });
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   return (
@@ -127,14 +177,17 @@ export default function CharactersPage() {
       {!isLoading && !error && characters.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {filteredCharacters.map((char: Character) => {
-            const charId = char.id || char._id;
+            const charId = (char.id || char._id || "") as string;
             const approvedPoses = (char.approvedPoseKeys || []).length;
+            const isPublished = !!char.publishedAsTemplateId || localPublished.has(charId);
+            const isPublishing = publishingId === charId;
+            const canPublish = !!char.imageUrl;
 
             return (
-              <Link
+              <div
                 key={charId}
-                to={`/app/characters/${charId}`}
-                className="card-glow overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
+                className="card-glow overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow flex flex-col"
+                onClick={() => navigate(`/app/characters/${charId}`)}
               >
                 <div className="aspect-square bg-gradient-subtle relative overflow-hidden">
                   {char.imageUrl ? (
@@ -168,9 +221,11 @@ export default function CharactersPage() {
                   )}
                 </div>
 
-                <div className="p-4">
-                  <h3 className="font-semibold text-foreground mb-1 truncate">{char.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-2 truncate">{char.role}</p>
+                <div className="p-3 flex flex-col gap-2 flex-1">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-0.5 truncate">{char.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{char.role}</p>
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
                       {char.ageRange}
@@ -181,8 +236,29 @@ export default function CharactersPage() {
                       </span>
                     )}
                   </div>
+
+                  {canPublish && (
+                    <button
+                      onClick={(e) => handlePublish(e, char)}
+                      disabled={isPublished || isPublishing}
+                      className={cn(
+                        "mt-auto w-full flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 px-2 rounded-lg border transition-all",
+                        isPublished
+                          ? "bg-teal-50 border-teal-200 text-teal-700 cursor-default"
+                          : "bg-white border-dashed border-orange-300 text-orange-600 hover:bg-orange-50 hover:border-orange-400"
+                      )}
+                    >
+                      {isPublishing ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> Publishing…</>
+                      ) : isPublished ? (
+                        <><Check className="w-3 h-3" /> Published</>
+                      ) : (
+                        <><Upload className="w-3 h-3" /> Publish to Template</>
+                      )}
+                    </button>
+                  )}
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

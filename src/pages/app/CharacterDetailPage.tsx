@@ -100,6 +100,7 @@ export default function CharacterDetailPage() {
     approved: true,
     priority: 0,
   });
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   useEffect(() => {
     if (!character) return;
@@ -169,7 +170,6 @@ export default function CharacterDetailPage() {
   const hasPortrait = !!character.imageUrl;
   const hasPoseSheet = !!(character as any).poseSheetUrl;
 
-  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const handleSaveAsTemplate = async () => {
     setIsSavingTemplate(true);
     try {
