@@ -164,6 +164,10 @@ export interface KnowledgeBase {
     islamicMotifs?: string[];
     avoidCover?: string[];
     extraNotes?: string;
+    selectedCoverTemplate?: string | null;
+    atmosphere?: { middleGrade?: string; junior?: string; saeeda?: string };
+    typography?: { middleGrade?: string; junior?: string };
+    optionalAddons?: string[];
   };
   createdAt: string;
   updatedAt: string;

@@ -29,4 +29,38 @@ export const knowledgeBasesApi = {
 
   getByUniverse: (universeId: string) =>
     api.get<KnowledgeBase[]>('/api/knowledge-bases', { params: { universeId } }),
+
+  listCoverTemplates: () =>
+    api.get<CoverTemplate[]>('/api/knowledge-bases/cover-templates'),
+
+  listKBTemplates: () =>
+    api.get<KBStarterTemplate[]>('/api/knowledge-bases/kb-templates'),
 };
+
+export interface KBStarterTemplate {
+  _id: string;
+  name: string;
+  ageRange: string;
+  icon: string;
+  description: string;
+  palette: string[];
+  islamicValues: string[];
+  duas: Array<{ arabic: string; transliteration: string; meaning: string; context?: string }>;
+  avoidTopics: string[];
+  backgroundSettings?: Record<string, any>;
+  coverDesign?: Record<string, any>;
+  bookFormatting?: Record<string, any>;
+  underSixDesign?: Record<string, any>;
+}
+
+export interface CoverTemplate {
+  _id: string;
+  name: string;
+  style: string;
+  palette: string[];
+  description: string;
+  promptDirective: string;
+  typography: string;
+  composition: string;
+  atmosphere: string;
+}

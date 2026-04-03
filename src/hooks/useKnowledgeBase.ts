@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { knowledgeBasesApi, type CreateKBInput, type UpdateKBInput } from '@/lib/api/knowledgeBases.api';
+import { knowledgeBasesApi, type CreateKBInput, type UpdateKBInput, type KBStarterTemplate } from '@/lib/api/knowledgeBases.api';
+export type { KBStarterTemplate };
 
 export const KBS_KEY = ['knowledge-bases'] as const;
 export const kbKey = (id: string) => ['knowledge-bases', id] as const;
@@ -54,5 +55,21 @@ export function useDeleteKnowledgeBase() {
   return useMutation({
     mutationFn: (id: string) => knowledgeBasesApi.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: KBS_KEY }),
+  });
+}
+
+export function useCoverTemplates() {
+  return useQuery({
+    queryKey: ['cover-templates'],
+    queryFn: () => knowledgeBasesApi.listCoverTemplates(),
+    staleTime: Infinity,
+  });
+}
+
+export function useKBTemplates() {
+  return useQuery({
+    queryKey: ['kb-templates'],
+    queryFn: () => knowledgeBasesApi.listKBTemplates(),
+    staleTime: Infinity,
   });
 }

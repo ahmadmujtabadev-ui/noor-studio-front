@@ -28,11 +28,28 @@ import { useKbNavStore } from "@/lib/store/kbNavStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   useKnowledgeBases, useCreateKnowledgeBase, useUpdateKnowledgeBase, useDeleteKnowledgeBase,
+  useCoverTemplates, useKBTemplates,
 } from "@/hooks/useKnowledgeBase";
+import { knowledgeBasesApi } from "@/lib/api/knowledgeBases.api";
+import { COVER_TEMPLATE_SVG_MAP } from "@/components/shared/CoverTemplateSvgs";
+import {
+  TIME_OF_DAY_OPTIONS, CAMERA_HINT_OPTIONS, TONE_OPTIONS, COLOR_STYLE_OPTIONS,
+  KB_TEMPLATE_SVG_MAP, ISLAMIC_VALUE_PRESETS,
+  DUA_CONTEXT_OPTIONS, VOCAB_TYPE_OPTIONS,
+  SPEAKING_STYLE_OPTIONS, FAITH_TONE_OPTIONS, LITERARY_ROLE_OPTIONS,
+  PAGE_LAYOUT_OPTIONS, ILLUSTRATION_STYLE_OPTIONS, TITLE_PLACEMENT_OPTIONS,
+  FAITH_EXPRESSION_PRESETS,
+  DUA_STYLE_OPTIONS,
+  ISLAMIC_TRAIT_PRESETS,
+} from "@/components/shared/KBFieldIcons";
+import { VisualPicker } from "@/components/shared/VisualPicker";
 import { useUniverses } from "@/hooks/useUniverses";
 import { useCharacters } from "@/hooks/useCharacters";
 import type { KnowledgeBase } from "@/lib/api/types";
 import { useSearchParams } from "react-router-dom";
+import { KBFaithLanguageStepper } from "@/components/kb/KBFaithLanguageStepper";
+import { KBBackgroundSettings } from "@/components/kb/KBBackgroundSettings";
+import { KBBookFormatting } from "@/components/kb/KBBookFormatting";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,15 +109,14 @@ interface CharacterGuide {
 // ─── Section config ───────────────────────────────────────────────────────────
 
 const SECTIONS = [
-  { id: "islamicValues",      label: "Islamic Values",  icon: Moon,        color: "text-violet-600",  group: "Core"   },
-  { id: "duas",               label: "Du'as",           icon: HandHeart,   color: "text-blue-600",    group: "Core"   },
-  { id: "vocabulary",         label: "Vocabulary",      icon: Languages,   color: "text-orange-600",  group: "Core"   },
-  { id: "avoidTopics",        label: "Avoid Topics",    icon: Ban,         color: "text-red-500",     group: "Core"   },
-  { id: "characterGuides",    label: "Character Voice", icon: UserRound,   color: "text-emerald-600", group: "Story"  },
-  { id: "backgroundSettings", label: "Background",      icon: TreePine,    color: "text-teal-600",    group: "Visual" },
-  { id: "bookFormatting",     label: "Book Format",     icon: ListOrdered, color: "text-amber-600",   group: "Visual" },
-  { id: "underSixDesign",     label: "Under-6 Design",  icon: Baby,        color: "text-lime-600",    group: "Visual" },
-  { id: "coverDesign",        label: "Cover Design",    icon: Frame,       color: "text-rose-600",    group: "Cover"  },
+  { id: "islamicValues", label: "Islamic Values", icon: Moon, color: "text-violet-600", group: "Core" },
+  { id: "duas", label: "Du'as", icon: HandHeart, color: "text-blue-600", group: "Core" },
+  { id: "vocabulary", label: "Vocabulary", icon: Languages, color: "text-orange-600", group: "Core" },
+  { id: "avoidTopics", label: "Avoid Topics", icon: Ban, color: "text-red-500", group: "Core" },
+  { id: "characterGuides", label: "Character Voice", icon: UserRound, color: "text-emerald-600", group: "Story" },
+  { id: "backgroundSettings", label: "Background", icon: TreePine, color: "text-teal-600", group: "Visual" },
+  { id: "bookFormatting", label: "Book Format", icon: ListOrdered, color: "text-amber-600", group: "Book" },
+  { id: "coverDesign", label: "Cover Design", icon: Frame, color: "text-rose-600", group: "Cover" },
 ] as const;
 
 type SectionId = typeof SECTIONS[number]["id"];
@@ -121,9 +137,15 @@ const WORKFLOWS = [
   },
   {
     id: "visual",
-    label: "Visual & Format",
-    description: "Scene backgrounds, book formatting & layout rules",
-    sections: ["backgroundSettings", "bookFormatting", "underSixDesign"],
+    label: "Background",
+    description: "Scene backgrounds, lighting, locations & visual style",
+    sections: ["backgroundSettings"],
+  },
+  {
+    id: "bookFormat",
+    label: "Book Format",
+    description: "Book pacing, word count & layout rules per age group",
+    sections: ["bookFormatting"],
   },
   {
     id: "cover",
@@ -137,15 +159,15 @@ type WorkflowId = typeof WORKFLOWS[number]["id"];
 
 // Per-section color tokens (bg + icon background)
 const SECTION_STYLE: Record<string, { bg: string; iconBg: string; border: string; text: string }> = {
-  islamicValues:      { bg: "bg-violet-50",  iconBg: "bg-violet-100",  border: "border-violet-200",  text: "text-violet-700"  },
-  duas:               { bg: "bg-blue-50",    iconBg: "bg-blue-100",    border: "border-blue-200",    text: "text-blue-700"    },
-  vocabulary:         { bg: "bg-orange-50",  iconBg: "bg-orange-100",  border: "border-orange-200",  text: "text-orange-700"  },
-  avoidTopics:        { bg: "bg-red-50",     iconBg: "bg-red-100",     border: "border-red-200",     text: "text-red-700"     },
-  characterGuides:    { bg: "bg-emerald-50", iconBg: "bg-emerald-100", border: "border-emerald-200", text: "text-emerald-700" },
-  backgroundSettings: { bg: "bg-teal-50",    iconBg: "bg-teal-100",    border: "border-teal-200",    text: "text-teal-700"    },
-  bookFormatting:     { bg: "bg-amber-50",   iconBg: "bg-amber-100",   border: "border-amber-200",   text: "text-amber-700"   },
-  underSixDesign:     { bg: "bg-lime-50",    iconBg: "bg-lime-100",    border: "border-lime-200",    text: "text-lime-700"    },
-  coverDesign:        { bg: "bg-rose-50",    iconBg: "bg-rose-100",    border: "border-rose-200",    text: "text-rose-700"    },
+  islamicValues: { bg: "bg-violet-50", iconBg: "bg-violet-100", border: "border-violet-200", text: "text-violet-700" },
+  duas: { bg: "bg-blue-50", iconBg: "bg-blue-100", border: "border-blue-200", text: "text-blue-700" },
+  vocabulary: { bg: "bg-orange-50", iconBg: "bg-orange-100", border: "border-orange-200", text: "text-orange-700" },
+  avoidTopics: { bg: "bg-red-50", iconBg: "bg-red-100", border: "border-red-200", text: "text-red-700" },
+  characterGuides: { bg: "bg-emerald-50", iconBg: "bg-emerald-100", border: "border-emerald-200", text: "text-emerald-700" },
+  backgroundSettings: { bg: "bg-teal-50", iconBg: "bg-teal-100", border: "border-teal-200", text: "text-teal-700" },
+  bookFormatting: { bg: "bg-amber-50", iconBg: "bg-amber-100", border: "border-amber-200", text: "text-amber-700" },
+  underSixDesign: { bg: "bg-lime-50", iconBg: "bg-lime-100", border: "border-lime-200", text: "text-lime-700" },
+  coverDesign: { bg: "bg-rose-50", iconBg: "bg-rose-100", border: "border-rose-200", text: "text-rose-700" },
 };
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
@@ -212,6 +234,183 @@ function TagInput({ label, items, onAdd, onRemove, placeholder }: {
   );
 }
 
+// ─── Cover Design Section ─────────────────────────────────────────────────────
+
+interface CoverDesignSectionProps {
+  cd: any;
+  brandingRules: string[];
+  characterComposition: string[];
+  optionalAddons: string[];
+  islamicMotifs: string[];
+  avoidCover: string[];
+  selectedTplId: string | null;
+  patch: (partial: object) => void;
+}
+
+function CoverDesignSection({
+  cd, brandingRules, characterComposition, optionalAddons, islamicMotifs, avoidCover, selectedTplId, patch,
+}: CoverDesignSectionProps) {
+  const { data: templates = [] } = useCoverTemplates();
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Cover artwork rules injected into every cover generation prompt. Start by picking a visual style below, then refine the details.
+      </p>
+
+      {/* ── Visual Template Picker ─────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold text-rose-700 dark:text-rose-400">Cover Style Template</Label>
+        <p className="text-xs text-muted-foreground">Pick the overall visual style that AI will use when generating your book covers. You can still override any detail below.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {templates.map((tpl) => {
+            const SvgComponent = COVER_TEMPLATE_SVG_MAP[tpl._id];
+            const isSelected = selectedTplId === tpl._id;
+            return (
+              <button
+                key={tpl._id}
+                type="button"
+                onClick={() => patch({ selectedCoverTemplate: isSelected ? null : tpl._id })}
+                className={cn(
+                  "group relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all duration-200 text-left hover:shadow-md",
+                  isSelected
+                    ? "border-rose-500 bg-rose-50 dark:bg-rose-950/30 shadow-md"
+                    : "border-border hover:border-rose-300 bg-background"
+                )}
+              >
+                {/* Thumbnail */}
+                <div className="w-full rounded-lg overflow-hidden shadow-sm" style={{ aspectRatio: "5/7" }}>
+                  {SvgComponent ? <SvgComponent /> : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <Frame className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                {/* Name */}
+                <span className={cn(
+                  "text-xs font-medium text-center leading-tight",
+                  isSelected ? "text-rose-700 dark:text-rose-400" : "text-foreground"
+                )}>
+                  {tpl.name}
+                </span>
+                {/* Palette dots */}
+                <div className="flex gap-1">
+                  {tpl.palette.slice(0, 4).map((hex: string) => (
+                    <span key={hex} className="w-3 h-3 rounded-full border border-white/50 shadow-sm" style={{ backgroundColor: hex }} />
+                  ))}
+                </div>
+                {/* Selected checkmark */}
+                {isSelected && (
+                  <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                    <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {selectedTplId && templates.find(t => t._id === selectedTplId) && (
+          <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 p-3 space-y-1">
+            {(() => {
+              const tpl = templates.find(t => t._id === selectedTplId)!;
+              return (
+                <>
+                  <p className="text-xs font-medium text-rose-700 dark:text-rose-400">{tpl.name}</p>
+                  <p className="text-xs text-muted-foreground">{tpl.description}</p>
+                  <p className="text-xs text-muted-foreground"><span className="font-medium">Typography:</span> {tpl.typography}</p>
+                  <p className="text-xs text-muted-foreground"><span className="font-medium">Atmosphere:</span> {tpl.atmosphere}</p>
+                </>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+
+      {/* ── Fine-tune details ──────────────────────────────────────────────── */}
+      <div className="space-y-4 pt-2 border-t border-border">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fine-tune Details</p>
+
+        {/* ── Title Placement visual picker ── */}
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold">Title Placement</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {TITLE_PLACEMENT_OPTIONS.map(opt => {
+              const isSel = cd.titlePlacement === opt.value;
+              return (
+                <button key={opt.value} type="button"
+                  onClick={() => patch({ titlePlacement: isSel ? "" : opt.value })}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                    isSel ? "border-rose-500 bg-rose-50 dark:bg-rose-950/30 shadow-sm" : "border-border hover:border-rose-300 bg-background"
+                  )}>
+                  <div className="w-12 h-12">{opt.icon}</div>
+                  <span className={cn("text-[10px] font-semibold", isSel ? "text-rose-700" : "text-foreground")}>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <Label className="text-xs">Atmosphere — Middle Grade</Label>
+            <Textarea rows={2} className="resize-none text-xs" placeholder="Cinematic lighting, mystery item in background"
+              defaultValue={cd.atmosphere?.middleGrade || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, middleGrade: e.target.value } })} />
+          </div>
+          <div>
+            <Label className="text-xs">Atmosphere — Junior</Label>
+            <Textarea rows={2} className="resize-none text-xs" placeholder="Bright joyful colors, plot-related objects"
+              defaultValue={cd.atmosphere?.junior || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, junior: e.target.value } })} />
+          </div>
+          <div>
+            <Label className="text-xs">Atmosphere — Saeeda</Label>
+            <Textarea rows={2} className="resize-none text-xs" placeholder="Dreamlike macro-world, giant leaf, flower cave"
+              defaultValue={cd.atmosphere?.saeeda || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, saeeda: e.target.value } })} />
+          </div>
+          <div>
+            <Label className="text-xs">Typography — Middle Grade</Label>
+            <Input className="text-xs" placeholder="Serif — Literata, Alegreya"
+              defaultValue={cd.typography?.middleGrade || ""} onBlur={e => patch({ typography: { ...cd.typography, middleGrade: e.target.value } })} />
+          </div>
+          <div>
+            <Label className="text-xs">Typography — Junior</Label>
+            <Input className="text-xs" placeholder="Bold rounded — Fredoka, Baloo"
+              defaultValue={cd.typography?.junior || ""} onBlur={e => patch({ typography: { ...cd.typography, junior: e.target.value } })} />
+          </div>
+          <div>
+            <Label className="text-xs">Extra Notes</Label>
+            <Input className="text-xs" placeholder="Any other cover direction..."
+              defaultValue={cd.extraNotes || ""} onBlur={e => patch({ extraNotes: e.target.value })} />
+          </div>
+        </div>
+
+        <TagInput label="Branding Rules" items={brandingRules}
+          placeholder="e.g. Series logo must appear prominently"
+          onAdd={v => patch({ brandingRules: [...brandingRules, v] })}
+          onRemove={i => patch({ brandingRules: brandingRules.filter((_: string, j: number) => j !== i) })} />
+        <TagInput label="Character Composition Rules" items={characterComposition}
+          placeholder="e.g. Eye contact with reader preferred for Middle Grade"
+          onAdd={v => patch({ characterComposition: [...characterComposition, v] })}
+          onRemove={i => patch({ characterComposition: characterComposition.filter((_: string, j: number) => j !== i) })} />
+        <TagInput label="Optional Add-ons" items={optionalAddons}
+          placeholder="e.g. Icon badge, corner headshot, series number"
+          onAdd={v => patch({ optionalAddons: [...optionalAddons, v] })}
+          onRemove={i => patch({ optionalAddons: optionalAddons.filter((_: string, j: number) => j !== i) })} />
+        <TagInput label="Islamic Motifs" items={islamicMotifs}
+          placeholder="e.g. Star pattern, mashrabiya frame watermark"
+          onAdd={v => patch({ islamicMotifs: [...islamicMotifs, v] })}
+          onRemove={i => patch({ islamicMotifs: islamicMotifs.filter((_: string, j: number) => j !== i) })} />
+        <TagInput label="Avoid on Cover" items={avoidCover}
+          placeholder="e.g. Generic centered-character-only templates"
+          onAdd={v => patch({ avoidCover: [...avoidCover, v] })}
+          onRemove={i => patch({ avoidCover: avoidCover.filter((_: string, j: number) => j !== i) })} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function KnowledgeBasePage() {
@@ -222,15 +421,15 @@ export default function KnowledgeBasePage() {
   const [searchParams] = useSearchParams();
   const { universes } = useUniverses();
 
-  const [search, setSearch]         = useState("");
+  const [search, setSearch] = useState("");
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
-  const [newItem, setNewItem]       = useState("");
+  const [newItem, setNewItem] = useState("");
 
   // Sync active workflow/section from the sidebar store
   const kbNav = useKbNavStore();
   const activeWorkflow = kbNav.activeWorkflow as WorkflowId;
-  const activeSection  = kbNav.activeSection  as SectionId;
-  const setActiveSection  = (id: SectionId)  => kbNav.setKbNav(activeWorkflow, id);
+  const activeSection = kbNav.activeSection as SectionId;
+  const setActiveSection = (id: SectionId) => kbNav.setKbNav(activeWorkflow, id);
   const setActiveWorkflow = (id: WorkflowId) => {
     const wf = WORKFLOWS.find(w => w.id === id);
     kbNav.setKbNav(id, wf ? (wf.sections[0] as SectionId) : activeSection);
@@ -240,13 +439,13 @@ export default function KnowledgeBasePage() {
   useEffect(() => {
     if (selectedKB) kbNav.setKbNav("faith", "islamicValues");
   }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [showCreate, setShowCreate]         = useState(false);
-  const [showDelete, setShowDelete]         = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showDelete, setShowDelete] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   // Structured new-item states
-  const [newDua, setNewDua]             = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
-  const [newVocab, setNewVocab]         = useState({ word: "", definition: "", example: "" });
+  const [newDua, setNewDua] = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
+  const [newVocab, setNewVocab] = useState({ word: "", definition: "", example: "", type: "" });
   const [newCharGuide, setNewCharGuide] = useState<CharacterGuide>({
     characterName: "", speakingStyle: "", dialogueExamples: [], moreInfo: "",
     personalityNotes: [], literaryRole: "", faithTone: "", faithExpressions: [],
@@ -254,8 +453,15 @@ export default function KnowledgeBasePage() {
   });
   const [selectedCharName, setSelectedCharName] = useState<string>("");
 
-  // Create form — only name + universe
-  const [form, setForm] = useState({ name: "", universeId: "" });
+  // Create form — name + universe + optional starter template
+  const [form, setForm] = useState({ name: "", universeId: "", starterTemplateId: "" });
+  const [createStep, setCreateStep] = useState<"template" | "details">("template");
+  const { data: kbTemplates = [] } = useKBTemplates();
+
+  // Apply-template-to-existing-KB
+  const [showApplyTemplate, setShowApplyTemplate] = useState(false);
+  const [applyTemplateId, setApplyTemplateId] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
 
   const updateMutation = useUpdateKnowledgeBase(selectedKB?.id || "");
   const filteredKBs = kbs.filter((kb: KnowledgeBase) => kb.name.toLowerCase().includes(search.toLowerCase()));
@@ -285,12 +491,66 @@ export default function KnowledgeBasePage() {
         name: form.name.trim(),
         universeId: form.universeId,
       });
+
+      // Apply starter template fields if one was selected
+      if (form.starterTemplateId) {
+        const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+        if (tpl) {
+          const filled = await knowledgeBasesApi.update(
+            created.id || (created as any)._id,
+            {
+              islamicValues: tpl.islamicValues || [],
+              duas: tpl.duas || [],
+              avoidTopics: tpl.avoidTopics || [],
+              backgroundSettings: tpl.backgroundSettings,
+              coverDesign: tpl.coverDesign,
+              bookFormatting: tpl.bookFormatting,
+              underSixDesign: tpl.underSixDesign,
+            } as any
+          );
+          setSelectedKB(filled as any);
+        } else {
+          setSelectedKB(created);
+        }
+      } else {
+        setSelectedKB(created);
+      }
+
       toast({ title: "Knowledge base created" });
       setShowCreate(false);
-      setForm({ name: "", universeId: "" });
-      setSelectedKB(created);
+      setForm({ name: "", universeId: "", starterTemplateId: "" });
+      setCreateStep("template");
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
+    }
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!applyTemplateId || !selectedKB) return;
+    const tpl = kbTemplates.find((t: any) => t._id === applyTemplateId);
+    if (!tpl) return;
+    setIsApplying(true);
+    try {
+      const updated = await knowledgeBasesApi.update(
+        selectedKB.id || (selectedKB as any)._id,
+        {
+          islamicValues: tpl.islamicValues || [],
+          duas: tpl.duas || [],
+          avoidTopics: tpl.avoidTopics || [],
+          backgroundSettings: tpl.backgroundSettings,
+          coverDesign: tpl.coverDesign,
+          bookFormatting: tpl.bookFormatting,
+          underSixDesign: tpl.underSixDesign,
+        } as any
+      );
+      setSelectedKB(updated as any);
+      toast({ title: "Template applied!", description: `${tpl.name} applied to ${selectedKB.name}.` });
+      setShowApplyTemplate(false);
+      setApplyTemplateId("");
+    } catch (err) {
+      toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -317,11 +577,11 @@ export default function KnowledgeBasePage() {
     if (!selectedKB) return 0;
     const kb = selectedKB as any;
     switch (sectionId) {
-      case "islamicValues":      return kb.islamicValues?.length || 0;
-      case "duas":               return kb.duas?.length || 0;
-      case "vocabulary":         return kb.vocabulary?.length || 0;
-      case "avoidTopics":        return kb.avoidTopics?.length || 0;
-      case "characterGuides":    return kb.characterGuides?.length || 0;
+      case "islamicValues": return kb.islamicValues?.length || 0;
+      case "duas": return kb.duas?.length || 0;
+      case "vocabulary": return kb.vocabulary?.length || 0;
+      case "avoidTopics": return kb.avoidTopics?.length || 0;
+      case "characterGuides": return kb.characterGuides?.length || 0;
       case "backgroundSettings": {
         const bs = kb.backgroundSettings || {};
         return ["junior", "middleGrade", "saeeda"].filter(k => bs[k]?.tone || bs[k]?.locations?.length).length;
@@ -351,14 +611,65 @@ export default function KnowledgeBasePage() {
 
       case "islamicValues": {
         const items = getArr<string>("islamicValues");
+        const customItems = items.filter(v => !ISLAMIC_VALUE_PRESETS.some(p => p.value === v));
         return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Core Islamic values woven into every story and illustration. Injected into all AI text and image stages.</p>
-            <ScrollArea className="h-52"><div className="space-y-2">
-              {items.map((v, i) => <ItemRow key={i} text={v} onRemove={() => save({ islamicValues: items.filter((_, j) => j !== i) })} />)}
-              {!items.length && <p className="text-sm text-muted-foreground text-center py-6">No values yet.</p>}
-            </div></ScrollArea>
-            <AddRow placeholder="e.g. Sabr — patience in hardship" value={newItem} onChange={setNewItem}
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tap the illustrated tiles to add Islamic values. They're woven into every story and illustration prompt.
+            </p>
+
+            {/* Visual preset tiles */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {ISLAMIC_VALUE_PRESETS.map(preset => {
+                const isSelected = items.includes(preset.value);
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? items.filter(v => v !== preset.value)
+                        : [...items, preset.value];
+                      save({ islamicValues: next });
+                    }}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                      isSelected
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 shadow-sm"
+                        : "border-border hover:border-violet-300 bg-background"
+                    )}
+                  >
+                    <div className="w-11 h-11">{preset.icon}</div>
+                    <span className={cn(
+                      "text-[10px] font-semibold leading-tight",
+                      isSelected ? "text-violet-700 dark:text-violet-400" : "text-foreground"
+                    )}>
+                      {preset.label}
+                    </span>
+                    {isSelected && (
+                      <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom text values (not from presets) */}
+            {customItems.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Custom Values</p>
+                {customItems.map(v => (
+                  <ItemRow key={v} text={v} onRemove={() => save({ islamicValues: items.filter(item => item !== v) })} />
+                ))}
+              </div>
+            )}
+
+            {/* Custom input */}
+            <AddRow placeholder="Add a custom value e.g. Gratitude toward nature..." value={newItem} onChange={setNewItem}
               onAdd={() => { if (!newItem.trim()) return; save({ islamicValues: [...items, newItem.trim()] }); setNewItem(""); }}
               loading={updateMutation.isPending} />
           </div>
@@ -368,27 +679,93 @@ export default function KnowledgeBasePage() {
       case "duas": {
         const duas = getArr<any>("duas");
         return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Du'as placed naturally in story moments. AI uses the "when" field to decide placement timing.</p>
-            <ScrollArea className="h-48"><div className="space-y-2">
-              {duas.map((d: any, i: number) => (
-                <ItemRow key={i}
-                  text={`${d.arabic ? d.arabic + "\n" : ""}${d.transliteration}\n"${d.meaning}"${d.when ? "\nWhen: " + d.when : ""}`}
-                  onRemove={() => save({ duas: duas.filter((_: any, j: number) => j !== i) })} />
-              ))}
-              {!duas.length && <p className="text-sm text-muted-foreground text-center py-6">No du'as yet.</p>}
-            </div></ScrollArea>
-            <div className="border-t pt-3 space-y-2">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Du'as placed naturally in story moments. AI uses the "when" context to decide the right placement.</p>
+
+            {/* Existing du'a cards — styled beautifully */}
+            {duas.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {duas.map((d: any, i: number) => {
+                  const contextOpt = DUA_CONTEXT_OPTIONS.find(o => o.value === d.when);
+                  return (
+                    <div key={i} className="relative rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 group">
+                      <button
+                        onClick={() => save({ duas: duas.filter((_: any, j: number) => j !== i) })}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      {/* Arabic text */}
+                      {d.arabic && (
+                        <p className="text-right text-lg font-semibold text-blue-900 dark:text-blue-200 leading-loose mb-1" dir="rtl" lang="ar">
+                          {d.arabic}
+                        </p>
+                      )}
+                      {/* Transliteration */}
+                      <p className="text-sm font-medium text-blue-800 dark:text-blue-300 italic">{d.transliteration}</p>
+                      {/* Meaning */}
+                      <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">"{d.meaning}"</p>
+                      {/* When context chip */}
+                      {d.when && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                          {contextOpt && <span className="w-5 h-5 shrink-0">{contextOpt.icon}</span>}
+                          <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded-full">
+                            {d.when}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {!duas.length && (
+              <div className="text-center py-8 border-2 border-dashed border-blue-100 rounded-xl">
+                <p className="text-sm text-muted-foreground">No du'as yet — add the first one below</p>
+              </div>
+            )}
+
+            {/* Add du'a form */}
+            <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
               <SectionLabel>Add Du'a</SectionLabel>
               <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Arabic (optional)</Label><Input placeholder="بِسْمِ اللَّهِ" value={newDua.arabic} onChange={e => setNewDua({ ...newDua, arabic: e.target.value })} /></div>
-                <div><Label className="text-xs">Transliteration *</Label><Input placeholder="Bismillah" value={newDua.transliteration} onChange={e => setNewDua({ ...newDua, transliteration: e.target.value })} /></div>
-                <div className="col-span-2"><Label className="text-xs">Meaning *</Label><Input placeholder="In the name of Allah" value={newDua.meaning} onChange={e => setNewDua({ ...newDua, meaning: e.target.value })} /></div>
-                <div className="col-span-2"><Label className="text-xs">When used in story (AI uses this for placement)</Label><Input placeholder="Before eating, starting a task, waking up..." value={newDua.when} onChange={e => setNewDua({ ...newDua, when: e.target.value })} /></div>
+                <div><Label className="text-xs">Arabic (optional)</Label>
+                  <Input placeholder="بِسْمِ اللَّهِ" value={newDua.arabic} onChange={e => setNewDua({ ...newDua, arabic: e.target.value })} className="text-right" dir="rtl" lang="ar" /></div>
+                <div><Label className="text-xs">Transliteration *</Label>
+                  <Input placeholder="Bismillah" value={newDua.transliteration} onChange={e => setNewDua({ ...newDua, transliteration: e.target.value })} /></div>
+                <div className="col-span-2"><Label className="text-xs">Meaning *</Label>
+                  <Input placeholder="In the name of Allah" value={newDua.meaning} onChange={e => setNewDua({ ...newDua, meaning: e.target.value })} /></div>
               </div>
+
+              {/* Visual context picker */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">When is it used? (tap to pick)</Label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {DUA_CONTEXT_OPTIONS.map(opt => {
+                    const isSel = newDua.when === opt.value;
+                    return (
+                      <button key={opt.value} type="button"
+                        onClick={() => setNewDua({ ...newDua, when: isSel ? "" : opt.value })}
+                        className={cn(
+                          "flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all text-center",
+                          isSel ? "border-blue-500 bg-blue-50" : "border-border hover:border-blue-300"
+                        )}>
+                        <div className="w-8 h-8">{opt.icon}</div>
+                        <span className="text-[9px] font-medium leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {!DUA_CONTEXT_OPTIONS.some(o => o.value === newDua.when) && (
+                  <Input className="text-xs mt-1" placeholder="Or type a custom context…"
+                    value={newDua.when} onChange={e => setNewDua({ ...newDua, when: e.target.value })} />
+                )}
+              </div>
+
               <Button variant="outline" size="sm" disabled={!newDua.transliteration || !newDua.meaning || updateMutation.isPending}
                 onClick={() => { save({ duas: [...duas, { ...newDua }] }); setNewDua({ arabic: "", transliteration: "", meaning: "", when: "" }); }}>
-                <Plus className="w-4 h-4 mr-1" /> Add Du'a
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                Add Du'a
               </Button>
             </div>
           </div>
@@ -397,28 +774,81 @@ export default function KnowledgeBasePage() {
 
       case "vocabulary": {
         const vocab = getArr<any>("vocabulary");
+        const vocabType = (newVocab as any).type || "";
         return (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Islamic/Arabic vocabulary. AI uses these correctly in prose and they appear in glossary pages.</p>
-            <ScrollArea className="h-48"><div className="space-y-2">
-              {vocab.map((v: any, i: number) => (
-                <ItemRow key={i}
-                  text={`${v.word}: ${v.definition}${v.example ? "\nUsage: " + v.example : ""}`}
-                  onRemove={() => save({ vocabulary: vocab.filter((_: any, j: number) => j !== i) })} />
-              ))}
-              {!vocab.length && <p className="text-sm text-muted-foreground text-center py-6">No vocabulary yet.</p>}
-            </div></ScrollArea>
-            <div className="border-t pt-3 space-y-2">
+
+            {/* Visual word cards */}
+            {vocab.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {vocab.map((v: any, i: number) => {
+                  const typeOpt = VOCAB_TYPE_OPTIONS.find(o => o.value === v.type);
+                  return (
+                    <div key={i} className="relative rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-4 group">
+                      <button
+                        onClick={() => save({ vocabulary: vocab.filter((_: any, j: number) => j !== i) })}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="flex items-start gap-3">
+                        {typeOpt && <div className="w-10 h-10 shrink-0">{typeOpt.icon}</div>}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-bold text-orange-900 dark:text-orange-200">{v.word}</p>
+                          <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">{v.definition}</p>
+                          {v.example && (
+                            <p className="text-[10px] text-muted-foreground mt-1 italic">e.g. {v.example}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {!vocab.length && (
+              <div className="text-center py-8 border-2 border-dashed border-orange-100 rounded-xl">
+                <p className="text-sm text-muted-foreground">No vocabulary yet — add the first word below</p>
+              </div>
+            )}
+
+            {/* Add word form */}
+            <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
               <SectionLabel>Add Word</SectionLabel>
+
+              {/* Word type visual picker */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Word Type (tap to pick)</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {VOCAB_TYPE_OPTIONS.map(opt => {
+                    const isSel = vocabType === opt.value;
+                    return (
+                      <button key={opt.value} type="button"
+                        onClick={() => setNewVocab({ ...newVocab, type: isSel ? "" : opt.value })}
+                        className={cn(
+                          "flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all text-center",
+                          isSel ? "border-orange-500 bg-orange-50" : "border-border hover:border-orange-300"
+                        )}>
+                        <div className="w-9 h-9">{opt.icon}</div>
+                        <span className="text-[9px] font-medium leading-tight">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Word *</Label><Input placeholder="Alhamdulillah" value={newVocab.word} onChange={e => setNewVocab({ ...newVocab, word: e.target.value })} /></div>
-                <div><Label className="text-xs">Definition *</Label><Input placeholder="All praise is for Allah" value={newVocab.definition} onChange={e => setNewVocab({ ...newVocab, definition: e.target.value })} /></div>
+                <div><Label className="text-xs">Word *</Label>
+                  <Input placeholder="Alhamdulillah" value={newVocab.word} onChange={e => setNewVocab({ ...newVocab, word: e.target.value })} /></div>
+                <div><Label className="text-xs">Definition *</Label>
+                  <Input placeholder="All praise is for Allah" value={newVocab.definition} onChange={e => setNewVocab({ ...newVocab, definition: e.target.value })} /></div>
                 <div className="col-span-2"><Label className="text-xs">Story Example (shows AI how to use it naturally)</Label>
                   <Input placeholder='"Alhamdulillah!" said Zahra, hugging her mama.' value={newVocab.example} onChange={e => setNewVocab({ ...newVocab, example: e.target.value })} /></div>
               </div>
               <Button variant="outline" size="sm" disabled={!newVocab.word || !newVocab.definition || updateMutation.isPending}
-                onClick={() => { save({ vocabulary: [...vocab, { ...newVocab }] }); setNewVocab({ word: "", definition: "", example: "" }); }}>
-                <Plus className="w-4 h-4 mr-1" /> Add Word
+                onClick={() => { save({ vocabulary: [...vocab, { ...newVocab }] }); setNewVocab({ word: "", definition: "", example: "", type: "" }); }}>
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                Add Word
               </Button>
             </div>
           </div>
@@ -443,227 +873,132 @@ export default function KnowledgeBasePage() {
 
       case "backgroundSettings": {
         const bs = (selectedKB as any)?.backgroundSettings || {};
-        const patchBg = (groupKey: string, partial: object) =>
-          save({ backgroundSettings: { ...bs, [groupKey]: { ...bs[groupKey], ...partial } } } as any);
-        const patchBgRoot = (partial: object) =>
-          save({ backgroundSettings: { ...bs, ...partial } } as any);
-        const AGE_GROUPS = [
-          { key: "junior",       label: "Junior (5–8)" },
-          { key: "middleGrade",  label: "Middle Grade (8–13)" },
-          { key: "saeeda",       label: "Saeeda Series" },
-        ];
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Background environment rules per age group. Injected directly into every image generation prompt. <strong>timeOfDay</strong> and <strong>cameraHint</strong> propagate to all illustration moments.</p>
-            {AGE_GROUPS.map(({ key, label }) => {
-              const g = bs[key] || {};
-              const locs = g.locations || [];
-              const feats = g.keyFeatures || [];
-              return (
-                <div key={key} className="border rounded-xl p-4 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">Tone</Label>
-                      <Input placeholder="e.g. Bright, safe, familiar" defaultValue={g.tone || ""}
-                        onBlur={e => patchBg(key, { tone: e.target.value })} /></div>
-                    <div><Label className="text-xs">Color Style</Label>
-                      <Input placeholder="e.g. Soft palettes, gentle shadows" defaultValue={g.colorStyle || ""}
-                        onBlur={e => patchBg(key, { colorStyle: e.target.value })} /></div>
-                    <div><Label className="text-xs">Lighting Style</Label>
-                      <Input placeholder="e.g. Golden hues for peace" defaultValue={g.lightingStyle || ""}
-                        onBlur={e => patchBg(key, { lightingStyle: e.target.value })} /></div>
-                    <div>
-                      <Label className="text-xs">Default Time of Day</Label>
-                      <Select defaultValue={g.timeOfDay || ""} onValueChange={v => patchBg(key, { timeOfDay: v })}>
-                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select time..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="morning">Morning</SelectItem>
-                          <SelectItem value="afternoon">Afternoon</SelectItem>
-                          <SelectItem value="evening">Evening</SelectItem>
-                          <SelectItem value="golden-hour">Golden Hour</SelectItem>
-                          <SelectItem value="night">Night</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Default Camera Hint</Label>
-                      <Select defaultValue={g.cameraHint || ""} onValueChange={v => patchBg(key, { cameraHint: v })}>
-                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select camera..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="wide">Wide Shot</SelectItem>
-                          <SelectItem value="medium">Medium Shot</SelectItem>
-                          <SelectItem value="close">Close-Up</SelectItem>
-                          <SelectItem value="full-body">Full Body</SelectItem>
-                          <SelectItem value="over-shoulder">Over Shoulder</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div><Label className="text-xs">Additional Notes</Label>
-                      <Input placeholder="Extra rules..." defaultValue={g.additionalNotes || ""}
-                        onBlur={e => patchBg(key, { additionalNotes: e.target.value })} /></div>
-                  </div>
-                  <TagInput label="Locations" items={locs} placeholder="e.g. bedroom, masjid, garden"
-                    onAdd={v => patchBg(key, { locations: [...locs, v] })}
-                    onRemove={i => patchBg(key, { locations: locs.filter((_: string, j: number) => j !== i) })} />
-                  <TagInput label="Key Visual Features" items={feats} placeholder="e.g. Clear foreground separation"
-                    onAdd={v => patchBg(key, { keyFeatures: [...feats, v] })}
-                    onRemove={i => patchBg(key, { keyFeatures: feats.filter((_: string, j: number) => j !== i) })} />
-                </div>
-              );
-            })}
-            <div className="border rounded-xl p-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Cross-Series Rules</p>
-              <TagInput label="Avoid Backgrounds (never use)" items={bs.avoidBackgrounds || []}
-                placeholder="e.g. Abstract gradients, busy wallpapers"
-                onAdd={v => patchBgRoot({ avoidBackgrounds: [...(bs.avoidBackgrounds || []), v] })}
-                onRemove={i => patchBgRoot({ avoidBackgrounds: (bs.avoidBackgrounds || []).filter((_: string, j: number) => j !== i) })} />
-              <div><Label className="text-xs">Universal Rules</Label>
-                <Textarea rows={2} className="resize-none text-xs" placeholder="e.g. Every scene must feel handcrafted, not digital"
-                  defaultValue={bs.universalRules || ""} onBlur={e => patchBgRoot({ universalRules: e.target.value })} />
-              </div>
-            </div>
-          </div>
+          <KBBackgroundSettings
+            bs={bs}
+            onSave={async (update) => { await save(update as any); }}
+            isSaving={updateMutation.isPending}
+          />
         );
       }
 
       case "bookFormatting": {
-        const bf = (selectedKB as any)?.bookFormatting || {};
-        const mg = bf.middleGrade || {};
-        const jr = bf.junior || {};
-        const patchMG = (partial: object) => save({ bookFormatting: { ...bf, middleGrade: { ...mg, ...partial } } } as any);
-        const patchJR = (partial: object) => save({ bookFormatting: { ...bf, junior: { ...jr, ...partial } } } as any);
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Book pacing and structure rules per age group. Injected into text generation to control word count, chapter rhythm, and layout.</p>
-            <div className="border rounded-xl p-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Middle Grade (8–13)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Word Count</Label><Input placeholder="20,000–35,000" defaultValue={mg.wordCount || ""} onBlur={e => patchMG({ wordCount: e.target.value })} /></div>
-                <div><Label className="text-xs">Chapter Range</Label><Input placeholder="8 to 12" defaultValue={mg.chapterRange || ""} onBlur={e => patchMG({ chapterRange: e.target.value })} /></div>
-                <div><Label className="text-xs">Scene Length</Label><Input placeholder="500–800 words" defaultValue={mg.sceneLength || ""} onBlur={e => patchMG({ sceneLength: e.target.value })} /></div>
-              </div>
-              <TagInput label="Chapter Rhythm" items={mg.chapterRhythm || []} placeholder="e.g. Hook → Scene A → Reflection → Scene B → Close"
-                onAdd={v => patchMG({ chapterRhythm: [...(mg.chapterRhythm || []), v] })}
-                onRemove={i => patchMG({ chapterRhythm: (mg.chapterRhythm || []).filter((_: string, j: number) => j !== i) })} />
-              <TagInput label="Front Matter" items={mg.frontMatter || []} placeholder="e.g. Dedication, Map, Character list"
-                onAdd={v => patchMG({ frontMatter: [...(mg.frontMatter || []), v] })}
-                onRemove={i => patchMG({ frontMatter: (mg.frontMatter || []).filter((_: string, j: number) => j !== i) })} />
-              <TagInput label="End Matter" items={mg.endMatter || []} placeholder="e.g. Glossary, Author note, Du'a page"
-                onAdd={v => patchMG({ endMatter: [...(mg.endMatter || []), v] })}
-                onRemove={i => patchMG({ endMatter: (mg.endMatter || []).filter((_: string, j: number) => j !== i) })} />
-            </div>
-            <div className="border rounded-xl p-4 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Junior (5–8)</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Word Count</Label><Input placeholder="1,500–3,000" defaultValue={jr.wordCount || ""} onBlur={e => patchJR({ wordCount: e.target.value })} /></div>
-                <div><Label className="text-xs">Page Count</Label><Input placeholder="24–40 pages" defaultValue={jr.pageCount || ""} onBlur={e => patchJR({ pageCount: e.target.value })} /></div>
-                <div><Label className="text-xs">Segment Count</Label><Input placeholder="4–6 segments" defaultValue={jr.segmentCount || ""} onBlur={e => patchJR({ segmentCount: e.target.value })} /></div>
-              </div>
-              <TagInput label="Page Flow" items={jr.pageFlow || []} placeholder="e.g. Scene → Emotion → Resolution"
-                onAdd={v => patchJR({ pageFlow: [...(jr.pageFlow || []), v] })}
-                onRemove={i => patchJR({ pageFlow: (jr.pageFlow || []).filter((_: string, j: number) => j !== i) })} />
-            </div>
-          </div>
+          <KBBookFormatting
+            kb={selectedKB}
+            onSave={async (update) => { await save(update as any); }}
+            isSaving={updateMutation.isPending}
+          />
         );
       }
 
 
       case "coverDesign": {
         const cd = (selectedKB as any)?.coverDesign || {};
-        const brandingRules       = cd.brandingRules        || [];
-        const characterComposition= cd.characterComposition || [];
-        const optionalAddons      = cd.optionalAddons       || [];
-        const islamicMotifs       = cd.islamicMotifs        || [];
-        const avoidCover          = cd.avoidCover           || [];
+        const brandingRules = cd.brandingRules || [];
+        const characterComposition = cd.characterComposition || [];
+        const optionalAddons = cd.optionalAddons || [];
+        const islamicMotifs = cd.islamicMotifs || [];
+        const avoidCover = cd.avoidCover || [];
+        const selectedTplId = cd.selectedCoverTemplate || null;
 
         const patch = (partial: object) => save({ coverDesign: { ...cd, ...partial } } as any);
 
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Cover artwork rules injected into every cover and back-cover generation prompt. Controls composition, typography, and atmosphere per age group.</p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label className="text-xs">Title Placement</Label>
-                <Input placeholder="e.g. Top 1/3 of cover, always visible at thumbnail size"
-                  defaultValue={cd.titlePlacement || ""} onBlur={e => patch({ titlePlacement: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <Label className="text-xs">Atmosphere — Middle Grade</Label>
-                <Textarea rows={2} className="resize-none text-xs" placeholder="Cinematic lighting, mystery item in background"
-                  defaultValue={cd.atmosphere?.middleGrade || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, middleGrade: e.target.value } })} />
-              </div>
-              <div>
-                <Label className="text-xs">Atmosphere — Junior</Label>
-                <Textarea rows={2} className="resize-none text-xs" placeholder="Bright joyful colors, plot-related objects"
-                  defaultValue={cd.atmosphere?.junior || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, junior: e.target.value } })} />
-              </div>
-              <div>
-                <Label className="text-xs">Atmosphere — Saeeda</Label>
-                <Textarea rows={2} className="resize-none text-xs" placeholder="Dreamlike macro-world, giant leaf, flower cave"
-                  defaultValue={cd.atmosphere?.saeeda || ""} onBlur={e => patch({ atmosphere: { ...cd.atmosphere, saeeda: e.target.value } })} />
-              </div>
-              <div>
-                <Label className="text-xs">Typography — Middle Grade</Label>
-                <Input className="text-xs" placeholder="Serif — Literata, Alegreya"
-                  defaultValue={cd.typography?.middleGrade || ""} onBlur={e => patch({ typography: { ...cd.typography, middleGrade: e.target.value } })} />
-              </div>
-              <div>
-                <Label className="text-xs">Typography — Junior</Label>
-                <Input className="text-xs" placeholder="Bold rounded — Fredoka, Baloo"
-                  defaultValue={cd.typography?.junior || ""} onBlur={e => patch({ typography: { ...cd.typography, junior: e.target.value } })} />
-              </div>
-              <div>
-                <Label className="text-xs">Extra Notes</Label>
-                <Input className="text-xs" placeholder="Any other cover direction..."
-                  defaultValue={cd.extraNotes || ""} onBlur={e => patch({ extraNotes: e.target.value })} />
-              </div>
-            </div>
-
-            <TagInput label="Branding Rules" items={brandingRules}
-              placeholder="e.g. Series logo must appear prominently"
-              onAdd={v => patch({ brandingRules: [...brandingRules, v] })}
-              onRemove={i => patch({ brandingRules: brandingRules.filter((_: string, j: number) => j !== i) })} />
-            <TagInput label="Character Composition Rules" items={characterComposition}
-              placeholder="e.g. Eye contact with reader preferred for Middle Grade"
-              onAdd={v => patch({ characterComposition: [...characterComposition, v] })}
-              onRemove={i => patch({ characterComposition: characterComposition.filter((_: string, j: number) => j !== i) })} />
-            <TagInput label="Optional Add-ons" items={optionalAddons}
-              placeholder="e.g. Icon badge, corner headshot, series number"
-              onAdd={v => patch({ optionalAddons: [...optionalAddons, v] })}
-              onRemove={i => patch({ optionalAddons: optionalAddons.filter((_: string, j: number) => j !== i) })} />
-            <TagInput label="Islamic Motifs" items={islamicMotifs}
-              placeholder="e.g. Star pattern, mashrabiya frame watermark"
-              onAdd={v => patch({ islamicMotifs: [...islamicMotifs, v] })}
-              onRemove={i => patch({ islamicMotifs: islamicMotifs.filter((_: string, j: number) => j !== i) })} />
-            <TagInput label="Avoid on Cover" items={avoidCover}
-              placeholder="e.g. Generic centered-character-only templates"
-              onAdd={v => patch({ avoidCover: [...avoidCover, v] })}
-              onRemove={i => patch({ avoidCover: avoidCover.filter((_: string, j: number) => j !== i) })} />
-          </div>
+          <CoverDesignSection
+            cd={cd}
+            brandingRules={brandingRules}
+            characterComposition={characterComposition}
+            optionalAddons={optionalAddons}
+            islamicMotifs={islamicMotifs}
+            avoidCover={avoidCover}
+            selectedTplId={selectedTplId}
+            patch={patch}
+          />
         );
       }
 
       case "underSixDesign": {
         const u = (selectedKB as any)?.underSixDesign || {};
         const fontPreferences = u.fontPreferences || [];
-        const specialRules    = u.specialRules    || [];
+        const specialRules = u.specialRules || [];
         const patchU = (partial: object) => save({ underSixDesign: { ...u, ...partial } } as any);
 
-        return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Layout, text, and illustration rules for spreads-only books (ages under 6). Controls max words, page flow, font, and emotional pattern.</p>
+        const WORD_COUNT_TILES = [
+          { value: 5, label: "5 words", desc: "Tiny tots", color: "bg-lime-100 border-lime-400" },
+          { value: 10, label: "10 words", desc: "Picture book", color: "bg-green-100 border-green-400" },
+          { value: 15, label: "15 words", desc: "Early reader", color: "bg-teal-100 border-teal-400" },
+          { value: 20, label: "20 words", desc: "Short story", color: "bg-cyan-100 border-cyan-400" },
+        ];
+        const currentWords = u.maxWordsPerSpread ?? 10;
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Max Words Per Spread</Label>
-                <Input type="number" placeholder="10"
-                  defaultValue={u.maxWordsPerSpread ?? 10}
-                  onBlur={e => patchU({ maxWordsPerSpread: Number(e.target.value) })} />
+        return (
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">Layout, text, and illustration rules for spreads-only books (ages under 6).</p>
+
+            {/* ── Max Words visual tiles ── */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Max Words Per Spread — tap to choose</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {WORD_COUNT_TILES.map(t => (
+                  <button key={t.value} type="button"
+                    onClick={() => patchU({ maxWordsPerSpread: t.value })}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center",
+                      currentWords === t.value ? t.color + " shadow-sm" : "border-border hover:border-lime-300 bg-background"
+                    )}>
+                    <span className="text-2xl font-black text-foreground">{t.value}</span>
+                    <span className="text-[10px] font-semibold">{t.label}</span>
+                    <span className="text-[9px] text-muted-foreground">{t.desc}</span>
+                  </button>
+                ))}
               </div>
+            </div>
+
+            {/* ── Page Layout visual picker ── */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Page Layout — how is each spread structured?</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {PAGE_LAYOUT_OPTIONS.map(opt => {
+                  const isSel = u.pageLayout === opt.value;
+                  return (
+                    <button key={opt.value} type="button"
+                      onClick={() => patchU({ pageLayout: isSel ? "" : opt.value })}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                        isSel ? "border-lime-500 bg-lime-50 dark:bg-lime-950/30 shadow-sm" : "border-border hover:border-lime-300 bg-background"
+                      )}>
+                      <div className="w-12 h-12">{opt.icon}</div>
+                      <span className={cn("text-[10px] font-semibold leading-tight", isSel ? "text-lime-700" : "text-foreground")}>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Illustration Style visual picker ── */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Illustration Style — how should artwork look?</Label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {ILLUSTRATION_STYLE_OPTIONS.map(opt => {
+                  const isSel = u.illustrationStyle === opt.value;
+                  return (
+                    <button key={opt.value} type="button"
+                      onClick={() => patchU({ illustrationStyle: isSel ? "" : opt.value })}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                        isSel ? "border-lime-500 bg-lime-50 dark:bg-lime-950/30 shadow-sm" : "border-border hover:border-lime-300 bg-background"
+                      )}>
+                      <div className="w-11 h-11">{opt.icon}</div>
+                      <span className={cn("text-[10px] font-semibold leading-tight", isSel ? "text-lime-700" : "text-foreground")}>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Reading type + other fields ── */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Reading Type</Label>
                 <Select defaultValue={u.readingType || "parent-read"} onValueChange={v => patchU({ readingType: v })}>
@@ -674,25 +1009,15 @@ export default function KnowledgeBasePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2">
-                <Label className="text-xs">Page Layout</Label>
-                <Input placeholder="e.g. Left full-page image, right-side text block (100–150 words max)"
-                  defaultValue={u.pageLayout || ""} onBlur={e => patchU({ pageLayout: e.target.value })} />
+              <div>
+                <Label className="text-xs">Color Palette</Label>
+                <Input placeholder="e.g. Bright, joyful, high contrast"
+                  defaultValue={u.colorPalette || ""} onBlur={e => patchU({ colorPalette: e.target.value })} />
               </div>
               <div>
                 <Label className="text-xs">Font Style</Label>
                 <Input placeholder="e.g. Rounded, large, dyslexia-friendly"
                   defaultValue={u.fontStyle || ""} onBlur={e => patchU({ fontStyle: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs">Illustration Style</Label>
-                <Input placeholder="e.g. Pixar-style, round shapes, soft shadows"
-                  defaultValue={u.illustrationStyle || ""} onBlur={e => patchU({ illustrationStyle: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs">Color Palette</Label>
-                <Input placeholder="e.g. Bright, joyful, high contrast"
-                  defaultValue={u.colorPalette || ""} onBlur={e => patchU({ colorPalette: e.target.value })} />
               </div>
               <div>
                 <Label className="text-xs">Reflection Prompt (end spread)</Label>
@@ -748,7 +1073,7 @@ export default function KnowledgeBasePage() {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Select a character from your universe to define their speaking style, background lore, and faith integration.</p>
 
-            {/* Universe character picker */}
+            {/* ── Universe character picker ── */}
             {universeChars.length === 0 ? (
               <div className="text-center py-6 border rounded-xl">
                 <Users className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -762,9 +1087,7 @@ export default function KnowledgeBasePage() {
                     <button key={c.id || c._id}
                       onClick={() => {
                         setSelectedCharName(c.name);
-                        if (!hasGuide) {
-                          setNewCharGuide({ ...newCharGuide, characterName: c.name });
-                        }
+                        if (!hasGuide) setNewCharGuide({ ...newCharGuide, characterName: c.name });
                       }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all",
@@ -780,7 +1103,7 @@ export default function KnowledgeBasePage() {
               </div>
             )}
 
-            {/* Existing guide summary */}
+            {/* ── Saved guide summary ── */}
             {existingGuide && (
               <div className="border rounded-xl p-3 bg-emerald-50 space-y-1">
                 <div className="flex items-center justify-between">
@@ -795,27 +1118,347 @@ export default function KnowledgeBasePage() {
               </div>
             )}
 
-            {/* Add/edit form — only when a character is selected and has no guide yet */}
+            {/* ── Build/edit form ── */}
             {selectedCharName && !existingGuide && (
-              <div className="border rounded-xl p-4 space-y-3">
+              <div className="border rounded-xl p-4 space-y-5">
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Guide for {selectedCharName}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2">
-                    <Label className="text-xs">Speaking Style</Label>
-                    <Input placeholder="e.g. Fast, buzzing, excitable — short fragmented lines"
+
+                {/* ── Speaking Style ── */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Speaking Style — how does this character talk?</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {SPEAKING_STYLE_OPTIONS.map(opt => {
+                      const isSel = newCharGuide.speakingStyle === opt.value;
+                      return (
+                        <button key={opt.value} type="button"
+                          onClick={() => setNewCharGuide({ ...newCharGuide, speakingStyle: isSel ? "" : opt.value })}
+                          className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                            isSel ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-border hover:border-emerald-300"
+                          )}>
+                          <div className="w-10 h-10">{opt.icon}</div>
+                          <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!SPEAKING_STYLE_OPTIONS.some(o => o.value === newCharGuide.speakingStyle) && (
+                    <Input className="text-xs" placeholder="Or describe their speaking style…"
                       value={newCharGuide.speakingStyle} onChange={e => setNewCharGuide({ ...newCharGuide, speakingStyle: e.target.value })} />
+                  )}
+                </div>
+
+                {/* ── Literary Role ── */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Literary Role — what role do they play in the story?</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {LITERARY_ROLE_OPTIONS.map(opt => {
+                      const isSel = newCharGuide.literaryRole === opt.value;
+                      return (
+                        <button key={opt.value} type="button"
+                          onClick={() => setNewCharGuide({ ...newCharGuide, literaryRole: isSel ? "" : opt.value })}
+                          className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                            isSel ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30" : "border-border hover:border-emerald-300"
+                          )}>
+                          <div className="w-10 h-10">{opt.icon}</div>
+                          <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">More Info / Background Lore</Label>
-                    <Textarea rows={2} className="resize-none text-xs"
-                      placeholder="Extended background, personality depth, story role..."
-                      value={newCharGuide.moreInfo} onChange={e => setNewCharGuide({ ...newCharGuide, moreInfo: e.target.value })} />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Literary Role</Label>
-                    <Input placeholder="e.g. Carries theme of Truth vs Comfort across series"
+                  {!LITERARY_ROLE_OPTIONS.some(o => o.value === newCharGuide.literaryRole) && (
+                    <Input className="text-xs" placeholder="Or describe their literary role…"
                       value={newCharGuide.literaryRole} onChange={e => setNewCharGuide({ ...newCharGuide, literaryRole: e.target.value })} />
+                  )}
+                </div>
+
+                {/* ── FAITH GUIDE ── */}
+                <div className="border rounded-xl p-4 space-y-5 bg-emerald-50/50">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Faith Guide</p>
+
+                  {/* Faith Tone */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Faith Tone — how do they express their deen?</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {FAITH_TONE_OPTIONS.map(opt => {
+                        const isSel = newCharGuide.faithTone === opt.value;
+                        return (
+                          <button key={opt.value} type="button"
+                            onClick={() => setNewCharGuide({ ...newCharGuide, faithTone: isSel ? "" : opt.value })}
+                            className={cn(
+                              "flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                              isSel ? "border-emerald-500 bg-emerald-100" : "border-border hover:border-emerald-300 bg-background"
+                            )}>
+                            <div className="w-10 h-10">{opt.icon}</div>
+                            <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!FAITH_TONE_OPTIONS.some(o => o.value === newCharGuide.faithTone) && (
+                      <Input className="text-xs" placeholder="Or describe their faith tone…"
+                        value={newCharGuide.faithTone} onChange={e => setNewCharGuide({ ...newCharGuide, faithTone: e.target.value })} />
+                    )}
                   </div>
+
+                  {/* ── Du'a Style — NEW visual picker replaces plain Input ── */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Du'a Style — how do they make du'a?</Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {DUA_STYLE_OPTIONS.map(opt => {
+                        const isSel = newCharGuide.duaStyle === opt.value;
+                        return (
+                          <button key={opt.value} type="button"
+                            onClick={() => setNewCharGuide({ ...newCharGuide, duaStyle: isSel ? "" : opt.value })}
+                            className={cn(
+                              "flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                              isSel ? "border-emerald-500 bg-emerald-100" : "border-border hover:border-emerald-300 bg-background"
+                            )}>
+                            <div className="w-10 h-10">{opt.icon}</div>
+                            <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Custom override if nothing selected */}
+                    {!DUA_STYLE_OPTIONS.some(o => o.value === newCharGuide.duaStyle) && (
+                      <Input className="text-xs mt-1" placeholder="Or describe their du'a style…"
+                        value={newCharGuide.duaStyle} onChange={e => setNewCharGuide({ ...newCharGuide, duaStyle: e.target.value })} />
+                    )}
+                  </div>
+
+                  {/* ── Islamic Traits — NEW illustrated preset tiles ── */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Islamic Traits — tap to add</Label>
+                    <p className="text-[10px] text-muted-foreground -mt-1">Selected traits appear as character guide tags.</p>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                      {ISLAMIC_TRAIT_PRESETS.map(preset => {
+                        const isSel = newCharGuide.islamicTraits.includes(preset.value);
+                        return (
+                          <button key={preset.value} type="button"
+                            onClick={() => {
+                              const next = isSel
+                                ? newCharGuide.islamicTraits.filter(t => t !== preset.value)
+                                : [...newCharGuide.islamicTraits, preset.value];
+                              setNewCharGuide({ ...newCharGuide, islamicTraits: next });
+                            }}
+                            className={cn(
+                              "relative flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                              isSel ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm" : "border-border hover:border-emerald-300 bg-background"
+                            )}>
+                            <div className="w-9 h-9">{preset.icon}</div>
+                            <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{preset.value}</span>
+                            {isSel && (
+                              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Custom trait input */}
+                    <div className="flex gap-2 pt-1">
+                      {(() => {
+                        const [customTrait, setCustomTrait] = useState("");
+                        return (
+                          <>
+                            <Input value={customTrait} onChange={e => setCustomTrait(e.target.value)}
+                              placeholder="Add custom trait…" className="text-xs h-8 flex-1"
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && customTrait.trim()) {
+                                  setNewCharGuide({ ...newCharGuide, islamicTraits: [...newCharGuide.islamicTraits, customTrait.trim()] });
+                                  setCustomTrait("");
+                                }
+                              }} />
+                            <Button variant="outline" size="sm" className="h-8 px-2"
+                              onClick={() => {
+                                if (customTrait.trim()) {
+                                  setNewCharGuide({ ...newCharGuide, islamicTraits: [...newCharGuide.islamicTraits, customTrait.trim()] });
+                                  setCustomTrait("");
+                                }
+                              }}>
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {/* Selected traits chip row */}
+                    {newCharGuide.islamicTraits.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {newCharGuide.islamicTraits.map((t, i) => (
+                          <Badge key={i} variant="secondary" className="gap-1 text-xs bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            {t}
+                            <button onClick={() => setNewCharGuide({ ...newCharGuide, islamicTraits: newCharGuide.islamicTraits.filter((_, j) => j !== i) })}
+                              className="hover:text-destructive ml-0.5">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Faith Expressions — NEW illustrated preset tiles ── */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Faith Expressions — things this character does</Label>
+                    <p className="text-[10px] text-muted-foreground -mt-1">Tap presets or write your own example below.</p>
+                    <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
+                      {FAITH_EXPRESSION_PRESETS.map(preset => {
+                        const isSel = newCharGuide.faithExpressions.includes(preset.value);
+                        return (
+                          <button key={preset.value} type="button"
+                            onClick={() => {
+                              const next = isSel
+                                ? newCharGuide.faithExpressions.filter(f => f !== preset.value)
+                                : [...newCharGuide.faithExpressions, preset.value];
+                              setNewCharGuide({ ...newCharGuide, faithExpressions: next });
+                            }}
+                            className={cn(
+                              "relative flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                              isSel ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm" : "border-border hover:border-emerald-300 bg-background"
+                            )}>
+                            <div className="w-9 h-9">{preset.icon}</div>
+                            <span className={cn("text-[9px] font-semibold leading-tight", isSel ? "text-emerald-700" : "text-foreground")}>{preset.label}</span>
+                            {isSel && (
+                              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Custom expression input */}
+                    <div className="flex gap-2 pt-1">
+                      {(() => {
+                        const [customExpr, setCustomExpr] = useState("");
+                        return (
+                          <>
+                            <Input value={customExpr} onChange={e => setCustomExpr(e.target.value)}
+                              placeholder="e.g. Copies parent's wudu without being asked…" className="text-xs h-8 flex-1"
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && customExpr.trim()) {
+                                  setNewCharGuide({ ...newCharGuide, faithExpressions: [...newCharGuide.faithExpressions, customExpr.trim()] });
+                                  setCustomExpr("");
+                                }
+                              }} />
+                            <Button variant="outline" size="sm" className="h-8 px-2"
+                              onClick={() => {
+                                if (customExpr.trim()) {
+                                  setNewCharGuide({ ...newCharGuide, faithExpressions: [...newCharGuide.faithExpressions, customExpr.trim()] });
+                                  setCustomExpr("");
+                                }
+                              }}>
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {/* Selected expressions chip row */}
+                    {newCharGuide.faithExpressions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {newCharGuide.faithExpressions.map((f, i) => (
+                          <Badge key={i} variant="secondary" className="gap-1 text-xs bg-emerald-100 text-emerald-800 border border-emerald-300 max-w-xs">
+                            <span className="truncate">{f}</span>
+                            <button onClick={() => setNewCharGuide({ ...newCharGuide, faithExpressions: newCharGuide.faithExpressions.filter((_, j) => j !== i) })}
+                              className="hover:text-destructive ml-0.5 shrink-0">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Faith Dialogue Examples — preset buttons + custom ── */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Faith Dialogue Examples</Label>
+                    <p className="text-[10px] text-muted-foreground -mt-1">Tap to add a starter line or write your own.</p>
+                    {/* Preset dialogue suggestion pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        `"Allah can see us? Right now? Even in the dark?!"`,
+                        `"Alhamdulillah, Mama. This is the best day!"`,
+                        `"I made du'a and I think Allah heard me."`,
+                        `"We should say sorry. That's what Baba taught me."`,
+                        `"Can we go to the masjid today? Please?"`,
+                        `"I'll fast too. I want to feel what Baba feels."`,
+                      ].map((line, i) => {
+                        const isSel = newCharGuide.faithExamples.includes(line);
+                        return (
+                          <button key={i} type="button"
+                            onClick={() => {
+                              const next = isSel
+                                ? newCharGuide.faithExamples.filter(e => e !== line)
+                                : [...newCharGuide.faithExamples, line];
+                              setNewCharGuide({ ...newCharGuide, faithExamples: next });
+                            }}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-medium transition-all",
+                              isSel ? "border-emerald-500 bg-emerald-100 text-emerald-800" : "border-border bg-background text-muted-foreground hover:border-emerald-300 hover:text-foreground"
+                            )}>
+                            {isSel ? <X className="w-2.5 h-2.5 shrink-0" /> : <Plus className="w-2.5 h-2.5 shrink-0" />}
+                            <span className="max-w-[180px] truncate">{line}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Custom dialogue input */}
+                    <TagInput label="" items={newCharGuide.faithExamples.filter(e =>
+                      ![
+                        `"Allah can see us? Right now? Even in the dark?!"`,
+                        `"Alhamdulillah, Mama. This is the best day!"`,
+                        `"I made du'a and I think Allah heard me."`,
+                        `"We should say sorry. That's what Baba taught me."`,
+                        `"Can we go to the masjid today? Please?"`,
+                        `"I'll fast too. I want to feel what Baba feels."`,
+                      ].includes(e))}
+                      placeholder={`e.g. "Bismillah! Let's go!" she whispered.`}
+                      onAdd={v => setNewCharGuide({ ...newCharGuide, faithExamples: [...newCharGuide.faithExamples, v] })}
+                      onRemove={i => {
+                        const custom = newCharGuide.faithExamples.filter(e =>
+                          ![
+                            `"Allah can see us? Right now? Even in the dark?!"`,
+                            `"Alhamdulillah, Mama. This is the best day!"`,
+                            `"I made du'a and I think Allah heard me."`,
+                            `"We should say sorry. That's what Baba taught me."`,
+                            `"Can we go to the masjid today? Please?"`,
+                            `"I'll fast too. I want to feel what Baba feels."`,
+                          ].includes(e));
+                        const removed = custom[i];
+                        setNewCharGuide({ ...newCharGuide, faithExamples: newCharGuide.faithExamples.filter(e => e !== removed) });
+                      }} />
+                    {/* All selected examples chip display */}
+                    {newCharGuide.faithExamples.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {newCharGuide.faithExamples.map((e, i) => (
+                          <Badge key={i} variant="secondary" className="gap-1 text-xs bg-blue-50 text-blue-800 border border-blue-200 max-w-xs">
+                            <span className="truncate italic">{e}</span>
+                            <button onClick={() => setNewCharGuide({ ...newCharGuide, faithExamples: newCharGuide.faithExamples.filter((_, j) => j !== i) })}
+                              className="hover:text-destructive ml-0.5 shrink-0">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Background lore ── */}
+                <div>
+                  <Label className="text-xs">More Info / Background Lore</Label>
+                  <Textarea rows={2} className="resize-none text-xs"
+                    placeholder="Extended background, personality depth, story role..."
+                    value={newCharGuide.moreInfo} onChange={e => setNewCharGuide({ ...newCharGuide, moreInfo: e.target.value })} />
                 </div>
 
                 <TagInput label="Dialogue Examples" items={newCharGuide.dialogueExamples}
@@ -827,34 +1470,6 @@ export default function KnowledgeBasePage() {
                   onAdd={v => setNewCharGuide({ ...newCharGuide, personalityNotes: [...newCharGuide.personalityNotes, v] })}
                   onRemove={i => setNewCharGuide({ ...newCharGuide, personalityNotes: newCharGuide.personalityNotes.filter((_, j) => j !== i) })} />
 
-                <div className="border rounded-lg p-3 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Faith Guide</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="col-span-2">
-                      <Label className="text-xs">Faith Tone</Label>
-                      <Input placeholder="e.g. Reflective & questioning / Joyful & imitative"
-                        value={newCharGuide.faithTone} onChange={e => setNewCharGuide({ ...newCharGuide, faithTone: e.target.value })} />
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Du'a Style</Label>
-                      <Input placeholder="e.g. Whispered in solitude under pressure"
-                        value={newCharGuide.duaStyle} onChange={e => setNewCharGuide({ ...newCharGuide, duaStyle: e.target.value })} />
-                    </div>
-                  </div>
-                  <TagInput label="Islamic Traits" items={newCharGuide.islamicTraits}
-                    placeholder="e.g. Patient, grateful, honest"
-                    onAdd={v => setNewCharGuide({ ...newCharGuide, islamicTraits: [...newCharGuide.islamicTraits, v] })}
-                    onRemove={i => setNewCharGuide({ ...newCharGuide, islamicTraits: newCharGuide.islamicTraits.filter((_, j) => j !== i) })} />
-                  <TagInput label="Faith Expressions" items={newCharGuide.faithExpressions}
-                    placeholder="e.g. Copies parent's wudhu without being asked"
-                    onAdd={v => setNewCharGuide({ ...newCharGuide, faithExpressions: [...newCharGuide.faithExpressions, v] })}
-                    onRemove={i => setNewCharGuide({ ...newCharGuide, faithExpressions: newCharGuide.faithExpressions.filter((_, j) => j !== i) })} />
-                  <TagInput label="Faith Dialogue Examples" items={newCharGuide.faithExamples}
-                    placeholder={`e.g. "Allah can see us? Right now? Even in the dark?!"`}
-                    onAdd={v => setNewCharGuide({ ...newCharGuide, faithExamples: [...newCharGuide.faithExamples, v] })}
-                    onRemove={i => setNewCharGuide({ ...newCharGuide, faithExamples: newCharGuide.faithExamples.filter((_, j) => j !== i) })} />
-                </div>
-
                 <Button variant="outline" size="sm" disabled={!selectedCharName || updateMutation.isPending}
                   onClick={() => {
                     const { faithTone, faithExpressions, duaStyle, islamicTraits, faithExamples, ...rest } = newCharGuide;
@@ -862,7 +1477,8 @@ export default function KnowledgeBasePage() {
                     setNewCharGuide({ characterName: "", speakingStyle: "", dialogueExamples: [], moreInfo: "", personalityNotes: [], literaryRole: "", faithTone: "", faithExpressions: [], duaStyle: "", islamicTraits: [], faithExamples: [] });
                     setSelectedCharName("");
                   }}>
-                  <Plus className="w-4 h-4 mr-1" /> Save Guide for {selectedCharName}
+                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                  Save Guide for {selectedCharName}
                 </Button>
               </div>
             )}
@@ -876,9 +1492,9 @@ export default function KnowledgeBasePage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  const activeWorkflowDef  = WORKFLOWS.find(w => w.id === activeWorkflow);
-  const currentSections    = SECTIONS.filter(s => activeWorkflowDef?.sections.includes(s.id as any));
-  const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "underSixDesign", "coverDesign"]);
+  const activeWorkflowDef = WORKFLOWS.find(w => w.id === activeWorkflow);
+  const currentSections = SECTIONS.filter(s => activeWorkflowDef?.sections.includes(s.id as any));
+  const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "coverDesign"]);
 
   return (
     <AppLayout
@@ -977,6 +1593,15 @@ export default function KnowledgeBasePage() {
               <span className="font-semibold text-blue-600">{selectedKB.duas.length}</span> du'as ·{" "}
               <span className="font-semibold text-orange-600">{selectedKB.vocabulary.length}</span> words
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5 text-xs border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400"
+              onClick={() => { setShowApplyTemplate(true); setApplyTemplateId(""); }}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Browse Templates
+            </Button>
           </div>
 
           {/* Workflow tabs */}
@@ -997,99 +1622,299 @@ export default function KnowledgeBasePage() {
             ))}
           </div>
 
-          {/* Section cards grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            {currentSections.map(sec => {
-              const style      = SECTION_STYLE[sec.id];
-              const Icon       = sec.icon;
-              const count      = getSectionCount(sec.id);
-              const isCollapsed = collapsedSections.has(sec.id);
-              const isFullWidth = FULL_WIDTH_SECTIONS.has(sec.id);
+          {/* ── Faith & Language → single stepper card ── */}
+          {activeWorkflow === "faith" ? (
+            <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+              <div className="px-6 py-5">
+                <KBFaithLanguageStepper
+                  kb={selectedKB}
+                  onSave={async (update) => { await save(update as any); }}
+                  isSaving={updateMutation.isPending}
+                />
+              </div>
+            </div>
+          ) : (
+            /* All other tabs — single-column full-width cards */
+            <div className="space-y-5">
+              {currentSections.map(sec => {
+                const style = SECTION_STYLE[sec.id];
+                const Icon = sec.icon;
+                const count = getSectionCount(sec.id);
+                const isCollapsed = collapsedSections.has(sec.id);
 
-              return (
-                <div
-                  key={sec.id}
-                  className={cn(
-                    "rounded-2xl border overflow-hidden bg-card shadow-sm",
-                    isFullWidth && "xl:col-span-2"
-                  )}
-                >
-                  {/* Card header — click to collapse */}
-                  <button
-                    onClick={() => toggleCollapse(sec.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-5 py-4 transition-colors text-left",
-                      style.bg,
-                      isCollapsed ? "" : "border-b " + style.border
-                    )}
-                  >
-                    <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", style.iconBg)}>
-                      <Icon className={cn("w-4 h-4", sec.color)} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
-                      <p className="text-xs text-muted-foreground leading-tight truncate">
-                        {WORKFLOWS.find(w => w.sections.includes(sec.id as any))?.description}
-                      </p>
-                    </div>
-                    {count > 0 && (
-                      <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0", style.iconBg, style.text)}>
-                        {count}
-                      </span>
-                    )}
-                    <ChevronDown
+                return (
+                  <div key={sec.id} className="rounded-2xl border overflow-hidden bg-card shadow-sm">
+                    {/* Card header */}
+                    <button
+                      onClick={() => toggleCollapse(sec.id)}
                       className={cn(
-                        "w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0",
-                        isCollapsed && "-rotate-90"
+                        "w-full flex items-center gap-3 px-5 py-4 transition-colors text-left",
+                        style.bg,
+                        isCollapsed ? "" : "border-b " + style.border
                       )}
-                    />
-                  </button>
-
-                  {/* Card body */}
-                  {!isCollapsed && (
-                    <div className="p-5">
-                      {renderSectionContent(sec.id as SectionId)}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    >
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", style.iconBg)}>
+                        <Icon className={cn("w-4 h-4", sec.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-bold", style.text)}>{sec.label}</p>
+                        <p className="text-xs text-muted-foreground leading-tight truncate">
+                          {WORKFLOWS.find(w => w.sections.includes(sec.id as any))?.description}
+                        </p>
+                      </div>
+                      {count > 0 && (
+                        <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0", style.iconBg, style.text)}>
+                          {count}
+                        </span>
+                      )}
+                      <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200 shrink-0", isCollapsed && "-rotate-90")} />
+                    </button>
+                    {/* Card body */}
+                    {!isCollapsed && (
+                      <div className="p-5">
+                        {renderSectionContent(sec.id as SectionId)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 
-
       {/* ── Create Dialog ──────────────────────────────────────────────────── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={showCreate} onOpenChange={open => { setShowCreate(open); if (!open) { setCreateStep("template"); setForm({ name: "", universeId: "", starterTemplateId: "" }); } }}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Knowledge Base</DialogTitle>
-            <DialogDescription>Set up the foundational rules for your universe. Add themes, tone guides, dialogue profiles, and literary devices after creation.</DialogDescription>
+            <DialogTitle>
+              {createStep === "template" ? "Choose a Starter Template" : "Name Your Knowledge Base"}
+            </DialogTitle>
+            <DialogDescription>
+              {createStep === "template"
+                ? "Pick a pre-built template to jumpstart your Knowledge Base with values, du'as, and scene rules — or start blank."
+                : "Give your Knowledge Base a name and link it to a universe."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Name *</Label>
-              <Input placeholder="e.g., Zubair Universe — Full KB" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                onKeyDown={e => { if (e.key === "Enter") handleCreate(); }} />
-            </div>
-            <div className="space-y-2">
-              <Label>Universe *</Label>
-              <Select value={form.universeId} onValueChange={v => setForm({ ...form, universeId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select a universe..." /></SelectTrigger>
-                <SelectContent>
-                  {universes.map((u: any) => (
-                    <SelectItem key={u.id || u._id} value={u.id || u._id}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Characters from this universe will appear in the Char. Voice tab.</p>
-            </div>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className={cn("flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold", createStep === "template" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>1</span>
+            <span className={createStep === "template" ? "text-foreground font-medium" : ""}>Choose Template</span>
+            <span className="text-muted-foreground">→</span>
+            <span className={cn("flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold", createStep === "details" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>2</span>
+            <span className={createStep === "details" ? "text-foreground font-medium" : ""}>Details</span>
           </div>
+
+          {createStep === "template" ? (
+            <div className="space-y-3 py-2">
+              {/* Blank option */}
+              <button
+                type="button"
+                onClick={() => { setForm(f => ({ ...f, starterTemplateId: "" })); }}
+                className={cn(
+                  "w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-3",
+                  form.starterTemplateId === ""
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40"
+                )}
+              >
+                <span className="text-2xl">📄</span>
+                <div>
+                  <p className="text-sm font-semibold">Start Blank</p>
+                  <p className="text-xs text-muted-foreground">Empty KB — fill everything yourself</p>
+                </div>
+                {form.starterTemplateId === "" && (
+                  <span className="ml-auto w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </span>
+                )}
+              </button>
+
+              {/* Template grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {kbTemplates.map((tpl: any) => {
+                  const SvgComp = KB_TEMPLATE_SVG_MAP[tpl._id];
+                  const isSelected = form.starterTemplateId === tpl._id;
+                  return (
+                    <button
+                      key={tpl._id}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, starterTemplateId: tpl._id }))}
+                      className={cn(
+                        "relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all hover:shadow-md text-center",
+                        isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40"
+                      )}
+                    >
+                      {/* SVG thumbnail */}
+                      <div className="w-20 h-24 rounded-lg overflow-hidden shadow-sm">
+                        {SvgComp ? <SvgComp /> : <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">{tpl.icon}</div>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold leading-tight">{tpl.name}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{tpl.ageRange}</p>
+                      </div>
+                      {/* Palette dots */}
+                      <div className="flex gap-1">
+                        {tpl.palette?.slice(0, 4).map((hex: string) => (
+                          <span key={hex} className="w-2.5 h-2.5 rounded-full border border-white/50" style={{ backgroundColor: hex }} />
+                        ))}
+                      </div>
+                      {isSelected && (
+                        <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                          <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Template description preview */}
+              {form.starterTemplateId && (() => {
+                const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+                return tpl ? (
+                  <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{tpl.icon} {tpl.name}</span> — {tpl.description}
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {tpl.islamicValues?.slice(0, 3).map((v: string) => (
+                        <span key={v} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px]">{v}</span>
+                      ))}
+                      {(tpl.islamicValues?.length ?? 0) > 3 && (
+                        <span className="text-[10px] text-muted-foreground">+{tpl.islamicValues.length - 3} more values</span>
+                      )}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input placeholder="e.g., Zubair Universe — Full KB" value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onKeyDown={e => { if (e.key === "Enter") handleCreate(); }}
+                  autoFocus />
+              </div>
+              <div className="space-y-2">
+                <Label>Universe *</Label>
+                <Select value={form.universeId} onValueChange={v => setForm({ ...form, universeId: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select a universe..." /></SelectTrigger>
+                  <SelectContent>
+                    {universes.map((u: any) => (
+                      <SelectItem key={u.id || u._id} value={u.id || u._id}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Characters from this universe will appear in the Char. Voice tab.</p>
+              </div>
+              {form.starterTemplateId && (() => {
+                const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+                return tpl ? (
+                  <div className="flex items-center gap-2 text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2">
+                    <span>{tpl.icon}</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-medium">Template: {tpl.name}</span>
+                    <span className="text-muted-foreground">— will be pre-filled after creation</span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button variant="hero" onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-              Create
+            <Button variant="ghost" onClick={() => { setShowCreate(false); setCreateStep("template"); setForm({ name: "", universeId: "", starterTemplateId: "" }); }}>
+              Cancel
+            </Button>
+            {createStep === "template" ? (
+              <Button variant="hero" onClick={() => setCreateStep("details")}>
+                Next →
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setCreateStep("template")}>← Back</Button>
+                <Button variant="hero" onClick={handleCreate} disabled={createMutation.isPending}>
+                  {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Create
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Apply Template Dialog ──────────────────────────────────────────── */}
+      <Dialog open={showApplyTemplate} onOpenChange={open => { setShowApplyTemplate(open); if (!open) setApplyTemplateId(""); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Browse Starter Templates</DialogTitle>
+            <DialogDescription>
+              Pick a template to pre-fill Islamic values, du'as, background settings, cover design, and formatting rules into <span className="font-medium text-foreground">{selectedKB?.name}</span>. Existing data will be overwritten.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            {/* Template grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {kbTemplates.map((tpl: any) => {
+                const SvgComp = KB_TEMPLATE_SVG_MAP[tpl._id];
+                const isSelected = applyTemplateId === tpl._id;
+                return (
+                  <button
+                    key={tpl._id}
+                    type="button"
+                    onClick={() => setApplyTemplateId(isSelected ? "" : tpl._id)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all hover:shadow-md text-center",
+                      isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    <div className="w-20 h-24 rounded-lg overflow-hidden shadow-sm">
+                      {SvgComp ? <SvgComp /> : <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">{tpl.icon}</div>}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold leading-tight">{tpl.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{tpl.ageRange}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      {tpl.palette?.slice(0, 4).map((hex: string) => (
+                        <span key={hex} className="w-2.5 h-2.5 rounded-full border border-white/50" style={{ backgroundColor: hex }} />
+                      ))}
+                    </div>
+                    {isSelected && (
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                        <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Preview strip */}
+            {applyTemplateId && (() => {
+              const tpl = kbTemplates.find((t: any) => t._id === applyTemplateId);
+              return tpl ? (
+                <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1">
+                  <p><span className="font-medium text-foreground">{tpl.icon} {tpl.name}</span> — {tpl.description}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {tpl.islamicValues?.slice(0, 4).map((v: string) => (
+                      <span key={v} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px]">{v.split(" — ")[0]}</span>
+                    ))}
+                    {(tpl.islamicValues?.length ?? 0) > 4 && (
+                      <span className="text-[10px] text-muted-foreground">+{tpl.islamicValues.length - 4} more</span>
+                    )}
+                  </div>
+                </div>
+              ) : null;
+            })()}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setShowApplyTemplate(false); setApplyTemplateId(""); }}>Cancel</Button>
+            <Button variant="hero" onClick={handleApplyTemplate} disabled={!applyTemplateId || isApplying}>
+              {isApplying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <BookOpen className="w-4 h-4 mr-2" />}
+              Apply Template
             </Button>
           </DialogFooter>
         </DialogContent>
