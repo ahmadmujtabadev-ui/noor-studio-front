@@ -22,8 +22,10 @@ import UniversesPage from "./pages/app/UniversesPage";
 import UniverseDetailPage from "./pages/app/UniverseDetailPage";
 import UniverseFormPage from "./pages/app/UniverseFormPage";
 import KnowledgeBasePage from "./pages/app/KnowledgeBasePage";
+import KBTemplatesPage from "./pages/app/KBTemplatesPage";
 import BookBuilderPage from "./pages/app/BookBuilderPage";
 import BookEditorPage from "./pages/app/BookEditorPage";
+import BookRenderer from "./components/book-renderer/BookRenderer";
 import ProjectWorkspacePage from "./pages/app/ProjectWorkspacePage";
 import BillingPage from "./pages/app/BillingPage";
 import BillingSuccessPage from "./pages/app/BillingSuccessPage";
@@ -106,10 +108,12 @@ const App = () => (
                     <Route path="characters/:id" element={<CharacterDetailPage />} />
                     <Route path="character-templates" element={<CharacterTemplatesPage />} />
                     <Route path="knowledge-base" element={<KnowledgeBasePage />} />
+                    <Route path="kb-templates" element={<KBTemplatesPage />} />
                     <Route path="books/new" element={<BookBuilderPage />} />
                     <Route path="books/:id" element={<BookBuilderPage />} />
                     <Route path="projects" element={<DashboardPage />} />
                     <Route path="projects/:id" element={<BookEditorPage />} />
+                    <Route path="projects/:id/preview" element={<BookRenderer />} />
                     <Route path="billing" element={<BillingPage />} />
                     <Route path="billing/success" element={<BillingSuccessPage />} />
                     <Route path="billing/cancel" element={<BillingCancelPage />} />

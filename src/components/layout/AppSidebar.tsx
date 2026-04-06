@@ -3,8 +3,8 @@ import {
   LayoutDashboard, Users, BookOpen, Library, FolderKanban, Globe,
   CreditCard, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight,
   Plus, LogOut, Zap, Check,
-  Star, PenLine, Palette, LayoutTemplate,
-  Layers, Wand2, ImageIcon, BookMarked, Rocket, LayoutGrid,
+  Layers, Wand2, ImageIcon, BookMarked, Rocket, PenLine,
+  Moon, Feather, Frame, Brush, LayoutGrid,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -15,19 +15,18 @@ import { useBookBuilderNavStore } from "@/lib/store/bookBuilderNavStore";
 import { useKbNavStore } from "@/lib/store/kbNavStore";
 
 const KB_WORKFLOWS = [
-  { id: "faith",  label: "Faith & Language", icon: Star,           iconColor: "text-violet-500", activeColor: "text-violet-700", activeBg: "bg-violet-50",  firstSection: "islamicValues" },
-  { id: "story",  label: "Story & Style",    icon: PenLine,        iconColor: "text-pink-500",   activeColor: "text-pink-700",   activeBg: "bg-pink-50",    firstSection: "themes"        },
-  { id: "visual", label: "Visual & Format",  icon: Palette,        iconColor: "text-teal-500",   activeColor: "text-teal-700",   activeBg: "bg-teal-50",    firstSection: "backgroundSettings" },
-  { id: "cover",  label: "Cover Design",     icon: LayoutTemplate, iconColor: "text-orange-500", activeColor: "text-orange-700", activeBg: "bg-orange-50",  firstSection: "coverDesign"   },
+  { id: "faith",  label: "Faith & Language", icon: Moon,    firstSection: "islamicValues"      },
+  { id: "story",  label: "Story & Style",    icon: Feather, firstSection: "themes"             },
+  { id: "visual", label: "Visual & Format",  icon: Brush,   firstSection: "backgroundSettings" },
+  { id: "cover",  label: "Cover Design",     icon: Frame,   firstSection: "coverDesign"        },
 ] as const;
 
 const mainNavItems = [
-  { icon: LayoutDashboard, label: "Dashboard",           href: "/app/dashboard" },
-  { icon: Globe,           label: "Universes",           href: "/app/universes" },
-  { icon: Users,           label: "Characters",          href: "/app/characters" },
-  { icon: LayoutGrid,      label: "Char. Templates",     href: "/app/character-templates" },
-  { icon: Library,         label: "Knowledge Base",      href: "/app/knowledge-base" },
-  { icon: FolderKanban,    label: "Projects",            href: "/app/projects" },
+  { icon: LayoutDashboard, label: "Dashboard",        href: "/app/dashboard" },
+  { icon: Globe,           label: "Universes",        href: "/app/universes" },
+  { icon: Users,           label: "Characters",       href: "/app/characters" },
+  { icon: Library,         label: "Knowledge Base",   href: "/app/knowledge-base" },
+  { icon: FolderKanban,    label: "Projects",         href: "/app/projects" },
 ];
 
 const createNavItems = [
@@ -53,19 +52,21 @@ export function AppSidebar() {
   const isOnBookBuilder = location.pathname.startsWith('/app/books');
 
   const kbNav = useKbNavStore();
-  const isOnKB = location.pathname.startsWith('/app/knowledge-base');
+  const isOnKB = location.pathname === '/app/knowledge-base';
 
-  const illStep    = bookNav.isChapterBook ? 5 : 4;
-  const coverStep  = bookNav.isChapterBook ? 6 : 5;
-  const exportStep = bookNav.isChapterBook ? 7 : 6;
+  const layoutStep = bookNav.isChapterBook ? 5 : 4;
+  const illStep    = bookNav.isChapterBook ? 6 : 5;
+  const coverStep  = bookNav.isChapterBook ? 7 : 6;
+  const exportStep = bookNav.isChapterBook ? 8 : 7;
   const BOOK_PHASES = [
-    { step: 1,         label: "Story",          icon: BookOpen   },
-    { step: 2,         label: "Structure",      icon: Layers     },
-    { step: 3,         label: "Style",          icon: Wand2      },
+    { step: 1,           label: "Story",          icon: BookOpen   },
+    { step: 2,           label: "Structure",      icon: Layers     },
+    { step: 3,           label: "Style",          icon: Wand2      },
     ...(bookNav.isChapterBook ? [{ step: 4, label: "Writing", icon: PenLine }] : []),
-    { step: illStep,   label: "Illustrations",  icon: ImageIcon  },
-    { step: coverStep, label: "Cover",          icon: BookMarked },
-    { step: exportStep,label: "Publish",        icon: Rocket     },
+    { step: layoutStep,  label: "Layout",         icon: LayoutGrid },
+    { step: illStep,     label: "Illustrations",  icon: ImageIcon  },
+    { step: coverStep,   label: "Cover",          icon: BookMarked },
+    { step: exportStep,  label: "Publish",        icon: Rocket     },
   ];
 
   const handleLogout = () => {
@@ -163,7 +164,7 @@ export function AppSidebar() {
 
               {/* Knowledge Base workflow sub-nav */}
               {item.href === "/app/knowledge-base" && isOnKB && !collapsed && (
-                <div className="mt-1 ml-3 pl-3 border-l-2 border-primary/25 space-y-0.5 pb-1">
+                <div className="mt-1.5 ml-4 space-y-0.5 pb-1">
                   {KB_WORKFLOWS.map((wf) => {
                     const isActive = kbNav.activeWorkflow === wf.id;
                     const Icon = wf.icon;
@@ -172,15 +173,20 @@ export function AppSidebar() {
                         key={wf.id}
                         onClick={() => kbNav.setKbNav(wf.id, wf.firstSection)}
                         className={cn(
-                          "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-medium transition-all text-left",
+                          "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 text-left",
                           isActive
-                            ? cn(wf.activeBg, wf.activeColor, "font-semibold")
-                            : "text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            ? "bg-[#F5A623]/15 text-[#F5A623] font-semibold"
+                            : "text-white/45 hover:text-white/80 hover:bg-white/6"
                         )}
                       >
-                        <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? wf.iconColor : "text-sidebar-foreground/40")} />
-                        <span className="truncate">{wf.label}</span>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-auto animate-pulse" />}
+                        <Icon className={cn(
+                          "w-3.5 h-3.5 shrink-0 transition-colors",
+                          isActive ? "text-[#F5A623]" : "text-white/35"
+                        )} />
+                        <span className="truncate tracking-wide">{wf.label}</span>
+                        {isActive && (
+                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#F5A623] shrink-0 animate-pulse" />
+                        )}
                       </button>
                     );
                   })}

@@ -372,3 +372,16 @@ export const COVER_TEMPLATE_SVG_MAP: Record<string, () => JSX.Element> = {
   "ct_bold_typography":   BoldTypographySvg,
   "ct_nature_adventure":  NatureAdventureSvg,
 };
+
+// ── Real PNG thumbnails — shown instead of SVG when available ─────────────────
+export const COVER_TEMPLATE_PNG_MAP: Record<string, string> = {
+  "ct_classic_children":  "/cover/ct_classic_children.png",
+  "ct_epic_cinematic":    "/cover/ct_epic_cinematic.png",
+  "ct_islamic_heritage":  "/cover/ct_islamic_heritage.png",
+  "ct_watercolor_dream":  "/cover/ct_watercolor_dream.png",
+  "ct_night_sky":         "/cover/ct_night_sky.png",
+  "ct_storybook_warm":    "/cover/ct_storybook_warm.png",
+  "ct_nature_adventure":  "/cover/ct_nature_adventure.png",
+  "ct_bold_typography":   "/cover/ct_bold_typography.png",
+  "ct_vintage_ornate":    "/cover/ct_vintage_ornate.png",
+};

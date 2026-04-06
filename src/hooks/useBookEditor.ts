@@ -24,17 +24,56 @@ export type BookPageType =
   | "chapter-moment" // illustration moment  (illustration only, optional caption)
   | "back-cover";    // back cover           (illustration bg, synopsis text)
 
+/** Picture-book spread sub-layouts */
+export type SpreadLayoutType =
+  | "full_bleed"           // image 100% bg, white card overlay with text
+  | "image_left_text_right"// left half = image, right half = white + dropcap text
+  | "image_top_text_bottom"// top 62% image, bottom band with text
+  | "vignette";            // circular image, text beside, Islamic corner ornaments
+
+/** Chapter-book text-page sub-layouts */
+export type TextLayoutType =
+  | "two_column"           // two equal columns, running header, outer page nums
+  | "text_inline_image"    // single column + image floated right 38%
+  | "decorative_full_text";// ornamental border + Arabic/hadith pull-quote
+
+export type LayoutType = SpreadLayoutType | TextLayoutType;
+
 export interface BookPage {
   id:          string;
   label:       string;
   type:        BookPageType;
   imageUrl:    string;
-  title?:      string;  // chapter title / book title
-  subTitle?:   string;  // e.g. "Chapter 3"
-  text?:       string;  // body text / author / synopsis
-  pageNum?:    number;  // running page number (text pages)
+  title?:      string;       // chapter title / book title
+  subTitle?:   string;       // e.g. "Chapter 3"
+  text?:       string;       // body text / author / synopsis
+  pageNum?:    number;       // running page number (text pages)
+  layoutType?: LayoutType;   // auto-assigned sub-layout
   fabricJson?: object | null;
   thumbnail?:  string;
+}
+
+// ─── Layout auto-assignment ───────────────────────────────────────────────────
+
+/** Infer the best picture-book spread layout from page content. */
+function resolveSpreadLayout(text: string, imageUrl: string): SpreadLayoutType {
+  if (!text || !text.trim()) return imageUrl ? "full_bleed" : "vignette";
+  const words     = text.trim().split(/\s+/).length;
+  const sentences = text.split(/[.!?]+/).filter((s) => s.trim()).length;
+  if (words <= 10) return "image_top_text_bottom"; // rhyme / single line
+  if (sentences <= 2) return "full_bleed";          // short prose
+  return "image_left_text_right";                   // 3-4 sentences
+}
+
+/** Infer the best chapter-book text-page layout from page content. */
+function resolveTextLayout(text: string): TextLayoutType {
+  if (!text) return "two_column";
+  // Detect Islamic/hadith/Quranic content → decorative layout
+  if (/hadith|ayah|quran|قال|ﷺ|اللَّهُ|bismillah|sunnah/i.test(text)) return "decorative_full_text";
+  const words = text.trim().split(/\s+/).length;
+  // Short text on text page (unlikely but safe fallback)
+  if (words < 80) return "text_inline_image";
+  return "two_column";
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,13 +132,15 @@ function buildSpreadPages(
       ) as any;
       const text  = struct?.current?.text || ill.current?.text || "";
       const title = `Spread ${(ill.spreadIndex ?? idx) + 1}`;
+      const imgUrl = illusUrl(ill);
       return {
-        id:       `spread-${ill.key}`,
-        label:    title,
-        type:     "spread" as BookPageType,
-        imageUrl: illusUrl(ill),
+        id:         `spread-${ill.key}`,
+        label:      title,
+        type:       "spread" as BookPageType,
+        imageUrl:   imgUrl,
         title,
         text,
+        layoutType: resolveSpreadLayout(text, imgUrl),
       };
     });
 }
@@ -154,15 +195,19 @@ function buildChapterPages(
     // 2. Text pages (prose split into readable chunks)
     if (chapterText) {
       const chunks = splitProse(chapterText);
+      // The chapter's first illustration is embedded on the first text page
+      // so "text_inline_image" layout has an actual image to float.
+      const chapterIllUrl = firstMoment ? illusUrl(firstMoment) : "";
       chunks.forEach((chunk, ci) => {
         pages.push({
-          id:      `chapter-${chIdx}-text-${ci}`,
-          label:   `Ch.${chNum} — Page ${ci + 1}`,
-          type:    "text-page",
-          imageUrl: "",          // clean cream background — no illustration
-          subTitle: chapterTitle,
-          text:    chunk,
-          pageNum: runningPageNum++,
+          id:         `chapter-${chIdx}-text-${ci}`,
+          label:      `Ch.${chNum} — Page ${ci + 1}`,
+          type:       "text-page",
+          imageUrl:   ci === 0 ? chapterIllUrl : "", // image only on first chunk
+          subTitle:   chapterTitle,
+          text:       chunk,
+          pageNum:    runningPageNum++,
+          layoutType: resolveTextLayout(chunk),
         });
       });
     }

@@ -173,6 +173,7 @@ export interface CoverSideNode {
 export interface CoverReview {
   front: CoverSideNode;
   back: CoverSideNode;
+  spine?: CoverSideNode;
 }
 
 // ─── Full review object ───────────────────────────────────────────────────────

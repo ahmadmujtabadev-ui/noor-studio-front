@@ -313,15 +313,26 @@ export function useBookBuilder() {
     );
     if (!items.length) return;
     setLoadingKey("prose-gen-all");
+    const failed: number[] = [];
     try {
       for (let i = 0; i < items.length; i++) {
-        setLoadingKey(`prose-gen-${i}`);
-        await reviewApi.regenerateChapterProse(pid, i);
-        await refreshReview();
+        try {
+          setLoadingKey(`prose-gen-${i}`);
+          await reviewApi.regenerateChapterProse(pid, i);
+          await refreshReview();
+        } catch (_err) {
+          failed.push(i + 1);
+        }
       }
-      toast({ title: `All ${items.length} chapters written ✓` });
-    } catch (err) {
-      toast({ title: "Write all chapters failed", description: (err as Error).message, variant: "destructive" });
+      if (failed.length === 0) {
+        toast({ title: `All ${items.length} chapters written ✓` });
+      } else {
+        toast({
+          title: `${items.length - failed.length} of ${items.length} chapters written`,
+          description: `Chapter${failed.length > 1 ? "s" : ""} ${failed.join(", ")} failed — retry individually`,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoadingKey(null);
     }
@@ -524,11 +535,11 @@ export function useBookBuilder() {
     }
   }, [getPid, toast]);
 
-  const regenerateCover = useCallback(async (side: "front" | "back", opts?: { prompt?: string }) => {
+  const regenerateCover = useCallback(async (side: "front" | "back" | "spine", opts?: { prompt?: string; previewMode?: boolean }) => {
     const pid = getPid();
     setLoadingKey(`cover-${side}`);
     try {
-      await reviewApi.regenerateCover(pid, side, { variantCount: 4, prompt: opts?.prompt });
+      await reviewApi.regenerateCover(pid, side, { variantCount: 1, prompt: opts?.prompt, previewMode: opts?.previewMode });
       await loadCover();
       toast({ title: `${side} cover generated ✓` });
     } catch (err) {
@@ -538,7 +549,7 @@ export function useBookBuilder() {
     }
   }, [getPid, loadCover, toast]);
 
-  const selectCoverVariant = useCallback(async (side: "front" | "back", variantIndex: number) => {
+  const selectCoverVariant = useCallback(async (side: "front" | "back" | "spine", variantIndex: number) => {
     const pid = getPid();
     try {
       await reviewApi.selectCoverVariant(pid, side, variantIndex);
@@ -548,7 +559,7 @@ export function useBookBuilder() {
     }
   }, [getPid, loadCover, toast]);
 
-  const approveCover = useCallback(async (side: "front" | "back") => {
+  const approveCover = useCallback(async (side: "front" | "back" | "spine") => {
     const pid = getPid();
     setLoadingKey(`cover-approve-${side}`);
     try {

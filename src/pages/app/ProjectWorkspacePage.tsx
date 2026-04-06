@@ -605,6 +605,35 @@ function ArtifactViewer({ project, exportsList, exportsLoading, pageEdits, onTex
 
         {/* ══ ILLUSTRATIONS ══ */}
         <TabsContent value="illustrations" className="mt-0 space-y-4">
+          {/* Character consistency notice */}
+          {(() => {
+            const charIds = normArr<string>((project as AnyObj)?.characterIds as string[]);
+            const charCount = charIds.length;
+            if (charCount === 0) return null;
+            if (charCount > 2) {
+              return (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      {charCount} characters linked — max 2 per scene recommended
+                    </p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      Only 2 characters will appear per illustration. More than 2 causes identity drift across scenes. The AI picks the 2 most relevant for each moment.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="rounded-xl border border-teal-200 bg-teal-50 dark:bg-teal-950/30 dark:border-teal-800 p-3 flex gap-2">
+                <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-teal-700 dark:text-teal-300">
+                  <span className="font-semibold">Consistency mode active.</span> {charCount === 1 ? "1 character" : "2 characters"} linked. Master portraits are the identity anchor for all illustrations.
+                </p>
+              </div>
+            );
+          })()}
           {so ? (() => {
             const flat = spreadIlls.length
               ? spreadIlls

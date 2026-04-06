@@ -91,19 +91,19 @@ export const reviewApi = {
   getCover: (pid: string): Promise<{ cover: CoverReview }> =>
     api.get(`/api/projects/${pid}/review/cover`),
 
-  patchCoverPrompt: (pid: string, side: "front" | "back", prompt: string) =>
+  patchCoverPrompt: (pid: string, side: "front" | "back" | "spine", prompt: string) =>
     api.patch(`/api/projects/${pid}/review/cover/${side}/prompt`, { prompt }),
 
   regenerateCover: (
     pid: string,
-    side: "front" | "back",
-    body?: { variantCount?: number; prompt?: string; seed?: number; style?: string },
+    side: "front" | "back" | "spine",
+    body?: { variantCount?: number; prompt?: string; seed?: number; style?: string; previewMode?: boolean },
   ) =>
     api.post(`/api/projects/${pid}/review/cover/${side}/regenerate`, body ?? {}),
 
-  selectCoverVariant: (pid: string, side: "front" | "back", variantIndex: number) =>
+  selectCoverVariant: (pid: string, side: "front" | "back" | "spine", variantIndex: number) =>
     api.post(`/api/projects/${pid}/review/cover/${side}/select-variant`, { variantIndex }),
 
-  approveCover: (pid: string, side: "front" | "back") =>
+  approveCover: (pid: string, side: "front" | "back" | "spine") =>
     api.post(`/api/projects/${pid}/review/cover/${side}/approve`, {}),
 };

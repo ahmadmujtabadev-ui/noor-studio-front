@@ -35,6 +35,9 @@ export interface SaveTemplateInput {
 }
 
 export const characterTemplatesApi = {
+  listDefaults: () =>
+    api.get<CharacterTemplate[]>('/api/character-templates/defaults', { auth: false }),
+
   list: () =>
     api.get<CharacterTemplate[]>('/api/character-templates'),
 

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { fabric } from "fabric";
 import jsPDF from "jspdf";
+import { useNavigate } from "react-router-dom";
 import { useBookEditor } from "@/hooks/useBookEditor";
 import { PageNavigator } from "@/components/editor/PageNavigator";
 import { DesignPanel } from "@/components/editor/DesignPanel";
@@ -36,6 +37,7 @@ const TOOL_SHORTCUTS: Record<string, EditorTool> = {
 
 export default function BookEditorPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     projectId,
     projectTitle,
@@ -248,6 +250,7 @@ export default function BookEditorPage() {
         onExport={handleExport}
         onBack={goBack}
         onImageUpload={handleImageUpload}
+        onPreview={() => navigate(`/app/projects/${projectId}/preview`)}
         saving={saving}
       />
 

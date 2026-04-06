@@ -18,6 +18,7 @@ import {
   Layers,
   Undo2,
   Redo2,
+  Eye,
 } from "lucide-react";
 import type { EditorTool } from "./FabricPageCanvas";
 
@@ -34,6 +35,7 @@ interface Props {
   onExport: () => void;
   onBack: () => void;
   onImageUpload: (url: string) => void;
+  onPreview?: () => void;
   saving: boolean;
 }
 
@@ -58,7 +60,8 @@ export function EditorToolbar({
   title, activeTool, onToolChange,
   scale, onZoomIn, onZoomOut,
   onSave, onExport, onBack,
-  onImageUpload, saving,
+  onImageUpload, onPreview,
+  saving,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -171,6 +174,18 @@ export function EditorToolbar({
           <Save className="w-3.5 h-3.5 mr-1" />
           {saving ? "Saving…" : "Save"}
         </Button>
+
+        {onPreview && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onPreview}
+            className="h-8 px-3 text-[#1B6B5A] hover:text-white hover:bg-[#1B6B5A]/80 border border-[#1B6B5A]/40 text-xs"
+          >
+            <Eye className="w-3.5 h-3.5 mr-1" />
+            Preview
+          </Button>
+        )}
 
         <Button
           size="sm"

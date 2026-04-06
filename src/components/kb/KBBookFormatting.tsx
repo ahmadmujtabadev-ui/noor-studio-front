@@ -1,377 +1,529 @@
-import { useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Check,
+  Plus,
+  X,
+  Baby,
+  BookOpen,
+  Files,
+  Image as ImageIcon,
+  ScrollText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { PAGE_LAYOUT_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from "@/components/shared/KBFieldIcons";
 
-// ─── Age group tabs ────────────────────────────────────────────────────────────
-const AGE_TABS = [
-  {
-    key: "middleGrade",
-    label: "Middle Grade",
-    sub: "Ages 8–13",
-    emoji: "📚",
-    active: "bg-blue-600 text-white border-blue-600",
-    inactive: "bg-white text-blue-700 border-blue-200 hover:border-blue-400",
-    panelBg: "bg-blue-50/50",
-    panelBorder: "border-blue-100",
-    accent: "border-blue-500 bg-blue-50",
-    accentText: "text-blue-700",
-    check: "bg-blue-500",
-  },
-  {
-    key: "junior",
-    label: "Junior",
-    sub: "Ages 5–8",
-    emoji: "🌟",
-    active: "bg-violet-600 text-white border-violet-600",
-    inactive: "bg-white text-violet-700 border-violet-200 hover:border-violet-400",
-    panelBg: "bg-violet-50/50",
-    panelBorder: "border-violet-100",
-    accent: "border-violet-500 bg-violet-50",
-    accentText: "text-violet-700",
-    check: "bg-violet-500",
-  },
-  {
-    key: "underSix",
-    label: "Under Six",
-    sub: "Ages under 6",
-    emoji: "🍼",
-    active: "bg-lime-600 text-white border-lime-600",
-    inactive: "bg-white text-lime-700 border-lime-200 hover:border-lime-400",
-    panelBg: "bg-lime-50/50",
-    panelBorder: "border-lime-100",
-    accent: "border-lime-500 bg-lime-50",
-    accentText: "text-lime-700",
-    check: "bg-lime-500",
-  },
-] as const;
+type FormatTabKey = "middleGrade" | "underSix";
 
-// ─── Simple tag pill input ─────────────────────────────────────────────────────
-function TagPills({
-  items, onAdd, onRemove, placeholder,
-}: { items: string[]; onAdd: (v: string) => void; onRemove: (i: number) => void; placeholder: string }) {
-  const [val, setVal] = useState("");
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-        {items.map((item, i) => (
-          <span key={i} className="flex items-center gap-1 px-3 py-1 rounded-full bg-white text-xs font-medium text-gray-700 border border-gray-200">
-            {item}
-            <button onClick={() => onRemove(i)} className="hover:text-red-500 ml-0.5"><X className="w-3 h-3" /></button>
-          </span>
-        ))}
-        {items.length === 0 && <span className="text-xs text-muted-foreground italic">None added yet</span>}
-      </div>
-      <div className="flex gap-2">
-        <Input value={val} onChange={e => setVal(e.target.value)} placeholder={placeholder} className="text-sm h-9"
-          onKeyDown={e => { if (e.key === "Enter" && val.trim()) { onAdd(val.trim()); setVal(""); } }} />
-        <Button variant="outline" size="sm" className="h-9 px-3"
-          onClick={() => { if (val.trim()) { onAdd(val.trim()); setVal(""); } }}>
-          <Plus className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Visual option tile ────────────────────────────────────────────────────────
-function OptionTile({ icon, label, selected, onClick, accent, accentText, check }: {
-  icon: React.ReactNode; label: string; selected: boolean; onClick: () => void;
-  accent: string; accentText: string; check: string;
-}) {
-  return (
-    <button type="button" onClick={onClick}
-      className={cn(
-        "relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 transition-all duration-200 hover:scale-[1.03] hover:shadow-md text-center",
-        selected ? accent + " shadow-md" : "bg-white border-gray-100 hover:border-gray-300 shadow-sm"
-      )}>
-      <div className="w-12 h-12">{icon}</div>
-      <span className={cn("text-[11px] font-bold leading-tight", selected ? accentText : "text-gray-600")}>{label}</span>
-      {selected && (
-        <span className={cn("absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center", check)}>
-          <Check className="w-3 h-3 text-white" />
-        </span>
-      )}
-    </button>
-  );
-}
-
-// ─── Word count tiles ──────────────────────────────────────────────────────────
-const UNDER_SIX_WORD_TILES = [
-  { value: 5,  label: "5 words",  desc: "Tiny tots",     bg: "bg-lime-100 border-lime-400" },
-  { value: 10, label: "10 words", desc: "Picture book",  bg: "bg-green-100 border-green-400" },
-  { value: 15, label: "15 words", desc: "Early reader",  bg: "bg-teal-100 border-teal-400" },
-  { value: 20, label: "20 words", desc: "Short story",   bg: "bg-cyan-100 border-cyan-400" },
-];
-
-// ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   kb: any;
   onSave: (update: object) => Promise<void>;
   isSaving: boolean;
 }
 
+const AGE_TABS = [
+  {
+    key: "middleGrade" as const,
+    label: "Middle Grade",
+    sub: "Ages 8–14",
+    description:
+      "Chapter-based structure for older readers with scenes, rhythm, and supporting matter.",
+    icon: <BookOpen className="h-5 w-5" />,
+    image: "/background/format-8-14-header.png",
+    active: "border-blue-500 ring-4 ring-blue-100 shadow-lg",
+    inactive: "border-slate-200 hover:border-blue-300 hover:shadow-md",
+    panelBg: "bg-blue-50/50",
+    panelBorder: "border-blue-100",
+    iconBg: "bg-blue-100 text-blue-700",
+  },
+  {
+    key: "underSix" as const,
+    label: "Under Six",
+    sub: "Ages 3–5",
+    description:
+      "Simple picture-book structure focused on page count and short spread-friendly storytelling.",
+    icon: <Baby className="h-5 w-5" />,
+    image: "/background/format-under-6-header.png",
+    active: "border-lime-500 ring-4 ring-lime-100 shadow-lg",
+    inactive: "border-slate-200 hover:border-lime-300 hover:shadow-md",
+    panelBg: "bg-lime-50/50",
+    panelBorder: "border-lime-100",
+    iconBg: "bg-lime-100 text-lime-700",
+  },
+] as const;
+
+const FORMAT_FIELD_IMAGES = {
+  middleGrade: {
+    chapterRhythm: "/background/format-chapter-rhythm.png",
+    sceneLength: "/background/format-scene-length.png",
+    frontMatter: "/background/format-front-matter.png",
+    endMatter: "/background/format-end-matter.png",
+  },
+  underSix: {
+    pageCount: "/background/format-page-count.png",
+    maxWordsPerSpread: "/background/format-max-words.png",
+    spreadStructure: "/background/format-spread-structure.png",
+  },
+} as const;
+
+function FieldPreview({
+  src,
+  title,
+  description,
+}: {
+  src: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="aspect-[16/10] w-full overflow-hidden bg-slate-50">
+        <img src={src} alt={title} className="h-full w-full object-cover" />
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-semibold text-slate-800">{title}</p>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function TagPills({
+  items,
+  onAdd,
+  onRemove,
+  placeholder,
+}: {
+  items: string[];
+  onAdd: (v: string) => void;
+  onRemove: (i: number) => void;
+  placeholder: string;
+}) {
+  const [val, setVal] = useState("");
+
+  const submit = () => {
+    const next = val.trim();
+    if (!next) return;
+    onAdd(next);
+    setVal("");
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex min-h-[34px] flex-wrap gap-2">
+        {items.map((item, i) => (
+          <span
+            key={`${item}-${i}`}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm"
+          >
+            {item}
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="ml-0.5 text-slate-400 transition hover:text-red-500"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        {items.length === 0 && (
+          <span className="text-xs italic text-muted-foreground">
+            None added yet
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder={placeholder}
+          className="h-10 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-10 px-3"
+          onClick={submit}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="rounded-lg bg-white p-2 shadow-sm">{icon}</div>
+      <Label className="text-xs font-semibold">{title}</Label>
+    </div>
+  );
+}
+
 export function KBBookFormatting({ kb, onSave, isSaving }: Props) {
-  const [activeTab, setActiveTab] = useState<"middleGrade" | "junior" | "underSix">("middleGrade");
+  const [activeTab, setActiveTab] = useState<FormatTabKey>("middleGrade");
 
   const bf = kb?.bookFormatting || {};
   const u6 = kb?.underSixDesign || {};
 
-  const patchBF = (group: string, partial: object) =>
-    onSave({ bookFormatting: { ...bf, [group]: { ...bf[group], ...partial } } });
-  const patchU6 = (partial: object) =>
-    onSave({ underSixDesign: { ...u6, ...partial } });
+  const patchBF = (group: "middleGrade", partial: object) =>
+    onSave({
+      bookFormatting: {
+        ...bf,
+        [group]: {
+          ...(bf?.[group] || {}),
+          ...partial,
+        },
+      },
+    });
 
-  const tab = AGE_TABS.find(t => t.key === activeTab)!;
+  const patchU6 = (partial: object) =>
+    onSave({
+      underSixDesign: {
+        ...u6,
+        ...partial,
+      },
+    });
+
+  const activeMeta = useMemo(
+    () => AGE_TABS.find((t) => t.key === activeTab)!,
+    [activeTab]
+  );
+
   const mg = bf.middleGrade || {};
-  const jr = bf.junior || {};
-  const currentWords = u6.maxWordsPerSpread ?? 10;
+  const u6PageCount = u6.pageCount ?? "";
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Book pacing, structure & layout rules per age group — injected into every generation prompt.
-      </p>
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">
+          Define structure, pacing, and supporting material by age group. These
+          rules guide book generation.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Only one age group stays active at a time for cleaner editing.
+        </p>
+      </div>
 
-      {/* ── 3 Age group tabs ── */}
-      <div className="grid grid-cols-3 gap-3">
-        {AGE_TABS.map(t => {
-          const isActive = activeTab === t.key;
-          let hasData = false;
-          if (t.key === "middleGrade") hasData = !!bf.middleGrade?.wordCount;
-          if (t.key === "junior") hasData = !!bf.junior?.wordCount;
-          if (t.key === "underSix") hasData = !!u6.maxWordsPerSpread || !!u6.pageLayout;
+      {/* Age group cards */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {AGE_TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const hasData =
+            tab.key === "middleGrade"
+              ? Boolean(bf?.middleGrade?.chapterRange) ||
+                Boolean(bf?.middleGrade?.sceneLength) ||
+                (bf?.middleGrade?.chapterRhythm?.length || 0) > 0 ||
+                (bf?.middleGrade?.frontMatter?.length || 0) > 0 ||
+                (bf?.middleGrade?.endMatter?.length || 0) > 0
+              : Boolean(u6?.pageCount) ||
+                Boolean(u6?.maxWordsPerSpread) ||
+                (u6?.specialRules?.length || 0) > 0 ||
+                (u6?.spreadStructure?.length || 0) > 0;
+
           return (
-            <button key={t.key} type="button"
-              onClick={() => setActiveTab(t.key as any)}
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "relative flex flex-col items-center gap-1.5 p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md",
-                isActive ? t.active : t.inactive
-              )}>
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-sm font-bold leading-tight">{t.label}</span>
-              <span className={cn("text-[11px] font-medium", isActive ? "opacity-80" : "opacity-60")}>{t.sub}</span>
-              {hasData && !isActive && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-green-400 flex items-center justify-center">
-                  <Check className="w-2.5 h-2.5 text-white" />
-                </span>
+                "group relative overflow-hidden rounded-3xl border bg-white text-left transition-all duration-200",
+                isActive ? tab.active : tab.inactive
               )}
-              {isActive && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                  <Check className="w-2.5 h-2.5 text-white" />
-                </span>
-              )}
+            >
+              <div className="relative h-[220px] w-full overflow-hidden">
+                <img
+                  src={tab.image}
+                  alt={`${tab.label} header`}
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-900/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                    {tab.icon}
+                    <span>{tab.sub}</span>
+                  </div>
+                  <h3 className="text-xl font-bold tracking-tight">
+                    {tab.label}
+                  </h3>
+                  <p className="mt-1 max-w-xl text-sm text-white/85">
+                    {tab.description}
+                  </p>
+                </div>
+
+                <div className="absolute right-4 top-4 flex items-center gap-2">
+                  {hasData && !isActive && (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 shadow">
+                      <Check className="h-4 w-4 text-white" />
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-900 shadow-md">
+                      <Check className="h-4 w-4" />
+                    </span>
+                  )}
+                </div>
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* ── Panel ── */}
-      <div className={cn("rounded-2xl border-2 p-5 space-y-6", tab.panelBg, tab.panelBorder)}>
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-          {tab.emoji} {tab.label} Settings
-        </p>
+      {/* Active panel */}
+      <div
+        className={cn(
+          "rounded-3xl border p-6 shadow-sm",
+          activeMeta.panelBg,
+          activeMeta.panelBorder
+        )}
+      >
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-600 shadow-sm">
+              {activeMeta.icon}
+              <span>{activeMeta.label}</span>
+            </div>
+            <h3 className="mt-3 text-lg font-semibold text-slate-900">
+              {activeMeta.label} Book Formatting
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">{activeMeta.sub}</p>
+          </div>
 
-        {/* ─── MIDDLE GRADE ─── */}
+          {isSaving && (
+            <div className="rounded-full border bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+              Saving...
+            </div>
+          )}
+        </div>
+
+        {/* Ages 8–14 */}
         {activeTab === "middleGrade" && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Word Count</Label>
-                <Input placeholder="20,000–35,000" defaultValue={mg.wordCount || ""}
-                  onBlur={e => patchBF("middleGrade", { wordCount: e.target.value })} />
-              </div>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <Label className="text-xs font-semibold">Chapter Range</Label>
-                <Input placeholder="8 to 12 chapters" defaultValue={mg.chapterRange || ""}
-                  onBlur={e => patchBF("middleGrade", { chapterRange: e.target.value })} />
+                <Input
+                  placeholder="e.g. 8–12 chapters"
+                  defaultValue={mg.chapterRange || ""}
+                  onBlur={(e) =>
+                    patchBF("middleGrade", {
+                      chapterRange: e.target.value,
+                    })
+                  }
+                />
               </div>
-              <div>
-                <Label className="text-xs font-semibold">Scene Length</Label>
-                <Input placeholder="500–800 words" defaultValue={mg.sceneLength || ""}
-                  onBlur={e => patchBF("middleGrade", { sceneLength: e.target.value })} />
+
+              <div className="space-y-3">
+                <FieldPreview
+                  src={FORMAT_FIELD_IMAGES.middleGrade.sceneLength}
+                  title="Scene Length"
+                  description="Guides how long each scene should feel during story generation."
+                />
+                <div>
+                  <Label className="text-xs font-semibold">Scene Length</Label>
+                  <Input
+                    placeholder="e.g. 300–600 words per scene"
+                    defaultValue={mg.sceneLength || ""}
+                    onBlur={(e) =>
+                      patchBF("middleGrade", {
+                        sceneLength: e.target.value,
+                      })
+                    }
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Chapter Rhythm</Label>
+            <div className="space-y-3">
+              <FieldPreview
+                src={FORMAT_FIELD_IMAGES.middleGrade.chapterRhythm}
+                title="Chapter Rhythm"
+                description="Controls the flow and pacing from one chapter to the next."
+              />
+              <SectionHeader
+                icon={<ImageIcon className="h-4 w-4 text-blue-600" />}
+                title="Chapter Rhythm"
+              />
               <TagPills
                 items={mg.chapterRhythm || []}
-                placeholder="e.g. Hook → Scene A → Reflection → Scene B → Close"
-                onAdd={v => patchBF("middleGrade", { chapterRhythm: [...(mg.chapterRhythm || []), v] })}
-                onRemove={i => patchBF("middleGrade", { chapterRhythm: (mg.chapterRhythm || []).filter((_: string, j: number) => j !== i) })}
+                placeholder="e.g. Chapter 1 → Introduce world and characters"
+                onAdd={(v) =>
+                  patchBF("middleGrade", {
+                    chapterRhythm: [...(mg.chapterRhythm || []), v],
+                  })
+                }
+                onRemove={(i) =>
+                  patchBF("middleGrade", {
+                    chapterRhythm: (mg.chapterRhythm || []).filter(
+                      (_: string, j: number) => j !== i
+                    ),
+                  })
+                }
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Front Matter</Label>
+            <div className="space-y-3">
+              <FieldPreview
+                src={FORMAT_FIELD_IMAGES.middleGrade.frontMatter}
+                title="Front Matter"
+                description="Opening book pages like dedication, contents, or character list."
+              />
+              <SectionHeader
+                icon={<Files className="h-4 w-4 text-blue-600" />}
+                title="Front Matter"
+              />
               <TagPills
                 items={mg.frontMatter || []}
-                placeholder="e.g. Dedication, Map, Character list"
-                onAdd={v => patchBF("middleGrade", { frontMatter: [...(mg.frontMatter || []), v] })}
-                onRemove={i => patchBF("middleGrade", { frontMatter: (mg.frontMatter || []).filter((_: string, j: number) => j !== i) })}
+                placeholder="e.g. Dedication, Contents, Character list"
+                onAdd={(v) =>
+                  patchBF("middleGrade", {
+                    frontMatter: [...(mg.frontMatter || []), v],
+                  })
+                }
+                onRemove={(i) =>
+                  patchBF("middleGrade", {
+                    frontMatter: (mg.frontMatter || []).filter(
+                      (_: string, j: number) => j !== i
+                    ),
+                  })
+                }
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">End Matter</Label>
+            <div className="space-y-3">
+              <FieldPreview
+                src={FORMAT_FIELD_IMAGES.middleGrade.endMatter}
+                title="End Matter"
+                description="Closing pages like glossary, du'a page, author note, or extras."
+              />
+              <SectionHeader
+                icon={<ScrollText className="h-4 w-4 text-blue-600" />}
+                title="End Matter"
+              />
               <TagPills
                 items={mg.endMatter || []}
                 placeholder="e.g. Glossary, Author note, Du'a page"
-                onAdd={v => patchBF("middleGrade", { endMatter: [...(mg.endMatter || []), v] })}
-                onRemove={i => patchBF("middleGrade", { endMatter: (mg.endMatter || []).filter((_: string, j: number) => j !== i) })}
+                onAdd={(v) =>
+                  patchBF("middleGrade", {
+                    endMatter: [...(mg.endMatter || []), v],
+                  })
+                }
+                onRemove={(i) =>
+                  patchBF("middleGrade", {
+                    endMatter: (mg.endMatter || []).filter(
+                      (_: string, j: number) => j !== i
+                    ),
+                  })
+                }
               />
             </div>
-          </>
+          </div>
         )}
 
-        {/* ─── JUNIOR ─── */}
-        {activeTab === "junior" && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Word Count</Label>
-                <Input placeholder="1,500–3,000" defaultValue={jr.wordCount || ""}
-                  onBlur={e => patchBF("junior", { wordCount: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Page Count</Label>
-                <Input placeholder="24–40 pages" defaultValue={jr.pageCount || ""}
-                  onBlur={e => patchBF("junior", { pageCount: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Segment Count</Label>
-                <Input placeholder="4–6 segments" defaultValue={jr.segmentCount || ""}
-                  onBlur={e => patchBF("junior", { segmentCount: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold">Page Flow</Label>
-              <TagPills
-                items={jr.pageFlow || []}
-                placeholder="e.g. Scene → Emotion → Resolution"
-                onAdd={v => patchBF("junior", { pageFlow: [...(jr.pageFlow || []), v] })}
-                onRemove={i => patchBF("junior", { pageFlow: (jr.pageFlow || []).filter((_: string, j: number) => j !== i) })}
-              />
-            </div>
-          </>
-        )}
-
-        {/* ─── UNDER SIX ─── */}
+        {/* Under Six */}
         {activeTab === "underSix" && (
-          <>
-            {/* Max Words Per Spread */}
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">📝 Max Words Per Spread</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {UNDER_SIX_WORD_TILES.map(t => (
-                  <button key={t.value} type="button"
-                    onClick={() => patchU6({ maxWordsPerSpread: t.value })}
-                    disabled={isSaving}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-center hover:scale-105",
-                      currentWords === t.value ? t.bg + " shadow-sm" : "border-gray-200 hover:border-lime-300 bg-white"
-                    )}>
-                    <span className="text-2xl font-black">{t.value}</span>
-                    <span className="text-[10px] font-semibold">{t.label}</span>
-                    <span className="text-[9px] text-muted-foreground">{t.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Page Layout */}
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">📄 Page Layout</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {PAGE_LAYOUT_OPTIONS.map(opt => (
-                  <OptionTile key={opt.value} icon={opt.icon} label={opt.label}
-                    selected={u6.pageLayout === opt.value}
-                    onClick={() => patchU6({ pageLayout: u6.pageLayout === opt.value ? "" : opt.value })}
-                    accent={tab.accent} accentText={tab.accentText} check={tab.check}
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <FieldPreview
+                  src={FORMAT_FIELD_IMAGES.underSix.pageCount}
+                  title="Page Count"
+                  description="Sets the total length of the under-six book."
+                />
+                <div>
+                  <Label className="text-xs font-semibold">Page Count</Label>
+                  <Input
+                    placeholder="e.g. 24"
+                    value={u6PageCount}
+                    onChange={(e) => patchU6({ pageCount: e.target.value })}
                   />
-                ))}
+                </div>
               </div>
-            </div>
 
-            {/* Illustration Style */}
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">🎨 Illustration Style</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {ILLUSTRATION_STYLE_OPTIONS.map(opt => (
-                  <OptionTile key={opt.value} icon={opt.icon} label={opt.label}
-                    selected={u6.illustrationStyle === opt.value}
-                    onClick={() => patchU6({ illustrationStyle: u6.illustrationStyle === opt.value ? "" : opt.value })}
-                    accent={tab.accent} accentText={tab.accentText} check={tab.check}
+              <div className="space-y-3">
+                <FieldPreview
+                  src={FORMAT_FIELD_IMAGES.underSix.maxWordsPerSpread}
+                  title="Max Words Per Spread"
+                  description="Keeps each spread short, simple, and easy for young children."
+                />
+                <div>
+                  <Label className="text-xs font-semibold">
+                    Max Words Per Spread
+                  </Label>
+                  <Input
+                    placeholder="e.g. 8–12 words"
+                    defaultValue={u6.maxWordsPerSpread || ""}
+                    onBlur={(e) =>
+                      patchU6({ maxWordsPerSpread: e.target.value })
+                    }
                   />
-                ))}
+                </div>
               </div>
             </div>
 
-            {/* Reading type + other fields */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Reading Type</Label>
-                <Select defaultValue={u6.readingType || "parent-read"} onValueChange={v => patchU6({ readingType: v })}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="parent-read">Parent-read aloud</SelectItem>
-                    <SelectItem value="early-independent">Early independent reader</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Color Palette</Label>
-                <Input placeholder="e.g. Bright, joyful, high contrast"
-                  defaultValue={u6.colorPalette || ""} onBlur={e => patchU6({ colorPalette: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Font Style</Label>
-                <Input placeholder="e.g. Rounded, large, dyslexia-friendly"
-                  defaultValue={u6.fontStyle || ""} onBlur={e => patchU6({ fontStyle: e.target.value })} />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Reflection Prompt</Label>
-                <Input placeholder='e.g. "Would you say sorry too?"'
-                  defaultValue={u6.reflectionPrompt || ""} onBlur={e => patchU6({ reflectionPrompt: e.target.value })} />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-xs font-semibold">Bonus Page Content</Label>
-                <Input placeholder="e.g. Ayah, du'a, or line of wonder (illustrated)"
-                  defaultValue={u6.bonusPageContent || ""} onBlur={e => patchU6({ bonusPageContent: e.target.value })} />
-              </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold">Special Rules</Label>
+              <TagPills
+                items={u6.specialRules || []}
+                placeholder="e.g. Repetition, simple sentence rhythm, one clear action per spread"
+                onAdd={(v) =>
+                  patchU6({ specialRules: [...(u6.specialRules || []), v] })
+                }
+                onRemove={(i) =>
+                  patchU6({
+                    specialRules: (u6.specialRules || []).filter(
+                      (_: string, j: number) => j !== i
+                    ),
+                  })
+                }
+              />
             </div>
 
-            {/* Emotional pattern */}
-            <div className="rounded-xl border border-lime-200 bg-white p-3 space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Emotional Pattern Per Segment</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label className="text-xs">Conflict / Question</Label>
-                  <Input className="text-xs" placeholder="e.g. Something went wrong"
-                    defaultValue={u6.emotionalPattern?.conflictOrQuestion || ""}
-                    onBlur={e => patchU6({ emotionalPattern: { ...u6.emotionalPattern, conflictOrQuestion: e.target.value } })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Islamic Anchor</Label>
-                  <Input className="text-xs" placeholder="e.g. Bismillah, du'a, or ayah"
-                    defaultValue={u6.emotionalPattern?.islamicAnchor || ""}
-                    onBlur={e => patchU6({ emotionalPattern: { ...u6.emotionalPattern, islamicAnchor: e.target.value } })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Resolution</Label>
-                  <Input className="text-xs" placeholder="e.g. Peace restored through action"
-                    defaultValue={u6.emotionalPattern?.resolution || ""}
-                    onBlur={e => patchU6({ emotionalPattern: { ...u6.emotionalPattern, resolution: e.target.value } })} />
-                </div>
+            <div className="space-y-3">
+              <FieldPreview
+                src={FORMAT_FIELD_IMAGES.underSix.spreadStructure}
+                title="Spread Structure"
+                description="Defines how the story moves across picture-book spreads."
+              />
+              <div>
+                <Label className="text-xs font-semibold">Spread Structure</Label>
+                <TagPills
+                  items={u6.spreadStructure || []}
+                  placeholder="e.g. Spread 1 introduction, Spread 2 discovery, Spread 3 comfort"
+                  onAdd={(v) =>
+                    patchU6({
+                      spreadStructure: [...(u6.spreadStructure || []), v],
+                    })
+                  }
+                  onRemove={(i) =>
+                    patchU6({
+                      spreadStructure: (u6.spreadStructure || []).filter(
+                        (_: string, j: number) => j !== i
+                      ),
+                    })
+                  }
+                />
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -17,6 +17,7 @@ import { StoryStep } from "@/components/shared/StoryStep";
 import { StructureStep } from "@/components/shared/StructureStep";
 import { StyleStep } from "@/components/shared/Styestep";
 import { ProseStep } from "@/components/shared/ProseStep";
+import { LayoutStep } from "@/components/shared/LayoutStep";
 import { IllustrationsStep } from "@/components/shared/IllustrationStep";
 import { CoverStep } from "@/components/shared/CoverStep";
 import { EditorStep } from "@/components/shared/EditorStep";
@@ -77,9 +78,12 @@ export default function BookBuilderPage() {
     [allChars, bb.characterIds]
   );
 
-  const illStep    = bb.isChapterBook ? 5 : 4;
-  const coverStep  = bb.isChapterBook ? 6 : 5;
-  const editorStep = bb.isChapterBook ? 7 : 6;
+  // Picture book:  1→2→3→4(Layout)→5(Ill)→6(Cover)→7(Publish)
+  // Chapter book:  1→2→3→4(Writing)→5(Layout)→6(Ill)→7(Cover)→8(Publish)
+  const layoutStep = bb.isChapterBook ? 5 : 4;
+  const illStep    = bb.isChapterBook ? 6 : 5;
+  const coverStep  = bb.isChapterBook ? 7 : 6;
+  const editorStep = bb.isChapterBook ? 8 : 7;
 
   // ─── Step navigation ──────────────────────────────────────────────────────
   const advance = (n: number) => {
@@ -142,7 +146,7 @@ export default function BookBuilderPage() {
       {/* ── Global loading overlay ── */}
       {showOverlay && <LoadingOverlay message={loadingMsg} />}
 
-      <div className="max-w-4xl mx-auto">
+      <div className={bb.step === coverStep ? "w-full" : "max-w-4xl mx-auto"}>
         {/* ── Step 1: Story ── */}
         {bb.step === 1 && (
           <StoryStep
@@ -169,7 +173,7 @@ export default function BookBuilderPage() {
             selectedCharacters={selectedCharacters}
             charsLoading={charsLoading}
             onBack={() => back(2)}
-            onContinue={() => advance(bb.isChapterBook ? 4 : illStep)}
+            onContinue={() => advance(bb.isChapterBook ? 4 : layoutStep)}
           />
         )}
 
@@ -178,6 +182,15 @@ export default function BookBuilderPage() {
           <ProseStep
             bb={bb}
             onBack={() => back(3)}
+            onContinue={() => advance(layoutStep)}
+          />
+        )}
+
+        {/* ── Layout picker ── */}
+        {bb.step === layoutStep && (
+          <LayoutStep
+            bb={bb as any}
+            onBack={() => back(bb.isChapterBook ? 4 : 3)}
             onContinue={() => advance(illStep)}
           />
         )}
@@ -186,7 +199,7 @@ export default function BookBuilderPage() {
         {bb.step === illStep && (
           <IllustrationsStep
             bb={bb}
-            onBack={() => back(bb.isChapterBook ? 4 : 3)}
+            onBack={() => back(layoutStep)}
             onContinue={() => advance(coverStep)}
           />
         )}

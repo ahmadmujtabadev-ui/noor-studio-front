@@ -462,6 +462,29 @@ export default function CharacterDetailPage() {
               )}
             </div>
 
+            {/* Identity anchor notice */}
+            {hasPortrait ? (
+              <div className="rounded-xl border border-teal-200 bg-teal-50 dark:bg-teal-950/30 dark:border-teal-800 p-3 flex gap-2">
+                <Lock className="w-4 h-4 text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-teal-700 dark:text-teal-300">Identity Anchor Active</p>
+                  <p className="text-xs text-teal-600 dark:text-teal-400 mt-0.5">
+                    This portrait is the single source of truth for all scene generations. Only regenerate if you want to permanently change how this character looks.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Portrait Required</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    Generate a portrait first. Without it, this character will appear inconsistent across book illustrations.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Stats */}
             <div className="space-y-2 pt-2 border-t border-border">
               <div className="flex justify-between text-sm">
@@ -723,6 +746,13 @@ export default function CharacterDetailPage() {
                 const missingCost = missingImages * 4;
                 const regenAllCost = approvedCount * 4;
                 return (
+                  <div className="space-y-3">
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-3 flex gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <span className="font-semibold">Poses used for scene context only.</span> Pose images are no longer passed as identity references — only your master portrait above is used as the identity anchor. This prevents face drift across illustrations.
+                    </p>
+                  </div>
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
                       <h3 className="font-semibold">Pose Library</h3>
@@ -757,6 +787,7 @@ export default function CharacterDetailPage() {
                         </>
                       )}
                     </div>
+                  </div>
                   </div>
                 );
               })()}
