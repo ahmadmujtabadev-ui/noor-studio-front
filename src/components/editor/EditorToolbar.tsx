@@ -15,10 +15,10 @@ import {
   ZoomOut,
   Save,
   Download,
+  BookOpen,
   Layers,
-  Undo2,
-  Redo2,
   Eye,
+  Loader2,
 } from "lucide-react";
 import type { EditorTool } from "./FabricPageCanvas";
 
@@ -33,10 +33,12 @@ interface Props {
   onZoomOut: () => void;
   onSave: () => void;
   onExport: () => void;
+  onExportEpub?: () => void;
   onBack: () => void;
   onImageUpload: (url: string) => void;
   onPreview?: () => void;
   saving: boolean;
+  exportingEpub?: boolean;
 }
 
 // ─── Tool buttons config ──────────────────────────────────────────────────────
@@ -59,9 +61,9 @@ function Divider() {
 export function EditorToolbar({
   title, activeTool, onToolChange,
   scale, onZoomIn, onZoomOut,
-  onSave, onExport, onBack,
+  onSave, onExport, onExportEpub, onBack,
   onImageUpload, onPreview,
-  saving,
+  saving, exportingEpub,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -184,6 +186,20 @@ export function EditorToolbar({
           >
             <Eye className="w-3.5 h-3.5 mr-1" />
             Preview
+          </Button>
+        )}
+
+        {onExportEpub && (
+          <Button
+            size="sm"
+            onClick={onExportEpub}
+            disabled={exportingEpub}
+            className="h-8 px-3 bg-[#2D5A8E] hover:bg-[#2D5A8E]/90 text-xs"
+          >
+            {exportingEpub
+              ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+              : <BookOpen className="w-3.5 h-3.5 mr-1" />}
+            EPUB
           </Button>
         )}
 

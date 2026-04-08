@@ -10,6 +10,7 @@ import React, {
 import { fabric } from "fabric";
 import jsPDF from "jspdf";
 import { useNavigate } from "react-router-dom";
+import { exportBookEpub } from "@/lib/exportBookEpub";
 import { useBookEditor } from "@/hooks/useBookEditor";
 import { PageNavigator } from "@/components/editor/PageNavigator";
 import { DesignPanel } from "@/components/editor/DesignPanel";
@@ -53,10 +54,11 @@ export default function BookEditorPage() {
   const canvasRef = useRef<FabricCanvasHandle>(null);
   const prevPageIdxRef = useRef<number>(0);
 
-  const [activeTool, setActiveTool] = useState<EditorTool>("select");
-  const [selectedObj, setSelectedObj] = useState<fabric.Object | null>(null);
-  const [scale, setScale] = useState(0.7);
-  const [saving, setSaving] = useState(false);
+  const [activeTool,    setActiveTool]    = useState<EditorTool>("select");
+  const [selectedObj,   setSelectedObj]   = useState<fabric.Object | null>(null);
+  const [scale,         setScale]         = useState(0.7);
+  const [saving,        setSaving]        = useState(false);
+  const [exportingEpub, setExportingEpub] = useState(false);
 
   const currentPage = pages[currentPageIdx];
 
@@ -126,9 +128,16 @@ export default function BookEditorPage() {
 
   const handleCanvasChange = useCallback(
     (json: object, thumbnail: string) => {
-      updatePage(currentPageIdx, { fabricJson: json, thumbnail });
+      // Sync canvas text edits back to page data so preview reflects changes
+      const objects = (json as any)?.objects ?? [];
+      const bodyObj  = objects.find((o: any) => o._role === "body-text");
+      const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const updates: Parameters<typeof updatePage>[1] = { fabricJson: json, thumbnail };
+      if (bodyObj?.text)                              updates.text  = bodyObj.text;
+      if (titleObj?.text && currentPage?.type === "front-cover") updates.title = titleObj.text;
+      updatePage(currentPageIdx, updates);
     },
-    [currentPageIdx, updatePage]
+    [currentPageIdx, currentPage, updatePage]
   );
 
   // ── Save (stores in-memory; in a real app POST to backend) ────────────────
@@ -177,6 +186,22 @@ export default function BookEditorPage() {
         description: (err as Error).message,
         variant: "destructive",
       });
+    }
+  }, [pages, projectTitle, saveCurrentPageState, toast]);
+
+  // ── EPUB export ───────────────────────────────────────────────────────────
+  const handleExportEpub = useCallback(async () => {
+    saveCurrentPageState();
+    setExportingEpub(true);
+    toast({ title: "Generating EPUB…", description: "Building e-book file" });
+    try {
+      await exportBookEpub(pages, projectTitle, {
+        onProgress: (cur, total) => { if (cur === total) toast({ title: "EPUB exported ✓" }); },
+      });
+    } catch (err) {
+      toast({ title: "EPUB export failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setExportingEpub(false);
     }
   }, [pages, projectTitle, saveCurrentPageState, toast]);
 
@@ -248,6 +273,8 @@ export default function BookEditorPage() {
         onZoomOut={() => setScale((s) => Math.max(s - 0.1, 0.25))}
         onSave={handleSave}
         onExport={handleExport}
+        onExportEpub={handleExportEpub}
+        exportingEpub={exportingEpub}
         onBack={goBack}
         onImageUpload={handleImageUpload}
         onPreview={() => navigate(`/app/projects/${projectId}/preview`)}
@@ -327,6 +354,7 @@ export default function BookEditorPage() {
         <DesignPanel
           selectedObj={selectedObj}
           canvas={canvas}
+          projectId={projectId}
           onDelete={() => canvasRef.current?.deleteSelected()}
           onBringForward={() => canvasRef.current?.bringForward()}
           onSendBackward={() => canvasRef.current?.sendBackward()}

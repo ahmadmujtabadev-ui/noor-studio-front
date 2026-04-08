@@ -23,12 +23,14 @@ import {
   Palette,
 } from "lucide-react";
 import { GOOGLE_FONTS } from "./FabricPageCanvas";
+import { useBookTextStyleStore } from "@/lib/store/bookTextStyleStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   selectedObj: fabric.Object | null;
   canvas: fabric.Canvas | null;
+  projectId?: string;
   onDelete: () => void;
   onBringForward: () => void;
   onSendBackward: () => void;
@@ -81,11 +83,13 @@ function ColorInput({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DesignPanel({
-  selectedObj, canvas, onDelete, onBringForward, onSendBackward,
+  selectedObj, canvas, projectId, onDelete, onBringForward, onSendBackward,
 }: Props) {
   const kind = getKind(selectedObj);
   const [, forceUpdate] = useState(0);
   const rerender = () => forceUpdate((n) => n + 1);
+
+  const setStyle = useBookTextStyleStore((s) => s.setStyle);
 
   // Re-render when selection changes so controls reflect current values
   useEffect(() => { rerender(); }, [selectedObj]);
@@ -96,6 +100,14 @@ export function DesignPanel({
     cb();
     canvas?.renderAll();
     rerender();
+  };
+
+  /** Apply change AND persist to preview store */
+  const setTextProp = (cb: () => void, styleUpdate: Parameters<typeof setStyle>[1]) => {
+    cb();
+    canvas?.renderAll();
+    rerender();
+    if (projectId) setStyle(projectId, styleUpdate);
   };
 
   const getTextObj = () =>
@@ -172,7 +184,7 @@ export function DesignPanel({
               {/* Font family */}
               <Select
                 value={t.fontFamily || "Nunito"}
-                onValueChange={(v) => setAndRender(() => t.set("fontFamily", v))}
+                onValueChange={(v) => setTextProp(() => t.set("fontFamily", v), { fontFamily: v })}
               >
                 <SelectTrigger className="h-8 bg-white/5 border-white/10 text-white text-xs">
                   <SelectValue />
@@ -199,9 +211,10 @@ export function DesignPanel({
                   min={8}
                   max={160}
                   value={t.fontSize || 16}
-                  onChange={(e) =>
-                    setAndRender(() => t.set("fontSize", Number(e.target.value)))
-                  }
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    setTextProp(() => t.set("fontSize", n), { fontSize: n });
+                  }}
                   className="h-7 bg-white/5 border-white/10 text-white text-xs"
                 />
               </div>
@@ -269,7 +282,7 @@ export function DesignPanel({
               <ColorInput
                 label="Text colour"
                 value={typeof t.fill === "string" ? t.fill : "#ffffff"}
-                onChange={(v) => setAndRender(() => t.set("fill", v))}
+                onChange={(v) => setTextProp(() => t.set("fill", v), { textColor: v })}
               />
               <ColorInput
                 label="Background"

@@ -24,6 +24,7 @@ import { useBookEditor } from "@/hooks/useBookEditor";
 import type { BookPage } from "@/hooks/useBookEditor";
 import { SpreadView } from "./SpreadView";
 import { SinglePage } from "./SinglePage";
+import { exportBookEpub } from "@/lib/exportBookEpub";
 import { exportBookPdf } from "@/lib/exportBookPdf";
 import { useLayoutPreferenceStore } from "@/lib/store/layoutPreferenceStore";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,7 @@ function PageThumb({
 export default function BookRenderer() {
   const { toast } = useToast();
   const {
+    projectId,
     projectTitle,
     isChapterBook,
     pages,
@@ -153,8 +155,9 @@ export default function BookRenderer() {
     goBack,
   } = useBookEditor();
 
-  const [spreadIdx, setSpreadIdx] = useState(0);
-  const [exporting, setExporting] = useState(false);
+  const [spreadIdx,      setSpreadIdx]      = useState(0);
+  const [exporting,      setExporting]      = useState(false);
+  const [exportingEpub,  setExportingEpub]  = useState(false);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
   // Layout preference chosen during book creation
@@ -215,6 +218,7 @@ export default function BookRenderer() {
     toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
     try {
       await exportBookPdf(pages, projectTitle, {
+        preferredLayout,
         onProgress: (cur, total) => {
           if (cur === total) {
             toast({ title: "PDF exported ✓" });
@@ -229,6 +233,24 @@ export default function BookRenderer() {
       });
     } finally {
       setExporting(false);
+    }
+  }, [pages, projectTitle, toast]);
+
+  // ── EPUB Export ────────────────────────────────────────────────────────────
+  const handleExportEpub = useCallback(async () => {
+    if (!pages.length) return;
+    setExportingEpub(true);
+    toast({ title: "Generating EPUB…", description: "Building e-book file" });
+    try {
+      await exportBookEpub(pages, projectTitle, {
+        onProgress: (cur, total) => {
+          if (cur === total) toast({ title: "EPUB exported ✓" });
+        },
+      });
+    } catch (err) {
+      toast({ title: "EPUB export failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setExportingEpub(false);
     }
   }, [pages, projectTitle, toast]);
 
@@ -296,14 +318,28 @@ export default function BookRenderer() {
           {projectTitle}
         </h1>
 
-        {/* Spread counter */}
+        {/* Page counter — shows actual page numbers out of total, not spread count */}
         <span className="text-white/30 text-xs">
-          {spreadIdx + 1} / {spreads.length}
+          {[currentSpread.leftIdx, currentSpread.rightIdx]
+            .filter((i) => i !== null)
+            .map((i) => i! + 1)
+            .join("–")} / {pages.length}
         </span>
 
         <div className="w-px h-5 bg-white/10" />
 
-        {/* Export button */}
+        {/* EPUB export */}
+        <Button
+          size="sm"
+          onClick={handleExportEpub}
+          disabled={exportingEpub}
+          className="bg-[#2D5A8E] hover:bg-[#2D5A8E]/80 text-white text-xs h-8 gap-1.5"
+        >
+          {exportingEpub ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BookOpen className="w-3.5 h-3.5" />}
+          <span className="hidden sm:inline">{exportingEpub ? "Generating…" : "EPUB"}</span>
+        </Button>
+
+        {/* PDF export */}
         <Button
           size="sm"
           onClick={handleExport}
@@ -336,21 +372,50 @@ export default function BookRenderer() {
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
 
-        {/* Spread — constrained to fit the available area */}
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{ maxWidth: "calc((100vh - 14rem) * 4 / 3)" }}
-        >
-          <SpreadView
-            leftPage={currentSpread.left}
-            rightPage={currentSpread.right}
-            bookTitle={projectTitle}
-            leftPageNum={currentSpread.leftPageNum}
-            rightPageNum={currentSpread.rightPageNum}
-            preferredLayout={preferredLayout}
-            className="w-full"
-          />
-        </div>
+        {/* Spread or single-page (covers render full portrait, no blank half) */}
+        {(() => {
+          const isSinglePage = !currentSpread.left || !currentSpread.right;
+          const coverPage    = currentSpread.right ?? currentSpread.left;
+          if (isSinglePage && coverPage) {
+            return (
+              <div
+                className="h-full flex items-center justify-center"
+                style={{ maxWidth: "calc((100vh - 14rem) * 2 / 3)" }}
+              >
+                <div
+                  className="w-full rounded-lg overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.75)]"
+                  style={{ aspectRatio: "2 / 3" }}
+                >
+                  <SinglePage
+                    page={coverPage}
+                    bookTitle={projectTitle}
+                    pageNum={currentSpread.rightPageNum || currentSpread.leftPageNum}
+                    preferredLayout={preferredLayout}
+                    projectId={projectId ?? ""}
+                    className="w-full h-full"
+                  />
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div
+              className="w-full h-full flex items-center justify-center"
+              style={{ maxWidth: "calc((100vh - 14rem) * 4 / 3)" }}
+            >
+              <SpreadView
+                leftPage={currentSpread.left}
+                rightPage={currentSpread.right}
+                bookTitle={projectTitle}
+                leftPageNum={currentSpread.leftPageNum}
+                rightPageNum={currentSpread.rightPageNum}
+                preferredLayout={preferredLayout}
+                projectId={projectId ?? ""}
+                className="w-full"
+              />
+            </div>
+          );
+        })()}
 
         {/* Next button */}
         <button

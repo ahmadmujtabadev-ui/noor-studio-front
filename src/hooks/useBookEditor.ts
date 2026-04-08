@@ -40,17 +40,19 @@ export type TextLayoutType =
 export type LayoutType = SpreadLayoutType | TextLayoutType;
 
 export interface BookPage {
-  id:          string;
-  label:       string;
-  type:        BookPageType;
-  imageUrl:    string;
-  title?:      string;       // chapter title / book title
-  subTitle?:   string;       // e.g. "Chapter 3"
-  text?:       string;       // body text / author / synopsis
-  pageNum?:    number;       // running page number (text pages)
-  layoutType?: LayoutType;   // auto-assigned sub-layout
-  fabricJson?: object | null;
-  thumbnail?:  string;
+  id:              string;
+  label:           string;
+  type:            BookPageType;
+  imageUrl:        string;
+  /** Second moment illustration — rendered as full-bleed at bottom of first text page */
+  secondImageUrl?: string;
+  title?:          string;       // chapter title / book title
+  subTitle?:       string;       // e.g. "Chapter 3"
+  text?:           string;       // body text / author / synopsis
+  pageNum?:        number;       // running page number (text pages)
+  layoutType?:     LayoutType;   // auto-assigned sub-layout
+  fabricJson?:     object | null;
+  thumbnail?:      string;
 }
 
 // ─── Layout auto-assignment ───────────────────────────────────────────────────
@@ -89,7 +91,7 @@ function illusUrl(illus: any): string {
  * Split long prose into chunks of at most `wordsPerPage` words.
  * Tries to break on sentence boundaries first.
  */
-function splitProse(text: string, wordsPerPage = 150): string[] {
+function splitProse(text: string, wordsPerPage = 180): string[] {
   if (!text.trim()) return [];
 
   const sentences = text
@@ -195,29 +197,43 @@ function buildChapterPages(
     // 2. Text pages (prose split into readable chunks)
     if (chapterText) {
       const chunks = splitProse(chapterText);
-      // The chapter's first illustration is embedded on the first text page
-      // so "text_inline_image" layout has an actual image to float.
+      // First illustration  → floated inline on first text page (ci === 0)
       const chapterIllUrl = firstMoment ? illusUrl(firstMoment) : "";
+      // Second illustration → full-bleed at bottom of the MID-CHAPTER text page
+      const secondIllUrl  = chMoments[1] ? illusUrl(chMoments[1]) : "";
+      // Mid-chapter index: for 1 chunk use 0, for 2+ use the middle chunk
+      const midIdx = chunks.length > 1 ? Math.floor(chunks.length / 2) : 0;
+
       chunks.forEach((chunk, ci) => {
+        const imgUrl       = ci === 0 ? chapterIllUrl : "";
+        // Second illustration goes at the bottom of the mid-chapter page
+        const secondImgUrl = (secondIllUrl && ci === midIdx && ci !== 0) ? secondIllUrl : "";
+
+        // Force text_inline_image when either image is present
+        const lt: TextLayoutType =
+          imgUrl || secondImgUrl ? "text_inline_image" : resolveTextLayout(chunk);
+
         pages.push({
-          id:         `chapter-${chIdx}-text-${ci}`,
-          label:      `Ch.${chNum} — Page ${ci + 1}`,
-          type:       "text-page",
-          imageUrl:   ci === 0 ? chapterIllUrl : "", // image only on first chunk
-          subTitle:   chapterTitle,
-          text:       chunk,
-          pageNum:    runningPageNum++,
-          layoutType: resolveTextLayout(chunk),
+          id:             `chapter-${chIdx}-text-${ci}`,
+          label:          `Ch.${chNum} — Page ${ci + 1}`,
+          type:           "text-page",
+          imageUrl:       imgUrl,
+          secondImageUrl: secondImgUrl || undefined,
+          subTitle:       chapterTitle,
+          text:           chunk,
+          pageNum:        runningPageNum++,
+          layoutType:     lt,
         });
       });
     }
 
-    // 3. Additional illustration moments (beyond the first used as opener)
-    chMoments.slice(1).forEach((moment: any, mi: number) => {
-      const caption = moment.current?.illustrationHint || moment.current?.momentTitle || "";
+    // 3. Standalone moment pages — only beyond the 2nd
+    //    (1st → opener + first text page inline; 2nd → bottom of first text page)
+    chMoments.slice(2).forEach((moment: any, mi: number) => {
+      const caption = moment.current?.momentTitle || "";
       pages.push({
         id:       `chapter-${chIdx}-moment-${mi}`,
-        label:    `Ch.${chNum} — Scene ${mi + 2}`,
+        label:    `Ch.${chNum} — Scene ${mi + 3}`,
         type:     "chapter-moment",
         imageUrl: illusUrl(moment),
         text:     caption,

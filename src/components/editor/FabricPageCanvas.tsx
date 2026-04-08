@@ -419,8 +419,11 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
         const ptr = fCanvas.getPointer(e.e);
 
         if (toolRef.current === "text") {
+          // Clamp starting position so a 300px textbox always fits within the canvas
+          const tx = Math.min(ptr.x, PAGE_W - 310);
+          const ty = Math.min(ptr.y, PAGE_H - 40);
           const t = new fabric.Textbox("Type here…", {
-            left: ptr.x, top: ptr.y, width: 300,
+            left: tx, top: ty, width: 300,
             fontSize: 20, fontFamily: "Nunito", fill: "#1a1a1a", textAlign: "left",
           });
           fCanvas.add(t); fCanvas.setActiveObject(t); t.enterEditing(); fCanvas.renderAll();
@@ -439,6 +442,17 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           });
           fCanvas.add(ci); fCanvas.setActiveObject(ci); fCanvas.renderAll();
         }
+      });
+
+      // ── Boundary clamping — keep all objects within the canvas ──────────────
+      fCanvas.on("object:moving", (e) => {
+        const obj = e.target;
+        if (!obj || (obj as any).__background) return;
+        const br = obj.getBoundingRect(true);
+        if (br.left < 0)                     obj.set({ left: (obj.left ?? 0) - br.left });
+        if (br.top  < 0)                     obj.set({ top:  (obj.top  ?? 0) - br.top  });
+        if (br.left + br.width  > PAGE_W)    obj.set({ left: (obj.left ?? 0) - (br.left + br.width  - PAGE_W) });
+        if (br.top  + br.height > PAGE_H)    obj.set({ top:  (obj.top  ?? 0) - (br.top  + br.height - PAGE_H) });
       });
 
       fCanvas.on("selection:created", (e) => {

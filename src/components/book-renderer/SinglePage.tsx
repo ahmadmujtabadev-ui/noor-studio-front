@@ -1,35 +1,37 @@
 /**
  * SinglePage.tsx
  * Renders one BookPage into its correct publication layout.
- *
- * Picture-book spread sub-layouts (type = "spread"):
- *   full_bleed            — image 100% bg, white card overlay
- *   image_left_text_right — left half image | right half text + dropcap
- *   image_top_text_bottom — top 62% image, bottom band text
- *   vignette              — circular image, text aside, Islamic corner ornaments
- *
- * Chapter-book text-page sub-layouts (type = "text-page"):
- *   two_column            — two equal columns, running header, outer page nums
- *   text_inline_image     — single column + image floated right 38%
- *   decorative_full_text  — ornamental border + Arabic / hadith pull-quote
- *
- * Standalone page types (no sub-layout):
- *   front-cover | chapter-opener | chapter-moment | back-cover
+ * All image frames / borders removed — illustrations render clean.
+ * Font settings are read from page.fabricJson when available.
  */
 
 import React from "react";
 import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BookPage } from "@/hooks/useBookEditor";
+import { useBookTextStyleStore, DEFAULT_STYLE } from "@/lib/store/bookTextStyleStore";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const TEAL   = "#1B6B5A";
 const GOLD   = "#F5A623";
-const CREAM  = "#FAFAF8";
+const CREAM  = "#FFFDF5";
 const DARK   = "#0d1117";
+
+// ─── Text style type (populated from bookTextStyleStore) ─────────────────────
+
+interface TextStyle {
+  fontFamily: string;
+  color: string;
+}
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
+/** Truncate a string for running headers — avoids multi-line overflow */
+function truncate(s: string, max = 30): string {
+  return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+}
+
+/** Clean image — no borders, no frames, no decorations */
 function BookImage({
   src, alt = "", className = "", style, placeholderBg = TEAL,
 }: {
@@ -40,9 +42,9 @@ function BookImage({
     return (
       <div
         className={cn("flex items-center justify-center", className)}
-        style={{ background: `linear-gradient(135deg, ${placeholderBg}cc, ${placeholderBg}44)`, ...style }}
+        style={{ background: `linear-gradient(135deg, ${placeholderBg}bb, ${placeholderBg}33)`, ...style }}
       >
-        <BookOpen className="w-12 h-12 text-white/20" />
+        <BookOpen className="w-14 h-14 text-white/20" />
       </div>
     );
   }
@@ -57,15 +59,15 @@ function BookImage({
   );
 }
 
-function DropCap({ char, color = TEAL }: { char: string; color?: string }) {
+function DropCap({ char, color = TEAL, font }: { char: string; color?: string; font?: string }) {
   return (
     <span
-      className="float-left font-bold leading-none mr-1.5"
+      className="float-left font-bold leading-none mr-2"
       style={{
-        fontFamily: "'Georgia', serif",
-        fontSize: "clamp(2.8rem, 6vw, 3.8rem)",
-        lineHeight: 0.82,
-        paddingTop: "0.08em",
+        fontFamily: font ?? "'Georgia', serif",
+        fontSize: "clamp(3rem, 6.5vw, 4.2rem)",
+        lineHeight: 0.8,
+        paddingTop: "0.06em",
         color,
       }}
     >
@@ -81,15 +83,15 @@ function PageNum({ n, align = "center" }: { n: number; align?: "left" | "center"
       "absolute bottom-3 left-0 right-0 pointer-events-none",
       align === "center" ? "text-center" : align === "left" ? "pl-10 text-left" : "pr-10 text-right",
     )}>
-      <span className="text-[10px] italic text-[#1B6B5A]/40" style={{ fontFamily: "'Georgia', serif" }}>
+      <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>
         {n}
       </span>
     </div>
   );
 }
 
-/** Islamic 8-pointed star SVG (decorative corner ornament) */
-function IslamicStar({ size = 28, color = TEAL, opacity = 0.12 }: { size?: number; color?: string; opacity?: number }) {
+/** Islamic 8-pointed star — corner ornament */
+function IslamicStar({ size = 28, color = TEAL, opacity = 0.10 }: { size?: number; color?: string; opacity?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" fill={color} style={{ opacity }}>
       <path d="M20 2 L22.5 12 L32 8 L26 16 L38 18 L28 22 L34 32 L24 26 L20 38 L16 26 L6 32 L12 22 L2 18 L14 16 L8 8 L17.5 12 Z" />
@@ -97,12 +99,14 @@ function IslamicStar({ size = 28, color = TEAL, opacity = 0.12 }: { size?: numbe
   );
 }
 
-/** Crescent moon SVG */
-function IslamicCrescent({ size = 32, color = TEAL, opacity = 0.12 }: { size?: number; color?: string; opacity?: number }) {
+/** Elegant gold divider with Islamic star in centre */
+function GoldDivider({ starSize = 12 }: { starSize?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill={color} style={{ opacity }}>
-      <path d="M24 4C13 4 4 13 4 24s9 20 20 20a20 20 0 0 0 0-40zm0 36a16 16 0 1 1 0-32 12 12 0 0 0 0 32z" />
-    </svg>
+    <div className="flex items-center gap-2 w-full">
+      <div className="flex-1 h-px" style={{ background: `linear-gradient(to right, transparent, ${GOLD}70, transparent)` }} />
+      <IslamicStar size={starSize} color={GOLD} opacity={0.75} />
+      <div className="flex-1 h-px" style={{ background: `linear-gradient(to right, transparent, ${GOLD}70, transparent)` }} />
+    </div>
   );
 }
 
@@ -112,29 +116,27 @@ function IslamicCrescent({ size = 32, color = TEAL, opacity = 0.12 }: { size?: n
 
 /**
  * full_bleed
- * Image 100% background. White rounded card at bottom with bold text.
+ * Image fills entire page. White rounded card overlaid at bottom with text.
  */
-function FullBleedLayout({ page, pageNum }: { page: BookPage; pageNum: number }) {
+function FullBleedLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
   return (
     <div className="relative w-full h-full overflow-hidden">
       <BookImage src={page.imageUrl} alt={page.label} className="absolute inset-0 w-full h-full" placeholderBg="#0F4A3E" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
-      {/* Gradient veil */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-      {/* Text card */}
       {page.text && (
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
           <div
-            className="bg-white/93 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-xl mx-auto"
-            style={{ maxWidth: "88%" }}
+            className="bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-4 shadow-2xl mx-auto"
+            style={{ maxWidth: "92%" }}
           >
             <p
-              className="text-[#1a1a1a] leading-relaxed text-center"
+              className="leading-relaxed text-center"
               style={{
-                fontFamily: "'Baloo 2', 'Comic Sans MS', cursive",
-                fontSize: "clamp(0.88rem, 2.2vw, 1.2rem)",
-                lineHeight: 1.6,
+                fontFamily: ts.fontFamily,
+                color: ts.color,
+                fontSize: "clamp(0.9rem, 2.3vw, 1.22rem)",
+                lineHeight: 1.65,
               }}
             >
               {page.text}
@@ -142,46 +144,62 @@ function FullBleedLayout({ page, pageNum }: { page: BookPage; pageNum: number })
           </div>
         </div>
       )}
-
       <PageNum n={pageNum} />
     </div>
   );
 }
 
 /**
- * image_left_text_right
- * Left half: full-bleed image. Right half: cream bg, dropcap text.
+ * image_left_text_right  (Image + Text)
+ * Left 56%: full-bleed illustration, zero padding/border.
+ * Right 44%: warm cream, drop-cap text, centred vertically.
+ * Thin gold rule separates the two halves.
  */
-function ImageLeftTextRightLayout({ page, pageNum }: { page: BookPage; pageNum: number }) {
+function ImageLeftTextRightLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
   const firstChar = page.text?.charAt(0) ?? "";
   const rest      = page.text?.slice(1) ?? "";
 
   return (
     <div className="relative w-full h-full flex" style={{ backgroundColor: CREAM }}>
-      {/* Left half — image */}
-      <div className="relative w-1/2 h-full overflow-hidden">
-        <BookImage src={page.imageUrl} alt={page.label} className="absolute inset-0 w-full h-full" placeholderBg={TEAL} />
-        {/* Right-edge shadow to blend into text side */}
-        <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-r from-transparent to-black/15 pointer-events-none" />
+
+      {/* ── LEFT — full-bleed image ── */}
+      <div className="relative overflow-hidden" style={{ width: "56%" }}>
+        <BookImage
+          src={page.imageUrl}
+          alt={page.label}
+          className="absolute inset-0 w-full h-full"
+          placeholderBg={TEAL}
+        />
       </div>
 
-      {/* Right half — text */}
-      <div className="relative w-1/2 h-full flex flex-col items-center justify-center px-6 py-8">
-        {/* Islamic corner ornament */}
-        <div className="absolute top-4 right-4"><IslamicStar size={24} /></div>
-        <div className="absolute bottom-4 right-4"><IslamicCrescent size={24} /></div>
+      {/* ── Thin vertical gold rule ── */}
+      <div className="shrink-0 w-px self-stretch" style={{ background: `${GOLD}35` }} />
 
-        {page.text && (
+      {/* ── RIGHT — text panel ── */}
+      <div
+        className="relative flex flex-col items-start justify-center px-7 py-10"
+        style={{ flex: 1, background: CREAM }}
+      >
+        {/* Corner ornaments (text side only) */}
+        <div className="absolute top-4 right-4 pointer-events-none"><IslamicStar size={22} color={TEAL} opacity={0.09} /></div>
+        <div className="absolute bottom-4 right-4 pointer-events-none"><IslamicStar size={18} color={GOLD} opacity={0.10} /></div>
+
+        {page.text ? (
           <p
-            className="text-[#1a1a1a] leading-[1.75] text-left"
+            className="text-left leading-[1.8]"
             style={{
-              fontFamily: "'Baloo 2', 'Comic Sans MS', cursive",
-              fontSize: "clamp(0.88rem, 2vw, 1.1rem)",
+              fontFamily: ts.fontFamily,
+              color: ts.color,
+              fontSize: "clamp(0.9rem, 2.1vw, 1.15rem)",
             }}
           >
-            {firstChar && <DropCap char={firstChar} />}
+            {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
             {rest}
           </p>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-20">
+            <BookOpen className="w-10 h-10" style={{ color: TEAL }} />
+          </div>
         )}
 
         <PageNum n={pageNum} align="right" />
@@ -191,34 +209,163 @@ function ImageLeftTextRightLayout({ page, pageNum }: { page: BookPage; pageNum: 
 }
 
 /**
- * image_top_text_bottom
- * Top 62% = image. Bottom band = accent color, centered text.
+ * image_top_text_bottom  (Stack)
+ * Top 62%: image fills full width.
+ * Bottom 38%: warm cream band, centred text.
  */
-function ImageTopTextBottomLayout({ page, pageNum }: { page: BookPage; pageNum: number }) {
+function ImageTopTextBottomLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden">
+    <div className="relative w-full h-full flex flex-col overflow-hidden" style={{ backgroundColor: CREAM }}>
+
       {/* Image zone */}
       <div className="relative overflow-hidden" style={{ height: "62%" }}>
         <BookImage src={page.imageUrl} alt={page.label} className="w-full h-full" placeholderBg={TEAL} />
-        {/* Soft bottom fade */}
-        <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#F5A62320] to-transparent" />
+        {/* Soft bottom fade into text area */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-14 pointer-events-none"
+          style={{ background: `linear-gradient(to bottom, transparent, ${CREAM})` }}
+        />
+      </div>
+
+      {/* Gold divider */}
+      <div className="shrink-0 px-8 py-1">
+        <GoldDivider />
       </div>
 
       {/* Text band */}
       <div
-        className="flex-1 flex flex-col items-center justify-center px-6 py-4 relative"
-        style={{ background: `linear-gradient(135deg, ${GOLD}22, ${GOLD}11)`, backgroundColor: "#FFF9EE" }}
+        className="flex-1 flex flex-col items-center justify-center px-7 py-3 relative"
+        style={{ backgroundColor: CREAM }}
       >
-        {/* Decorative top border */}
-        <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(to right, transparent, ${GOLD}60, transparent)` }} />
-
         {page.text && (
           <p
-            className="text-[#2a1a00] text-center leading-relaxed"
+            className="text-center leading-relaxed"
             style={{
-              fontFamily: "'Baloo 2', 'Comic Sans MS', cursive",
-              fontSize: "clamp(0.85rem, 2.2vw, 1.15rem)",
-              lineHeight: 1.65,
+              fontFamily: ts.fontFamily,
+              color: ts.color,
+              fontSize: "clamp(0.88rem, 2.2vw, 1.18rem)",
+              lineHeight: 1.7,
+            }}
+          >
+            {page.text}
+          </p>
+        )}
+        <PageNum n={pageNum} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * vignette
+ * Professional picture-book vignette layout:
+ * — Warm ivory background
+ * — Full-width illustration (top 66%) with soft radial vignette fade at all edges
+ * — Elegant gold divider
+ * — Centred text below, serif or custom font from editor
+ * — Very subtle Islamic corner ornaments
+ * No circles. No borders. No frames.
+ */
+function VignetteLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
+
+  const bgColor = "#FFFBF0";
+
+  return (
+    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: bgColor }}>
+
+      {/* ── Background warmth gradient ── */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 35%, #FFFDF5 0%, #FFF3D6 100%)",
+        }}
+      />
+
+      {/* ── Corner ornaments — very subtle ── */}
+      <div className="absolute top-4 left-4 pointer-events-none"><IslamicStar size={26} color={TEAL} opacity={0.07} /></div>
+      <div className="absolute top-4 right-4 pointer-events-none"><IslamicStar size={26} color={TEAL} opacity={0.07} /></div>
+      <div className="absolute bottom-4 left-4 pointer-events-none"><IslamicStar size={22} color={GOLD} opacity={0.09} /></div>
+      <div className="absolute bottom-4 right-4 pointer-events-none"><IslamicStar size={22} color={GOLD} opacity={0.09} /></div>
+
+      {/* ── Outer dashed border — very faint ── */}
+      <div
+        className="absolute inset-[14px] rounded-2xl pointer-events-none"
+        style={{ border: `1px dashed ${TEAL}14` }}
+      />
+
+      {/* ── Illustration zone (top 64%) ── */}
+      <div
+        className="absolute top-0 left-0 right-0"
+        style={{ height: "64%", padding: "18px 18px 0" }}
+      >
+        <div className="relative w-full h-full rounded-xl overflow-hidden">
+          {page.imageUrl ? (
+            <>
+              {/* The illustration — NO borders, NO frames */}
+              <img
+                src={page.imageUrl}
+                alt={page.label}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+
+              {/* Vignette effect — radial fade from edges into background colour */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `
+                    radial-gradient(
+                      ellipse 90% 85% at 50% 45%,
+                      transparent 50%,
+                      ${bgColor}CC 85%,
+                      ${bgColor} 100%
+                    )
+                  `,
+                }}
+              />
+              {/* Bottom edge fade — smooth blend into divider */}
+              <div
+                className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                style={{
+                  height: "40%",
+                  background: `linear-gradient(to bottom, transparent 0%, ${bgColor}99 70%, ${bgColor} 100%)`,
+                }}
+              />
+            </>
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center rounded-xl"
+              style={{ background: `linear-gradient(135deg, ${TEAL}22, ${TEAL}0A)` }}
+            >
+              <BookOpen className="w-16 h-16" style={{ color: `${TEAL}40` }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Gold divider at 64% mark ── */}
+      <div
+        className="absolute left-8 right-8 flex items-center"
+        style={{ top: "calc(64% - 2px)" }}
+      >
+        <GoldDivider starSize={14} />
+      </div>
+
+      {/* ── Text zone ── */}
+      <div
+        className="absolute left-0 right-0 bottom-0 flex flex-col items-center justify-center px-10 pb-8"
+        style={{ top: "64%" }}
+      >
+        {page.text && (
+          <p
+            className="text-center"
+            style={{
+              fontFamily: ts.fontFamily,
+              color: ts.color,
+              fontSize: "clamp(0.92rem, 2.3vw, 1.22rem)",
+              lineHeight: 1.75,
             }}
           >
             {page.text}
@@ -231,313 +378,217 @@ function ImageTopTextBottomLayout({ page, pageNum }: { page: BookPage; pageNum: 
   );
 }
 
-/**
- * vignette
- * Cream page. Circular clipped image centered-left.
- * Text to the right. Islamic star + crescent corners.
- */
-function VignetteLayout({ page, pageNum }: { page: BookPage; pageNum: number }) {
-  return (
-    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: CREAM }}>
-      {/* Corner ornaments */}
-      <div className="absolute top-3 left-3"><IslamicStar size={30} color={TEAL} opacity={0.1} /></div>
-      <div className="absolute top-3 right-3"><IslamicCrescent size={30} color={TEAL} opacity={0.1} /></div>
-      <div className="absolute bottom-3 left-3"><IslamicCrescent size={28} color={GOLD} opacity={0.12} /></div>
-      <div className="absolute bottom-3 right-3"><IslamicStar size={28} color={GOLD} opacity={0.12} /></div>
-
-      {/* Dashed border frame */}
-      <div
-        className="absolute inset-4 rounded-2xl pointer-events-none"
-        style={{ border: `1.5px dashed ${TEAL}22` }}
-      />
-
-      {/* Content: circular image + text */}
-      <div className="absolute inset-0 flex items-center justify-center gap-5 px-8">
-        {/* Circular image */}
-        {page.imageUrl && (
-          <div
-            className="shrink-0 overflow-hidden rounded-full shadow-lg"
-            style={{
-              width: "clamp(90px, 35%, 160px)",
-              aspectRatio: "1",
-              border: `3px solid ${GOLD}60`,
-            }}
-          >
-            <img src={page.imageUrl} alt={page.label} className="w-full h-full object-cover" draggable={false} />
-          </div>
-        )}
-
-        {/* Text */}
-        {page.text && (
-          <p
-            className="flex-1 text-[#1a1a1a] leading-relaxed"
-            style={{
-              fontFamily: "'Baloo 2', 'Comic Sans MS', cursive",
-              fontSize: "clamp(0.85rem, 2vw, 1.1rem)",
-              lineHeight: 1.7,
-            }}
-          >
-            {page.text}
-          </p>
-        )}
-      </div>
-
-      <PageNum n={pageNum} />
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // CHAPTER-BOOK TEXT-PAGE LAYOUTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * two_column
- * Two equal columns, 24px gutter. Running header. Page number outer corner.
- */
 function TwoColumnLayout({
-  page, bookTitle, pageNum,
-}: { page: BookPage; bookTitle: string; pageNum: number }) {
-  const isEven   = pageNum % 2 === 0;
-  const firstChar = page.text?.charAt(0) ?? "";
-  const rest      = page.text?.slice(1) ?? "";
-  const halfLen   = Math.ceil((page.text?.length ?? 0) / 2);
-  const colLeft   = page.text?.slice(0, halfLen) ?? "";
-  const colRight  = page.text?.slice(halfLen) ?? "";
+  page, bookTitle, pageNum, ts,
+}: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
+  const isEven = pageNum % 2 === 0;
+  const text   = page.text ?? "";
+  const firstChar = text.charAt(0);
+  const rest      = text.slice(1);
+
+  // Word-boundary column split for balanced columns
+  const words     = rest.split(/\s+/);
+  const halfWords = Math.ceil(words.length / 2);
+  const leftText  = words.slice(0, halfWords).join(" ");
+  const rightText = words.slice(halfWords).join(" ");
+
+  const bodyStyle: React.CSSProperties = {
+    fontFamily: ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive"
+      ? ts.fontFamily
+      : "'Georgia', 'Times New Roman', serif",
+    fontSize:   "clamp(0.72rem, 1.3vw, 0.88rem)",
+    lineHeight: 1.9,
+    color:      ts.color,
+    textAlign:  "justify",
+  };
+
+  // Truncated labels for running header — prevents multi-line overflow
+  const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
+  const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
       {/* Running header */}
-      <div className="flex items-center justify-between px-8 pt-6 pb-3 border-b" style={{ borderColor: `${TEAL}18` }}>
-        <span className="text-[9px] uppercase tracking-[0.22em]" style={{ color: `${TEAL}60`, fontFamily: "'Georgia', serif" }}>
-          {isEven ? bookTitle : (page.subTitle || bookTitle)}
+      <div className="flex items-center justify-between px-8 pt-6 pb-3 shrink-0 border-b" style={{ borderColor: `${TEAL}14` }}>
+        <span className="text-[9px] uppercase tracking-[0.22em] truncate max-w-[42%]" style={{ color: `${TEAL}55`, fontFamily: "'Georgia', serif" }}>
+          {leftLabel}
         </span>
-        <div className="flex-1 mx-3 h-px" style={{ background: `${TEAL}15` }} />
-        <span className="text-[9px] uppercase tracking-[0.22em]" style={{ color: `${TEAL}60`, fontFamily: "'Georgia', serif" }}>
-          {isEven ? (page.subTitle || bookTitle) : bookTitle}
+        <div className="flex-1 mx-3 h-px" style={{ background: `${TEAL}12` }} />
+        <span className="text-[9px] uppercase tracking-[0.22em] truncate max-w-[42%]" style={{ color: `${TEAL}55`, fontFamily: "'Georgia', serif" }}>
+          {rightLabel}
         </span>
       </div>
 
       {/* Two-column body */}
       <div className="flex-1 flex gap-5 px-8 py-5 overflow-hidden">
-        {/* Column 1 */}
         <div className="flex-1 overflow-hidden">
-          <p
-            className="text-[#1a1a1a] leading-[1.9] text-justify hyphens-auto"
-            style={{ fontFamily: "'Georgia', 'Times New Roman', serif", fontSize: "clamp(0.72rem, 1.3vw, 0.88rem)" }}
-          >
-            {firstChar && <DropCap char={firstChar} />}
-            {rest.slice(0, Math.ceil(rest.length / 2))}
+          <p style={bodyStyle}>
+            {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
+            {leftText}
           </p>
         </div>
-
-        {/* Gutter divider */}
-        <div className="w-px shrink-0" style={{ background: `${TEAL}12` }} />
-
-        {/* Column 2 */}
+        <div className="w-px shrink-0" style={{ background: `${TEAL}10` }} />
         <div className="flex-1 overflow-hidden">
-          <p
-            className="text-[#1a1a1a] leading-[1.9] text-justify hyphens-auto"
-            style={{ fontFamily: "'Georgia', 'Times New Roman', serif", fontSize: "clamp(0.72rem, 1.3vw, 0.88rem)" }}
-          >
-            {rest.slice(Math.ceil(rest.length / 2))}
-          </p>
+          <p style={bodyStyle}>{rightText}</p>
         </div>
       </div>
 
-      {/* Footer with outer-corner page num */}
-      <div className={cn("flex items-center px-8 pb-5", isEven ? "justify-start" : "justify-end")}>
+      <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
         <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
       </div>
-
-      {/* Decorative corner star */}
       <div className="absolute" style={{ [isEven ? "left" : "right"]: "2rem", bottom: "2.5rem" }}>
-        <IslamicStar size={32} />
+        <IslamicStar size={30} color={TEAL} opacity={0.08} />
       </div>
     </div>
   );
 }
 
-/**
- * text_inline_image
- * Chapter illustration embedded inline within the prose.
- * Layout:
- *   ┌────────────────────────────────────────┐
- *   │  Running header                        │
- *   ├────────────────────────────────────────┤
- *   │  [A]Drop-cap opening text starts here  │
- *   │    and continues for a while…          │
- *   │  ┌──────────────┐  More prose wraps    │
- *   │  │  ILLUSTRATION│  alongside the       │
- *   │  │   IMAGE      │  chapter image on    │
- *   │  │  (38% wide)  │  the right side.     │
- *   │  └──────────────┘                      │
- *   │  [caption italic]                      │
- *   │  Remaining prose continues full-width. │
- *   ├────────────────────────────────────────┤
- *   │  Page number                           │
- *   └────────────────────────────────────────┘
- */
 function TextInlineImageLayout({
-  page, bookTitle, pageNum,
-}: { page: BookPage; bookTitle: string; pageNum: number }) {
-  const isEven    = pageNum % 2 === 0;
-  const text      = page.text ?? "";
-  const firstChar = text.charAt(0);
-  const rest      = text.slice(1);
+  page, bookTitle, pageNum, ts,
+}: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
+  const isEven        = pageNum % 2 === 0;
+  const text          = page.text ?? "";
+  const firstChar     = text.charAt(0);
+  const rest          = text.slice(1);
+  const hasImage      = !!page.imageUrl;
+  const hasBottomImg  = !!page.secondImageUrl;
 
-  // Split rest into "alongside image" (first 58%) and "below image" portions
-  const words     = rest.split(" ");
-  const splitIdx  = Math.max(1, Math.floor(words.length * 0.58));
-  const topText   = words.slice(0, splitIdx).join(" ");
-  const botText   = words.slice(splitIdx).join(" ");
+  const bodyFont = ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive"
+    ? ts.fontFamily
+    : "'Georgia', 'Times New Roman', serif";
 
-  const bodyFont: React.CSSProperties = {
-    fontFamily: "'Georgia', 'Times New Roman', serif",
+  const bodyStyle: React.CSSProperties = {
+    fontFamily: bodyFont,
     fontSize:   "clamp(0.73rem, 1.3vw, 0.88rem)",
     lineHeight: 1.9,
-    color:      "#1a1a1a",
+    color:      ts.color,
+    textAlign:  "justify",
   };
+
+  const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
+  const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
 
-      {/* Running header */}
-      <div className="flex items-center justify-between px-8 pt-5 pb-3 border-b shrink-0"
-        style={{ borderColor: `${TEAL}18` }}>
-        <span className="text-[9px] uppercase tracking-[0.22em]"
-          style={{ color: `${TEAL}60`, fontFamily: "'Georgia', serif" }}>
-          {isEven ? bookTitle : (page.subTitle || bookTitle)}
+      {/* ── Running header ── */}
+      <div className="flex items-center justify-between px-8 pt-5 pb-3 border-b shrink-0" style={{ borderColor: `${TEAL}14` }}>
+        <span className="text-[9px] uppercase tracking-[0.22em] truncate max-w-[42%]" style={{ color: `${TEAL}55`, fontFamily: "'Georgia', serif" }}>
+          {leftLabel}
         </span>
-        <div className="flex-1 mx-3 h-px" style={{ background: `${TEAL}15` }} />
-        <span className="text-[9px] uppercase tracking-[0.22em]"
-          style={{ color: `${TEAL}60`, fontFamily: "'Georgia', serif" }}>
-          {isEven ? (page.subTitle || bookTitle) : bookTitle}
+        <div className="flex-1 mx-3 h-px" style={{ background: `${TEAL}12` }} />
+        <span className="text-[9px] uppercase tracking-[0.22em] truncate max-w-[42%]" style={{ color: `${TEAL}55`, fontFamily: "'Georgia', serif" }}>
+          {rightLabel}
         </span>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 px-8 py-5 flex flex-col gap-2 overflow-hidden">
-
-        {/* Zone 1: image row — left text + right image side by side */}
-        <div className="flex gap-4 items-start">
-          {/* Left: text with dropcap */}
-          <p className="flex-1 text-justify hyphens-auto" style={bodyFont}>
-            {firstChar && <DropCap char={firstChar} />}
-            {topText}
-          </p>
-
-          {/* Right: chapter illustration */}
-          {page.imageUrl && (
-            <div className="shrink-0" style={{ width: "38%" }}>
-              <div className="rounded-xl overflow-hidden shadow-md"
-                style={{ border: `1px solid ${TEAL}18` }}>
-                <img
-                  src={page.imageUrl}
-                  alt={page.label}
-                  className="w-full object-cover block"
-                  style={{ aspectRatio: "3 / 4", maxHeight: "55%" }}
-                  draggable={false}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
-              </div>
-              {/* Caption */}
-              {page.subTitle && (
-                <p className="mt-1.5 text-center italic"
-                  style={{ fontFamily: "'Georgia', serif", fontSize: "clamp(0.6rem, 1vw, 0.75rem)", color: `${TEAL}90` }}>
-                  {page.subTitle}
-                </p>
-              )}
-              {/* Decorative teal line below caption */}
-              <div className="mt-2 mx-auto h-px w-12" style={{ background: `${TEAL}40` }} />
-            </div>
-          )}
-        </div>
-
-        {/* Zone 2: remaining text spans full width below image */}
-        {botText && (
-          <p className="text-justify hyphens-auto" style={bodyFont}>
-            {botText}
-          </p>
+      {/* ── Text zone — uses CSS float so text wraps around image naturally ── */}
+      <div
+        className="overflow-hidden"
+        style={{
+          padding: "1.25rem 2rem 1.5rem",
+          flexShrink: 0,
+          // Hard-clamp at 53% — leaves room for gradient overlap + no bleed
+          ...(hasBottomImg ? { height: "53%" } : { flex: 1 }),
+        }}
+      >
+        {/* Float the inline image right — text flows around it on left AND below */}
+        {hasImage && (
+          <img
+            src={page.imageUrl}
+            alt={page.label}
+            className="rounded-lg object-cover"
+            style={{
+              float:         "right",
+              width:         "38%",
+              aspectRatio:   "2 / 3",
+              marginLeft:    "1rem",
+              marginBottom:  "0.5rem",
+              display:       "block",
+            }}
+            draggable={false}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
         )}
+        <p style={bodyStyle}>
+          {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+          {rest}
+        </p>
       </div>
 
-      {/* Footer with outer-corner page number */}
-      <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
-        <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>
-          {pageNum}
-        </span>
-      </div>
+      {/* ── Bottom illustration zone — second moment, full bleed ── */}
+      {hasBottomImg ? (
+        <div className="flex-1 relative overflow-hidden">
+          {/* Tall cream-to-transparent gradient — covers any text bleed from the zone above */}
+          <div
+            className="absolute inset-x-0 top-0 z-10 pointer-events-none"
+            style={{ height: "42%", background: `linear-gradient(to bottom, ${CREAM} 0%, ${CREAM}CC 35%, transparent 100%)` }}
+          />
+          <img
+            src={page.secondImageUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            draggable={false}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        </div>
+      ) : (
+        /* No bottom image — just page number row */
+        <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
+          <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
+        </div>
+      )}
 
-      {/* Decorative corner star */}
-      <div className="absolute" style={{ [isEven ? "left" : "right"]: "1.75rem", bottom: "2.25rem" }}>
-        <IslamicStar size={28} />
-      </div>
+      {/* Page number — overlaid when bottom image is present */}
+      {hasBottomImg && (
+        <div className={cn("absolute bottom-3 px-8 z-20", isEven ? "left-0" : "right-0")}>
+          <span className="text-[10px] italic text-white/60" style={{ fontFamily: "'Georgia', serif" }}>{pageNum}</span>
+        </div>
+      )}
+
+      {/* Corner ornament — only when no bottom image */}
+      {!hasBottomImg && (
+        <div className="absolute" style={{ [isEven ? "left" : "right"]: "1.75rem", bottom: "2.25rem" }}>
+          <IslamicStar size={26} color={TEAL} opacity={0.08} />
+        </div>
+      )}
     </div>
   );
 }
 
-/**
- * decorative_full_text
- * Ornamental dashed border. Arabic text RTL + English hadith / ayah.
- * Gold accent blockquote. For Islamic educational callouts.
- */
 function DecorativeFullTextLayout({
-  page, bookTitle, pageNum,
-}: { page: BookPage; bookTitle: string; pageNum: number }) {
-  // Try to split text at a "—" separator: Arabic portion before, English after
+  page, bookTitle, pageNum, ts,
+}: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
   const [arabic, english] = (page.text ?? "").includes(" — ")
     ? (page.text ?? "").split(" — ", 2)
     : ["", page.text ?? ""];
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center" style={{ backgroundColor: CREAM }}>
-      {/* Dashed ornamental border */}
-      <div
-        className="absolute inset-4 rounded-2xl pointer-events-none"
-        style={{ border: `1.5px dashed ${TEAL}30` }}
-      />
-      {/* Corner ornaments */}
-      <div className="absolute top-3 left-3"><IslamicStar size={32} color={TEAL} opacity={0.2} /></div>
-      <div className="absolute top-3 right-3"><IslamicStar size={32} color={TEAL} opacity={0.2} /></div>
-      <div className="absolute bottom-3 left-3"><IslamicStar size={32} color={GOLD} opacity={0.2} /></div>
-      <div className="absolute bottom-3 right-3"><IslamicStar size={32} color={GOLD} opacity={0.2} /></div>
+      <div className="absolute inset-5 rounded-2xl pointer-events-none" style={{ border: `1px dashed ${TEAL}22` }} />
+      <div className="absolute top-3 left-3"><IslamicStar size={30} color={TEAL} opacity={0.18} /></div>
+      <div className="absolute top-3 right-3"><IslamicStar size={30} color={TEAL} opacity={0.18} /></div>
+      <div className="absolute bottom-3 left-3"><IslamicStar size={28} color={GOLD} opacity={0.18} /></div>
+      <div className="absolute bottom-3 right-3"><IslamicStar size={28} color={GOLD} opacity={0.18} /></div>
 
-      {/* Running header */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-10 pt-6 pb-2">
-        <span className="text-[9px] uppercase tracking-[0.2em]" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>
-          {bookTitle}
-        </span>
-        <span className="text-[9px] uppercase tracking-[0.2em]" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>
-          {page.subTitle || ""}
-        </span>
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-10 pt-6">
+        <span className="text-[9px] uppercase tracking-[0.2em] truncate max-w-[45%]" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{truncate(bookTitle)}</span>
+        <span className="text-[9px] uppercase tracking-[0.2em] truncate max-w-[45%]" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{truncate(page.subTitle || "")}</span>
       </div>
 
-      {/* Pull-quote card */}
-      <div
-        className="relative mx-10 rounded-xl overflow-hidden shadow-sm"
-        style={{ borderLeft: `4px solid ${GOLD}`, backgroundColor: `${GOLD}08` }}
-      >
-        {/* Gold accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, ${GOLD}80, transparent)` }} />
-
+      <div className="relative mx-10 rounded-xl overflow-hidden shadow-sm" style={{ borderLeft: `4px solid ${GOLD}`, backgroundColor: `${GOLD}07` }}>
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, ${GOLD}70, transparent)` }} />
         <div className="px-7 py-6">
-          {/* Arabic / hadith text — RTL */}
           {arabic && (
-            <p
-              dir="rtl"
-              className="text-right mb-4 leading-[2]"
-              style={{
-                fontFamily: "'Amiri', 'Scheherazade New', 'Times New Roman', serif",
-                fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)",
-                color: "#1a1a1a",
-              }}
-            >
-              {arabic}
-            </p>
+            <p dir="rtl" className="text-right mb-4 leading-[2]" style={{
+              fontFamily: "'Amiri', 'Scheherazade New', 'Times New Roman', serif",
+              fontSize: "clamp(1.1rem, 2.2vw, 1.4rem)", color: ts.color,
+            }}>{arabic}</p>
           )}
-
-          {/* Divider */}
           {arabic && (
             <div className="flex items-center gap-3 mb-4">
               <div className="flex-1 h-px" style={{ background: `${GOLD}40` }} />
@@ -545,106 +596,70 @@ function DecorativeFullTextLayout({
               <div className="flex-1 h-px" style={{ background: `${GOLD}40` }} />
             </div>
           )}
-
-          {/* English translation */}
           {english && (
-            <p
-              className="text-center italic leading-[1.8]"
-              style={{
-                fontFamily: "'Georgia', serif",
-                fontSize: "clamp(0.78rem, 1.5vw, 0.95rem)",
-                color: "#333",
-              }}
-            >
-              "{english}"
-            </p>
+            <p className="text-center italic leading-[1.8]" style={{
+              fontFamily: ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive" ? ts.fontFamily : "'Georgia', serif",
+              fontSize: "clamp(0.78rem, 1.5vw, 0.95rem)", color: ts.color,
+            }}>"{english}"</p>
           )}
         </div>
       </div>
 
-      {/* Page number */}
       <PageNum n={pageNum} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STANDALONE PAGE TYPES (no sub-layout variants)
+// STANDALONE PAGE TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FrontCoverLayout({ page }: { page: BookPage }) {
+function FrontCoverLayout({ page, ts }: { page: BookPage; ts: TextStyle }) {
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: DARK }}>
       <BookImage src={page.imageUrl} alt="Cover" className="absolute inset-0 w-full h-full" placeholderBg="#0F4A3E" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-10 text-center">
         {page.title && (
-          <h1
-            className="text-white font-bold leading-tight drop-shadow-2xl"
-            style={{
-              fontFamily: "'Baloo 2', 'Georgia', serif",
-              fontSize: "clamp(1.6rem, 5vw, 3.2rem)",
-              textShadow: "0 2px 20px rgba(0,0,0,0.8)",
-            }}
-          >
+          <h1 className="text-white font-bold leading-tight drop-shadow-2xl"
+            style={{ fontFamily: ts.fontFamily, fontSize: "clamp(1.6rem, 5vw, 3.2rem)", textShadow: "0 2px 20px rgba(0,0,0,0.8)" }}>
             {page.title}
           </h1>
         )}
         {page.text && (
-          <p className="text-white/75 mt-3 drop-shadow"
-            style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: "clamp(0.8rem, 2vw, 1.1rem)" }}>
+          <p className="text-white/75 mt-3 drop-shadow" style={{ fontFamily: ts.fontFamily, fontSize: "clamp(0.8rem, 2vw, 1.1rem)" }}>
             {page.text}
           </p>
         )}
       </div>
-
-      {/* Decorative crescent */}
-      <IslamicCrescent size={48} color="white" opacity={0.25} />
       <div className="absolute top-6 right-6 pointer-events-none">
-        <IslamicCrescent size={48} color="white" opacity={0.25} />
+        <IslamicStar size={44} color="white" opacity={0.22} />
       </div>
     </div>
   );
 }
 
-function ChapterOpenerLayout({ page }: { page: BookPage }) {
+function ChapterOpenerLayout({ page, ts }: { page: BookPage; ts: TextStyle }) {
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: DARK }}>
-      {/* Top 55% image zone */}
       <div className="absolute top-0 left-0 right-0" style={{ height: "55%" }}>
         <BookImage src={page.imageUrl} alt={page.label} className="w-full h-full" placeholderBg="#0F4A3E" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1117]" />
       </div>
-
-      {/* Bottom text zone */}
-      <div
-        className="absolute left-0 right-0 bottom-0 flex flex-col items-center justify-center text-center px-10 pb-10"
-        style={{ top: "50%" }}
-      >
-        {/* Gold divider */}
+      <div className="absolute left-0 right-0 bottom-0 flex flex-col items-center justify-center text-center px-10 pb-10" style={{ top: "50%" }}>
         <div className="flex items-center gap-3 mb-5">
           <div className="h-px w-10" style={{ background: `${GOLD}50` }} />
           <IslamicStar size={16} color={GOLD} opacity={0.7} />
           <div className="h-px w-10" style={{ background: `${GOLD}50` }} />
         </div>
-
         {page.subTitle && (
-          <p className="uppercase tracking-[0.25em] text-xs font-semibold mb-3"
-            style={{ color: `${GOLD}90`, fontFamily: "'Baloo 2', sans-serif" }}>
+          <p className="uppercase tracking-[0.25em] text-xs font-semibold mb-3" style={{ color: `${GOLD}90`, fontFamily: ts.fontFamily }}>
             {page.subTitle}
           </p>
         )}
-
         {page.title && (
-          <h2
-            className="text-white font-bold leading-tight"
-            style={{
-              fontFamily: "'Georgia', 'Times New Roman', serif",
-              fontSize: "clamp(1.2rem, 3.5vw, 2rem)",
-              textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-            }}
-          >
+          <h2 className="text-white font-bold leading-tight"
+            style={{ fontFamily: ts.fontFamily, fontSize: "clamp(1.2rem, 3.5vw, 2rem)", textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
             {page.title}
           </h2>
         )}
@@ -653,46 +668,44 @@ function ChapterOpenerLayout({ page }: { page: BookPage }) {
   );
 }
 
-function ChapterMomentLayout({ page, pageNum }: { page: BookPage; pageNum: number }) {
+function ChapterMomentLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
+  // Only show a caption when it is short (momentTitle, not illustration prompt)
+  const caption = page.text && page.text.length < 120 ? page.text : "";
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: DARK }}>
       <BookImage src={page.imageUrl} alt={page.label} className="absolute inset-0 w-full h-full" placeholderBg="#0F4A3E" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-
-      {page.text && (
-        <div className="absolute bottom-0 left-0 right-0 px-8 pb-6">
-          <p className="text-white/80 text-center italic text-sm"
-            style={{ fontFamily: "'Georgia', serif" }}>
-            {page.text}
-          </p>
-        </div>
+      {caption ? (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-8 pb-8">
+            <p className="text-white/85 text-center italic text-sm leading-relaxed" style={{ fontFamily: ts.fontFamily }}>{caption}</p>
+          </div>
+        </>
+      ) : (
+        /* No overlay when no caption — pure full-bleed illustration */
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
       )}
       <div className="absolute bottom-3 left-0 right-0 text-center">
-        <span className="text-white/25 text-[10px]">{pageNum || ""}</span>
+        <span className="text-white/20 text-[10px]">{pageNum || ""}</span>
       </div>
     </div>
   );
 }
 
-function BackCoverLayout({ page }: { page: BookPage }) {
+function BackCoverLayout({ page, ts }: { page: BookPage; ts: TextStyle }) {
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: DARK }}>
       <BookImage src={page.imageUrl} alt="Back Cover" className="absolute inset-0 w-full h-full" placeholderBg="#0F4A3E" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-
+      <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-transparent" />
       {page.text && (
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="bg-black/50 backdrop-blur-md rounded-2xl p-6 border border-white/10">
             <div className="w-6 h-0.5 mb-4" style={{ background: GOLD }} />
-            <p className="text-white/85 leading-relaxed text-sm" style={{ fontFamily: "'Georgia', serif" }}>
-              {page.text}
-            </p>
+            <p className="text-white/85 leading-relaxed text-sm" style={{ fontFamily: ts.fontFamily }}>{page.text}</p>
           </div>
         </div>
       )}
-
-      {/* ISBN bar placeholder */}
-      <div className="absolute bottom-4 right-6 opacity-25">
+      <div className="absolute bottom-4 right-6 opacity-20">
         <div className="w-20 h-10 border border-white/40 rounded flex items-center justify-center">
           <span className="text-white text-[8px] font-mono">ISBN</span>
         </div>
@@ -706,19 +719,89 @@ function BackCoverLayout({ page }: { page: BookPage }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface SinglePageProps {
-  page:              BookPage;
-  bookTitle?:        string;
-  pageNum?:          number;
-  /** True → render a blank cream placeholder (spine separator) */
-  isBlank?:          boolean;
-  className?:        string;
+  page:             BookPage;
+  bookTitle?:       string;
+  pageNum?:         number;
+  isBlank?:         boolean;
+  className?:       string;
+  preferredLayout?: string;
+  projectId?:       string;
   /**
-   * Override auto-detected layoutType with the user's chosen preference.
-   * Picture-book layouts: full_bleed | image_left_text_right | image_top_text_bottom | vignette
-   * Chapter-book layouts: two_column | text_inline_image | decorative_full_text
-   * Only applied to the matching page type (picture vs chapter).
+   * For image_left_text_right spread layout:
+   * "image" → this page renders ONLY the full-bleed illustration
+   * "text"  → this page renders ONLY the text (cream bg, drop-cap)
    */
-  preferredLayout?:  string;
+  spreadSide?: "image" | "text";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPLIT SPREAD HELPERS (for image_left_text_right)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Full-page image — no text, no overlays, pure illustration */
+function ImageOnlyPage({ page }: { page: BookPage }) {
+  return (
+    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: "#0d1117" }}>
+      {page.imageUrl ? (
+        <img
+          src={page.imageUrl}
+          alt={page.label}
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${TEAL}cc, ${TEAL}44)` }}>
+          <BookOpen className="w-16 h-16 text-white/20" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Full-page text — cream bg, large centred text with drop-cap */
+function TextOnlyPage({ page, pageNum, ts }: { page: BookPage; pageNum: number; ts: TextStyle }) {
+  const firstChar = page.text?.charAt(0) ?? "";
+  const rest      = page.text?.slice(1) ?? "";
+
+  return (
+    <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
+      {/* Subtle corner ornaments */}
+      <div className="absolute top-5 right-5 pointer-events-none"><IslamicStar size={22} color={TEAL} opacity={0.07} /></div>
+      <div className="absolute bottom-5 left-5 pointer-events-none"><IslamicStar size={18} color={GOLD} opacity={0.09} /></div>
+
+      {/* Centred text block */}
+      <div className="flex-1 flex items-center justify-center px-10 py-12">
+        {page.text ? (
+          <p
+            className="leading-[1.85] text-left"
+            style={{
+              fontFamily: ts.fontFamily,
+              color: ts.color,
+              fontSize: "clamp(1.05rem, 2.6vw, 1.45rem)",
+            }}
+          >
+            {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
+            {rest}
+          </p>
+        ) : (
+          <div className="opacity-15 flex items-center justify-center w-full h-full">
+            <BookOpen className="w-12 h-12" style={{ color: TEAL }} />
+          </div>
+        )}
+      </div>
+
+      {/* Thin gold bottom rule + page number */}
+      <div className="px-10 pb-6 shrink-0">
+        <div className="mb-3"><GoldDivider /></div>
+        {pageNum > 0 && (
+          <p className="text-center text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>
+            {pageNum}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const PICTURE_LAYOUTS = new Set(["full_bleed", "image_left_text_right", "image_top_text_bottom", "vignette"]);
@@ -731,64 +814,59 @@ export function SinglePage({
   isBlank          = false,
   className        = "",
   preferredLayout,
+  projectId,
+  spreadSide,
 }: SinglePageProps) {
+  // ── Text style from persisted store (set by canvas editor) ──────────────────
+  const stored = useBookTextStyleStore((s) =>
+    projectId ? s.getStyle(projectId) : DEFAULT_STYLE,
+  );
+  const ts: TextStyle = {
+    fontFamily: stored.fontFamily ? `'${stored.fontFamily}', sans-serif` : "'Baloo 2', cursive",
+    color:      stored.textColor || "#1a1a1a",
+  };
   if (isBlank) {
     return (
       <div
         className={cn("w-full h-full", className)}
-        style={{
-          background: "linear-gradient(to right, #F5F3EF, #FAF8F4)",
-          borderLeft: "1px solid rgba(0,0,0,0.06)",
-        }}
+        style={{ background: "linear-gradient(to right, #F5F3EF, #FAF8F4)", borderLeft: "1px solid rgba(0,0,0,0.05)" }}
       />
     );
   }
 
+  // ── Split-spread mode: image_left_text_right ───────────────────────────────
+  if (spreadSide === "image") {
+    return <div className={cn("w-full h-full", className)}><ImageOnlyPage page={page} /></div>;
+  }
+  if (spreadSide === "text") {
+    return <div className={cn("w-full h-full", className)}><TextOnlyPage page={page} pageNum={pageNum} ts={ts} /></div>;
+  }
+
   const layout = (() => {
     switch (page.type) {
-      // ── Fixed layouts ──────────────────────────────────────────────────────
-      case "front-cover":
-        return <FrontCoverLayout page={page} />;
+      case "front-cover":    return <FrontCoverLayout page={page} ts={ts} />;
+      case "chapter-opener": return <ChapterOpenerLayout page={page} ts={ts} />;
+      case "chapter-moment": return <ChapterMomentLayout page={page} pageNum={pageNum} ts={ts} />;
+      case "back-cover":     return <BackCoverLayout page={page} ts={ts} />;
 
-      case "chapter-opener":
-        return <ChapterOpenerLayout page={page} />;
-
-      case "chapter-moment":
-        return <ChapterMomentLayout page={page} pageNum={pageNum} />;
-
-      case "back-cover":
-        return <BackCoverLayout page={page} />;
-
-      // ── Picture-book spreads — sub-layout dispatch ─────────────────────────
       case "spread": {
-        // User preference wins if it's a valid picture-book layout
         const lt = (preferredLayout && PICTURE_LAYOUTS.has(preferredLayout)
-          ? preferredLayout
-          : page.layoutType) ?? "full_bleed";
-        if (lt === "image_left_text_right")
-          return <ImageLeftTextRightLayout page={page} pageNum={pageNum} />;
-        if (lt === "image_top_text_bottom")
-          return <ImageTopTextBottomLayout page={page} pageNum={pageNum} />;
-        if (lt === "vignette")
-          return <VignetteLayout page={page} pageNum={pageNum} />;
-        return <FullBleedLayout page={page} pageNum={pageNum} />;
+          ? preferredLayout : page.layoutType) ?? "full_bleed";
+        if (lt === "image_left_text_right") return <ImageLeftTextRightLayout page={page} pageNum={pageNum} ts={ts} />;
+        if (lt === "image_top_text_bottom") return <ImageTopTextBottomLayout page={page} pageNum={pageNum} ts={ts} />;
+        if (lt === "vignette")              return <VignetteLayout page={page} pageNum={pageNum} ts={ts} />;
+        return <FullBleedLayout page={page} pageNum={pageNum} ts={ts} />;
       }
 
-      // ── Chapter-book text pages — sub-layout dispatch ──────────────────────
       case "text-page": {
-        // User preference wins if it's a valid chapter-book layout
         const lt = (preferredLayout && CHAPTER_LAYOUTS.has(preferredLayout)
-          ? preferredLayout
-          : page.layoutType) ?? "two_column";
-        if (lt === "text_inline_image")
-          return <TextInlineImageLayout page={page} bookTitle={bookTitle} pageNum={pageNum} />;
-        if (lt === "decorative_full_text")
-          return <DecorativeFullTextLayout page={page} bookTitle={bookTitle} pageNum={pageNum} />;
-        return <TwoColumnLayout page={page} bookTitle={bookTitle} pageNum={pageNum} />;
+          ? preferredLayout : page.layoutType) ?? "two_column";
+        if (lt === "text_inline_image")    return <TextInlineImageLayout page={page} bookTitle={bookTitle} pageNum={pageNum} ts={ts} />;
+        if (lt === "decorative_full_text") return <DecorativeFullTextLayout page={page} bookTitle={bookTitle} pageNum={pageNum} ts={ts} />;
+        return <TwoColumnLayout page={page} bookTitle={bookTitle} pageNum={pageNum} ts={ts} />;
       }
 
-      default:
-        return <FullBleedLayout page={page} pageNum={pageNum} />;
+      default: return <FullBleedLayout page={page} pageNum={pageNum} ts={ts} />;
     }
   })();
 

@@ -17,12 +17,11 @@ interface SpreadViewProps {
   leftPage:  BookPage | null;
   rightPage: BookPage | null;
   bookTitle: string;
-  /** 1-based page numbers for each side (for running headers / footers) */
-  leftPageNum?:   number;
-  rightPageNum?:  number;
-  className?:     string;
-  /** User's chosen layout — passed down to SinglePage */
+  leftPageNum?:     number;
+  rightPageNum?:    number;
+  className?:       string;
   preferredLayout?: string;
+  projectId?:       string;
 }
 
 export function SpreadView({
@@ -33,7 +32,11 @@ export function SpreadView({
   rightPageNum    = 0,
   className       = "",
   preferredLayout,
+  projectId,
 }: SpreadViewProps) {
+  // For image_left_text_right: left page = image only, right page = text only
+  const splitLayout = preferredLayout === "image_left_text_right";
+
   return (
     <div
       className={cn("w-full", className)}
@@ -50,6 +53,8 @@ export function SpreadView({
               bookTitle={bookTitle}
               pageNum={leftPageNum}
               preferredLayout={preferredLayout}
+              spreadSide={splitLayout ? "image" : undefined}
+              projectId={projectId}
               className="w-full h-full"
             />
           ) : (
@@ -58,10 +63,7 @@ export function SpreadView({
           {/* Left-page edge shadow */}
           <div
             className="pointer-events-none absolute inset-y-0 right-0 w-8"
-            style={{
-              background:
-                "linear-gradient(to right, transparent, rgba(0,0,0,0.18))",
-            }}
+            style={{ background: "linear-gradient(to right, transparent, rgba(0,0,0,0.18))" }}
           />
         </div>
 
@@ -76,6 +78,8 @@ export function SpreadView({
               bookTitle={bookTitle}
               pageNum={rightPageNum}
               preferredLayout={preferredLayout}
+              spreadSide={splitLayout ? "text" : undefined}
+              projectId={projectId}
               className="w-full h-full"
             />
           ) : (
@@ -84,10 +88,7 @@ export function SpreadView({
           {/* Right-page edge shadow */}
           <div
             className="pointer-events-none absolute inset-y-0 left-0 w-8"
-            style={{
-              background:
-                "linear-gradient(to left, transparent, rgba(0,0,0,0.18))",
-            }}
+            style={{ background: "linear-gradient(to left, transparent, rgba(0,0,0,0.18))" }}
           />
         </div>
       </div>
