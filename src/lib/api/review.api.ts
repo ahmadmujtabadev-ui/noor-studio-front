@@ -4,6 +4,15 @@
 import { api } from "@/lib/api/client";
 import { CoverReview, IllustrationNode, ProseReviewCurrent, ReviewResponse, StructureItem } from "./reviewTypes";
 
+/** Minimal shape the editor saves per page */
+export interface EditorPageSave {
+  id:         string;
+  fabricJson?: object | null;
+  thumbnail?:  string;
+  text?:       string;
+  title?:      string;
+}
+
 
 // ─── Bootstrap & get ─────────────────────────────────────────────────────────
 
@@ -106,4 +115,12 @@ export const reviewApi = {
 
   approveCover: (pid: string, side: "front" | "back" | "spine") =>
     api.post(`/api/projects/${pid}/review/cover/${side}/approve`, {}),
+
+  // ─── Editor pages (fabricJson + thumbnail persistence) ─────────────────────
+
+  getEditorPages: (pid: string): Promise<{ pages: EditorPageSave[] }> =>
+    api.get(`/api/projects/${pid}/editor/pages`),
+
+  saveEditorPages: (pid: string, pages: EditorPageSave[]): Promise<{ saved: number; total: number }> =>
+    api.patch(`/api/projects/${pid}/editor/pages`, { pages }),
 };

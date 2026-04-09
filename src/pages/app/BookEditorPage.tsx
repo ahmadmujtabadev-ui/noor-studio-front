@@ -1,5 +1,9 @@
 // pages/app/BookEditorPage.tsx
 // Full-screen Fabric.js canvas book editor.
+//
+// FIX: canvas ref is now stored in state so DesignPanel gets a live reference.
+// Previously `canvasRef.current?.getCanvas()` was always null on first render
+// because refs aren't reactive — DesignPanel never received the canvas.
 
 import React, {
   useCallback,
@@ -8,13 +12,13 @@ import React, {
   useState,
 } from "react";
 import { fabric } from "fabric";
-import jsPDF from "jspdf";
 import { useNavigate } from "react-router-dom";
 import { exportBookEpub } from "@/lib/exportBookEpub";
 import { useBookEditor } from "@/hooks/useBookEditor";
 import { PageNavigator } from "@/components/editor/PageNavigator";
 import { DesignPanel } from "@/components/editor/DesignPanel";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
+import { ElementsPanel } from "@/components/editor/ElementsPanel";
 import FabricPageCanvas, {
   FabricCanvasHandle,
   EditorTool,
@@ -32,6 +36,8 @@ const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   t: "text",   T: "text",
   r: "rect",   R: "rect",
   c: "circle", C: "circle",
+  l: "line",   L: "line",
+  s: "star",   S: "star",
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -48,6 +54,8 @@ export default function BookEditorPage() {
     loading,
     error,
     updatePage,
+    saveAllPages,
+    autoSave,
     goBack,
   } = useBookEditor();
 
@@ -59,6 +67,12 @@ export default function BookEditorPage() {
   const [scale,         setScale]         = useState(0.7);
   const [saving,        setSaving]        = useState(false);
   const [exportingEpub, setExportingEpub] = useState(false);
+
+  // ✅ FIX: Store the fabric.Canvas instance in state (not derived from ref)
+  // so that DesignPanel re-renders whenever the canvas becomes available.
+  // canvasRef.current?.getCanvas() read during render is always null because
+  // the imperative handle isn't set until after the first mount effect runs.
+  const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
 
   const currentPage = pages[currentPageIdx];
 
@@ -72,6 +86,8 @@ export default function BookEditorPage() {
       if (tool) {
         setActiveTool(tool);
         canvasRef.current?.setTool(tool);
+        if (tool === "line") canvasRef.current?.addLine();
+        if (tool === "star") canvasRef.current?.addStar();
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -88,6 +104,17 @@ export default function BookEditorPage() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // ✅ FIX: Grab the fabric.Canvas instance after mount and store in state
+  // so DesignPanel receives a live, reactive reference.
+  useEffect(() => {
+    // Small timeout lets FabricPageCanvas finish its mount effect first
+    const id = setTimeout(() => {
+      const fc = canvasRef.current?.getCanvas() ?? null;
+      setFabricCanvas(fc);
+    }, 100);
+    return () => clearTimeout(id);
   }, []);
 
   // ── Save current page canvas state before switching ────────────────────────
@@ -129,91 +156,126 @@ export default function BookEditorPage() {
   const handleCanvasChange = useCallback(
     (json: object, thumbnail: string) => {
       // Sync canvas text edits back to page data so preview reflects changes
-      const objects = (json as any)?.objects ?? [];
-      const bodyObj  = objects.find((o: any) => o._role === "body-text");
-      const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const objects  = (json as any)?.objects ?? [];
+      const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+      const bodyRight = objects.find((o: any) => o._role === "body-text-right");
+      const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
       const updates: Parameters<typeof updatePage>[1] = { fabricJson: json, thumbnail };
-      if (bodyObj?.text)                              updates.text  = bodyObj.text;
-      if (titleObj?.text && currentPage?.type === "front-cover") updates.title = titleObj.text;
+
+      if (bodyLeft?.text && bodyRight?.text) {
+        updates.text = `${bodyLeft.text} ${bodyRight.text}`;
+      } else if (bodyLeft?.text) {
+        updates.text = bodyLeft.text;
+      }
+      if (titleObj?.text && currentPage?.type === "front-cover") {
+        updates.title = titleObj.text;
+      }
+
       updatePage(currentPageIdx, updates);
+
+      // Auto-save debounced — updates the page in backend 1.5 s after edits stop.
+      // We build the optimistic next-pages array from current state + this update
+      // so the save includes the change that just happened.
+      const nextPages = pages.map((p, i) =>
+        i === currentPageIdx ? { ...p, ...updates } : p
+      );
+      autoSave(nextPages);
     },
-    [currentPageIdx, currentPage, updatePage]
+    [currentPageIdx, currentPage, pages, updatePage, autoSave]
   );
 
-  // ── Save (stores in-memory; in a real app POST to backend) ────────────────
+  // ── Save (explicit — Save button) ──────────────────────────────────────────
   const handleSave = useCallback(async () => {
-    saveCurrentPageState();
     setSaving(true);
-    // Simulate async save (replace with real API call to persist fabricJson)
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    toast({ title: "Layout saved ✓" });
-  }, [saveCurrentPageState, toast]);
+    try {
+      // Read the current canvas state directly — don't rely on async React state.
+      // saveCurrentPageState() calls updatePage() which is async, so `pages` would
+      // still be stale by the time saveAllPages(pages) runs below.
+      const json  = canvasRef.current?.toJSON();
+      const thumb = canvasRef.current?.toDataURL();
 
-  // ── Export to PDF ─────────────────────────────────────────────────────────
+      // Build the payload with the current page's live canvas state baked in
+      const pagesToSave = pages.map((p, i) => {
+        if (i !== currentPageIdx || !json) return p;
+
+        // Also extract any text edits from canvas objects
+        const objects  = (json as any)?.objects ?? [];
+        const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+        const bodyRight = objects.find((o: any) => o._role === "body-text-right");
+        const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+
+        let text  = p.text;
+        let title = p.title;
+        if (bodyLeft?.text && bodyRight?.text) text = `${bodyLeft.text} ${bodyRight.text}`;
+        else if (bodyLeft?.text) text = bodyLeft.text;
+        if (titleObj?.text && p.type === "front-cover") title = titleObj.text;
+
+        return { ...p, fabricJson: json, thumbnail: thumb, text, title };
+      });
+
+      await saveAllPages(pagesToSave);
+
+      // Sync state so the in-memory pages match what was saved
+      if (json) updatePage(currentPageIdx, {
+        fabricJson: json,
+        thumbnail:  thumb,
+        ...(pagesToSave[currentPageIdx]?.text  !== pages[currentPageIdx]?.text  && { text:  pagesToSave[currentPageIdx].text }),
+        ...(pagesToSave[currentPageIdx]?.title !== pages[currentPageIdx]?.title && { title: pagesToSave[currentPageIdx].title }),
+      });
+
+      toast({ title: "Saved ✓", description: "All pages saved to your account" });
+    } catch {
+      toast({ title: "Save failed", description: "Could not reach the server", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }, [pages, currentPageIdx, saveAllPages, updatePage, toast]);
+
+  // ── Export to PDF ──────────────────────────────────────────────────────────
   const handleExport = useCallback(async () => {
     saveCurrentPageState();
     toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
-
     try {
-      // PDF dimensions in mm (A5 book size: 148 × 210mm)
-      const pdfW = 148;
-      const pdfH = 210;
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: [pdfW, pdfH] as [number, number] });
-
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
-        if (i > 0) pdf.addPage([pdfW, pdfH], "portrait");
-
-        // Use saved thumbnail OR generate from canvas
-        let dataUrl = page.thumbnail || "";
-
-        if (!dataUrl && page.imageUrl) {
-          // Fallback: use raw illustration
-          dataUrl = page.imageUrl;
-        }
-
-        if (dataUrl) {
-          pdf.addImage(dataUrl, "JPEG", 0, 0, pdfW, pdfH);
-        }
-      }
-
-      pdf.save(`${projectTitle || "book"}.pdf`);
-      toast({ title: "PDF exported ✓" });
-    } catch (err) {
-      toast({
-        title: "Export failed",
-        description: (err as Error).message,
-        variant: "destructive",
+      const { exportBookPdf } = await import("@/lib/exportBookPdf");
+      await exportBookPdf(pages, projectTitle, {
+        projectId: projectId ?? "",
+        onProgress: (cur, total) => {
+          if (cur === total) toast({ title: "PDF exported ✓" });
+        },
       });
+    } catch (err) {
+      toast({ title: "Export failed", description: (err as Error).message, variant: "destructive" });
     }
-  }, [pages, projectTitle, saveCurrentPageState, toast]);
+  }, [pages, projectTitle, projectId, saveCurrentPageState, toast]);
 
-  // ── EPUB export ───────────────────────────────────────────────────────────
+  // ── EPUB export ────────────────────────────────────────────────────────────
   const handleExportEpub = useCallback(async () => {
     saveCurrentPageState();
     setExportingEpub(true);
     toast({ title: "Generating EPUB…", description: "Building e-book file" });
     try {
       await exportBookEpub(pages, projectTitle, {
-        onProgress: (cur, total) => { if (cur === total) toast({ title: "EPUB exported ✓" }); },
+        onProgress: (cur, total) => {
+          if (cur === total) toast({ title: "EPUB exported ✓" });
+        },
       });
     } catch (err) {
-      toast({ title: "EPUB export failed", description: (err as Error).message, variant: "destructive" });
+      toast({
+        title: "EPUB export failed",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
     } finally {
       setExportingEpub(false);
     }
   }, [pages, projectTitle, saveCurrentPageState, toast]);
 
-  // ── Handle image upload ────────────────────────────────────────────────────
+  // ── Image upload ───────────────────────────────────────────────────────────
   const handleImageUpload = useCallback((url: string) => {
     canvasRef.current?.addImageFromUrl(url);
     setActiveTool("select");
     canvasRef.current?.setTool("select");
   }, []);
-
-  // ── Canvas handle for design panel ────────────────────────────────────────
-  const canvas = canvasRef.current?.getCanvas() ?? null;
 
   // ── Loading / error states ─────────────────────────────────────────────────
   if (loading) {
@@ -276,13 +338,20 @@ export default function BookEditorPage() {
         onExportEpub={handleExportEpub}
         exportingEpub={exportingEpub}
         onBack={goBack}
-        onImageUpload={handleImageUpload}
         onPreview={() => navigate(`/app/projects/${projectId}/preview`)}
         saving={saving}
       />
 
       {/* ── Body ─────────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
+        {/* ── Elements Panel ──────────────────────────────────────────────── */}
+        <ElementsPanel
+          canvasRef={canvasRef}
+          activeTool={activeTool}
+          onToolChange={handleToolChange}
+          onImageUpload={handleImageUpload}
+        />
+
         {/* ── Page Navigator ──────────────────────────────────────────────── */}
         <PageNavigator
           pages={pages}
@@ -292,7 +361,6 @@ export default function BookEditorPage() {
 
         {/* ── Canvas Area ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-auto bg-[#0f1117] flex items-start justify-center p-8">
-          {/* Canvas wrapper — centered, with shadow */}
           <div className="relative" style={{ marginTop: "auto", marginBottom: "auto" }}>
             {/* Page label */}
             <div className="absolute -top-7 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none">
@@ -305,14 +373,14 @@ export default function BookEditorPage() {
               </span>
             </div>
 
-            {/* Drop shadow around canvas */}
-            {/* No key prop — same FabricPageCanvas instance loads new pages via effect */}
+            {/* Canvas wrapper — exact dimensions match canvas output */}
             <div
               className="relative rounded-sm overflow-hidden"
               style={{
                 width: PAGE_W * scale,
                 height: PAGE_H * scale,
-                boxShadow: "0 20px 80px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6)",
+                boxShadow:
+                  "0 20px 80px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6)",
               }}
             >
               <FabricPageCanvas
@@ -328,7 +396,9 @@ export default function BookEditorPage() {
             {/* Page arrow navigation */}
             <div className="absolute -bottom-12 left-0 right-0 flex items-center justify-center gap-4 pointer-events-auto">
               <button
-                onClick={() => handlePageSelect(Math.max(0, currentPageIdx - 1))}
+                onClick={() =>
+                  handlePageSelect(Math.max(0, currentPageIdx - 1))
+                }
                 disabled={currentPageIdx === 0}
                 className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
               >
@@ -339,7 +409,9 @@ export default function BookEditorPage() {
               </span>
               <button
                 onClick={() =>
-                  handlePageSelect(Math.min(pages.length - 1, currentPageIdx + 1))
+                  handlePageSelect(
+                    Math.min(pages.length - 1, currentPageIdx + 1)
+                  )
                 }
                 disabled={currentPageIdx === pages.length - 1}
                 className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
@@ -353,7 +425,7 @@ export default function BookEditorPage() {
         {/* ── Design Panel ────────────────────────────────────────────────── */}
         <DesignPanel
           selectedObj={selectedObj}
-          canvas={canvas}
+          canvas={fabricCanvas}         // ✅ reactive state, not dead ref read
           projectId={projectId}
           onDelete={() => canvasRef.current?.deleteSelected()}
           onBringForward={() => canvasRef.current?.bringForward()}

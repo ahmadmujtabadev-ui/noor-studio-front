@@ -20,8 +20,12 @@ const DARK   = "#0d1117";
 // ─── Text style type (populated from bookTextStyleStore) ─────────────────────
 
 interface TextStyle {
-  fontFamily: string;
-  color: string;
+  fontFamily:  string;
+  color:       string;
+  fontSize:    number;   // px base size — applied to body text
+  fontWeight:  "normal" | "bold";
+  fontStyle:   "normal" | "italic";
+  textAlign:   "left" | "center" | "right" | "justify";
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -131,12 +135,15 @@ function FullBleedLayout({ page, pageNum, ts }: { page: BookPage; pageNum: numbe
             style={{ maxWidth: "92%" }}
           >
             <p
-              className="leading-relaxed text-center"
+              className="leading-relaxed"
               style={{
                 fontFamily: ts.fontFamily,
-                color: ts.color,
-                fontSize: "clamp(0.9rem, 2.3vw, 1.22rem)",
+                color:      ts.color,
+                fontSize:   `${Math.max(0.78, Math.min(ts.fontSize * 0.055, 1.22))}rem`,
                 lineHeight: 1.65,
+                fontWeight: ts.fontWeight,
+                fontStyle:  ts.fontStyle,
+                textAlign:  ts.textAlign,
               }}
             >
               {page.text}
@@ -186,11 +193,14 @@ function ImageLeftTextRightLayout({ page, pageNum, ts }: { page: BookPage; pageN
 
         {page.text ? (
           <p
-            className="text-left leading-[1.8]"
+            className="leading-[1.8]"
             style={{
               fontFamily: ts.fontFamily,
-              color: ts.color,
-              fontSize: "clamp(0.9rem, 2.1vw, 1.15rem)",
+              color:      ts.color,
+              fontSize:   `${Math.max(0.78, Math.min(ts.fontSize * 0.055, 1.15))}rem`,
+              fontWeight: ts.fontWeight,
+              fontStyle:  ts.fontStyle,
+              textAlign:  ts.textAlign,
             }}
           >
             {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
@@ -239,12 +249,15 @@ function ImageTopTextBottomLayout({ page, pageNum, ts }: { page: BookPage; pageN
       >
         {page.text && (
           <p
-            className="text-center leading-relaxed"
+            className="leading-relaxed"
             style={{
               fontFamily: ts.fontFamily,
-              color: ts.color,
-              fontSize: "clamp(0.88rem, 2.2vw, 1.18rem)",
+              color:      ts.color,
+              fontSize:   `${Math.max(0.78, Math.min(ts.fontSize * 0.055, 1.18))}rem`,
               lineHeight: 1.7,
+              fontWeight: ts.fontWeight,
+              fontStyle:  ts.fontStyle,
+              textAlign:  ts.textAlign,
             }}
           >
             {page.text}
@@ -360,12 +373,14 @@ function VignetteLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number
       >
         {page.text && (
           <p
-            className="text-center"
             style={{
               fontFamily: ts.fontFamily,
-              color: ts.color,
-              fontSize: "clamp(0.92rem, 2.3vw, 1.22rem)",
+              color:      ts.color,
+              fontSize:   `${Math.max(0.78, Math.min(ts.fontSize * 0.055, 1.22))}rem`,
               lineHeight: 1.75,
+              fontWeight: ts.fontWeight,
+              fontStyle:  ts.fontStyle,
+              textAlign:  ts.textAlign,
             }}
           >
             {page.text}
@@ -387,28 +402,43 @@ function TwoColumnLayout({
 }: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
   const isEven = pageNum % 2 === 0;
   const text   = page.text ?? "";
+  const wordCount = text.trim().split(/\s+/).length;
+
+  // Use the user's font if set; otherwise fall back to a clean serif
+  const bodyFont = ts.fontFamily && !ts.fontFamily.includes("Baloo")
+    ? ts.fontFamily
+    : "'Georgia', 'Times New Roman', serif";
+
+  const scaledSize = `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`;
+
+  const bodyStyle: React.CSSProperties = {
+    fontFamily: bodyFont,
+    fontSize:   scaledSize,
+    lineHeight: 1.9,
+    color:      ts.color,
+    fontWeight: ts.fontWeight,
+    fontStyle:  ts.fontStyle,
+    textAlign:  ts.textAlign,
+    margin:     0,
+  };
+
+  const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
+  const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
+
+  // Short pages (≤ 120 words): single centred column — avoids mostly-blank two-column layout
+  const isShort = wordCount <= 120;
+
   const firstChar = text.charAt(0);
   const rest      = text.slice(1);
 
-  // Word-boundary column split for balanced columns
-  const words     = rest.split(/\s+/);
-  const halfWords = Math.ceil(words.length / 2);
-  const leftText  = words.slice(0, halfWords).join(" ");
-  const rightText = words.slice(halfWords).join(" ");
-
-  const bodyStyle: React.CSSProperties = {
-    fontFamily: ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive"
-      ? ts.fontFamily
-      : "'Georgia', 'Times New Roman', serif",
-    fontSize:   "clamp(0.72rem, 1.3vw, 0.88rem)",
-    lineHeight: 1.9,
-    color:      ts.color,
-    textAlign:  "justify",
-  };
-
-  // Truncated labels for running header — prevents multi-line overflow
-  const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
-  const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
+  // For two-column: split at nearest sentence boundary to 50% word mark
+  let leftText = rest, rightText = "";
+  if (!isShort) {
+    const words     = rest.split(/\s+/);
+    const halfWords = Math.ceil(words.length / 2);
+    leftText  = words.slice(0, halfWords).join(" ");
+    rightText = words.slice(halfWords).join(" ");
+  }
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
@@ -423,19 +453,29 @@ function TwoColumnLayout({
         </span>
       </div>
 
-      {/* Two-column body */}
-      <div className="flex-1 flex gap-5 px-8 py-5 overflow-hidden">
-        <div className="flex-1 overflow-hidden">
-          <p style={bodyStyle}>
-            {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
-            {leftText}
+      {isShort ? (
+        /* Short text: single centred column with vertical centering — no empty half-page */
+        <div className="flex-1 flex items-center justify-center px-10 py-6 overflow-hidden">
+          <p style={{ ...bodyStyle, textAlign: "center", maxWidth: "72%" }}>
+            {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+            {rest}
           </p>
         </div>
-        <div className="w-px shrink-0" style={{ background: `${TEAL}10` }} />
-        <div className="flex-1 overflow-hidden">
-          <p style={bodyStyle}>{rightText}</p>
+      ) : (
+        /* Full text: two columns */
+        <div className="flex-1 flex gap-5 px-8 py-5 overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <p style={bodyStyle}>
+              {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+              {leftText}
+            </p>
+          </div>
+          <div className="w-px shrink-0" style={{ background: `${TEAL}10` }} />
+          <div className="flex-1 overflow-hidden">
+            <p style={bodyStyle}>{rightText}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
         <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
@@ -457,16 +497,20 @@ function TextInlineImageLayout({
   const hasImage      = !!page.imageUrl;
   const hasBottomImg  = !!page.secondImageUrl;
 
-  const bodyFont = ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive"
+  const bodyFont = ts.fontFamily && !ts.fontFamily.includes("Baloo")
     ? ts.fontFamily
     : "'Georgia', 'Times New Roman', serif";
 
+  const scaledSize = `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`;
+
   const bodyStyle: React.CSSProperties = {
     fontFamily: bodyFont,
-    fontSize:   "clamp(0.73rem, 1.3vw, 0.88rem)",
+    fontSize:   scaledSize,
     lineHeight: 1.9,
     color:      ts.color,
-    textAlign:  "justify",
+    fontWeight: ts.fontWeight,
+    fontStyle:  ts.fontStyle,
+    textAlign:  ts.textAlign,
   };
 
   const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
@@ -598,8 +642,10 @@ function DecorativeFullTextLayout({
           )}
           {english && (
             <p className="text-center italic leading-[1.8]" style={{
-              fontFamily: ts.fontFamily !== "'Baloo 2', 'Comic Sans MS', cursive" ? ts.fontFamily : "'Georgia', serif",
-              fontSize: "clamp(0.78rem, 1.5vw, 0.95rem)", color: ts.color,
+              fontFamily: ts.fontFamily && !ts.fontFamily.includes("Baloo") ? ts.fontFamily : "'Georgia', serif",
+              fontSize:   `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`,
+              color:      ts.color,
+              fontWeight: ts.fontWeight,
             }}>"{english}"</p>
           )}
         </div>
@@ -774,11 +820,14 @@ function TextOnlyPage({ page, pageNum, ts }: { page: BookPage; pageNum: number; 
       <div className="flex-1 flex items-center justify-center px-10 py-12">
         {page.text ? (
           <p
-            className="leading-[1.85] text-left"
+            className="leading-[1.85]"
             style={{
               fontFamily: ts.fontFamily,
-              color: ts.color,
-              fontSize: "clamp(1.05rem, 2.6vw, 1.45rem)",
+              color:      ts.color,
+              fontSize:   `${Math.max(0.85, Math.min(ts.fontSize * 0.055, 1.45))}rem`,
+              fontWeight: ts.fontWeight,
+              fontStyle:  ts.fontStyle,
+              textAlign:  ts.textAlign,
             }}
           >
             {firstChar && <DropCap char={firstChar} color={TEAL} font={ts.fontFamily} />}
@@ -823,7 +872,14 @@ export function SinglePage({
   );
   const ts: TextStyle = {
     fontFamily: stored.fontFamily ? `'${stored.fontFamily}', sans-serif` : "'Baloo 2', cursive",
-    color:      stored.textColor || "#1a1a1a",
+    color:      stored.textColor  || "#1a1a1a",
+    fontSize:   stored.fontSize   || 20,
+    fontWeight: stored.bold   ? "bold"   : "normal",
+    fontStyle:  stored.italic ? "italic" : "normal",
+    // Keep "justify" as the default for book layouts; respect user's choice otherwise
+    textAlign:  (stored.textAlign === "left" || stored.textAlign === "center" || stored.textAlign === "right")
+                  ? stored.textAlign
+                  : "justify",
   };
   if (isBlank) {
     return (

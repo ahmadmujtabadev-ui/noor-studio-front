@@ -9,7 +9,7 @@
 // ── Spread / picture book page structure (per spread) ─────────────────────────
 //   1. spread          — full-bleed illustration + text overlay (unchanged)
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { reviewApi } from "@/lib/api/review.api";
 import { normArr } from "@/lib/api/reviewTypes";
@@ -115,6 +115,17 @@ function splitProse(text: string, wordsPerPage = 180): string[] {
     wordCount += words;
   }
   if (current.length > 0) pages.push(current.join(" "));
+
+  // Merge a sparse last page into the previous one.
+  // Threshold = 100 words: a last chunk of ≤100 words fills less than one column
+  // and leaves a mostly-blank page; merging it keeps both pages well-balanced.
+  if (pages.length > 1) {
+    const lastWc = pages[pages.length - 1].split(/\s+/).length;
+    if (lastWc <= 100) {
+      const merged = pages.splice(pages.length - 2, 2).join(" ");
+      pages.push(merged);
+    }
+  }
 
   return pages.length ? pages : [text];
 }
@@ -267,9 +278,10 @@ export function useBookEditor() {
     setLoading(true);
     setError(null);
     try {
-      const [reviewData, coverData] = await Promise.all([
+      const [reviewData, coverData, savedEditorData] = await Promise.all([
         reviewApi.get(pid).catch(() => reviewApi.bootstrap(pid)),
         reviewApi.getCover(pid).catch(() => null),
+        reviewApi.getEditorPages(pid).catch(() => ({ pages: [] })),
       ]);
 
       const r         = reviewData.review;
@@ -326,7 +338,27 @@ export function useBookEditor() {
         text:     r?.story?.current?.synopsis || "",
       });
 
-      setPages(bookPages);
+      // ── Merge saved editor state (fabricJson, thumbnail, text edits) ─────────
+      // Build a lookup map from the backend-saved pages
+      const savedById = new Map<string, any>();
+      (savedEditorData.pages ?? []).forEach((sp: any) => {
+        if (sp?.id) savedById.set(sp.id, sp);
+      });
+
+      // Apply saved fabricJson / thumbnail / text on top of generated pages
+      const mergedPages = bookPages.map((p) => {
+        const saved = savedById.get(p.id);
+        if (!saved) return p;
+        return {
+          ...p,
+          ...(saved.fabricJson !== undefined  && { fabricJson: saved.fabricJson }),
+          ...(saved.thumbnail  !== undefined  && { thumbnail:  saved.thumbnail }),
+          ...(saved.text       !== undefined  && { text:       saved.text }),
+          ...(saved.title      !== undefined  && { title:      saved.title }),
+        };
+      });
+
+      setPages(mergedPages);
     } catch (err) {
       setError((err as Error).message || "Failed to load book data");
     } finally {
@@ -341,6 +373,43 @@ export function useBookEditor() {
       );
     },
     [],
+  );
+
+  // Debounce ref — avoids hammering the API on every canvas change
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Persist all pages to the backend.
+   * Only sends the fields that need to be saved — not imageUrl etc.
+   * Returns a promise that resolves when the save completes.
+   */
+  const saveAllPages = useCallback(
+    async (latestPages: BookPage[]): Promise<void> => {
+      if (!projectId) return;
+      const payload = latestPages.map((p) => ({
+        id:        p.id,
+        fabricJson: p.fabricJson ?? null,
+        thumbnail:  p.thumbnail  ?? null,
+        text:       p.text       ?? "",
+        title:      p.title      ?? "",
+      }));
+      await reviewApi.saveEditorPages(projectId, payload);
+    },
+    [projectId],
+  );
+
+  /**
+   * Auto-save: called by the editor after every canvas change.
+   * Debounced to 1.5 s so rapid edits don't flood the network.
+   */
+  const autoSave = useCallback(
+    (latestPages: BookPage[]) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        saveAllPages(latestPages).catch(console.error);
+      }, 1500);
+    },
+    [saveAllPages],
   );
 
   const goToPage = useCallback(
@@ -362,6 +431,8 @@ export function useBookEditor() {
     loading,
     error,
     updatePage,
+    saveAllPages,
+    autoSave,
     goBack,
   };
 }

@@ -1,7 +1,7 @@
 // components/editor/EditorToolbar.tsx
 // Top toolbar: navigation, tool selection, add elements, zoom, save, export.
 
-import React, { useRef } from "react";
+import React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,6 @@ import {
   Type,
   Square,
   Circle,
-  ImagePlus,
   ZoomIn,
   ZoomOut,
   Save,
@@ -35,7 +34,6 @@ interface Props {
   onExport: () => void;
   onExportEpub?: () => void;
   onBack: () => void;
-  onImageUpload: (url: string) => void;
   onPreview?: () => void;
   saving: boolean;
   exportingEpub?: boolean;
@@ -62,23 +60,9 @@ export function EditorToolbar({
   title, activeTool, onToolChange,
   scale, onZoomIn, onZoomOut,
   onSave, onExport, onExportEpub, onBack,
-  onImageUpload, onPreview,
+  onPreview,
   saving, exportingEpub,
 }: Props) {
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      if (url) onImageUpload(url);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
   return (
     <div className="h-12 bg-[#13151a] border-b border-white/10 flex items-center gap-1 px-3 shrink-0 z-10">
       {/* Back button */}
@@ -123,22 +107,6 @@ export function EditorToolbar({
           </button>
         ))}
 
-        {/* Image upload */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          title="Upload image"
-          className="flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-white/60 hover:text-white hover:bg-white/10 transition-all"
-        >
-          <ImagePlus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Image</span>
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
 
       <Divider />
