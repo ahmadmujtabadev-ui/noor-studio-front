@@ -25,7 +25,7 @@ interface BookTextStyleState {
 }
 
 const DEFAULT_STYLE: BookTextStyle = {
-  fontFamily: "Baloo 2",
+  fontFamily: "Lato",
   fontSize:   20,
   textColor:  "#1a1a1a",
   textAlign:  "left",
@@ -44,9 +44,15 @@ export const useBookTextStyleStore = create<BookTextStyleState>()(
             [projectId]: { ...(s.styles[projectId] ?? DEFAULT_STYLE), ...style },
           },
         })),
-      getStyle: (projectId) => get().styles[projectId] ?? DEFAULT_STYLE,
+      getStyle: (projectId) => {
+        const saved = get().styles[projectId];
+        if (!saved) return DEFAULT_STYLE;
+        // Migrate old Baloo 2 default → Lato
+        if (saved.fontFamily === "Baloo 2") return { ...saved, fontFamily: "Lato" };
+        return saved;
+      },
     }),
-    { name: "noorstudio-text-style" },
+    { name: "noorstudio-text-style", version: 2 },
   ),
 );
 

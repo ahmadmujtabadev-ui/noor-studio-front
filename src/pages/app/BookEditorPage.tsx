@@ -1,9 +1,12 @@
 // pages/app/BookEditorPage.tsx
 // Full-screen Fabric.js canvas book editor.
 //
-// FIX: canvas ref is now stored in state so DesignPanel gets a live reference.
-// Previously `canvasRef.current?.getCanvas()` was always null on first render
-// because refs aren't reactive — DesignPanel never received the canvas.
+// FIX CHANGELOG:
+// ── Fix 3 (style persistence): handleCanvasChange now receives fresh json/thumb
+//    from FabricPageCanvas.fireChange() and builds nextPages from that instead
+//    of calling canvasRef.current?.toJSON() again (which was racing).
+//    Also added `fabricCanvas` state refresh on every page switch so DesignPanel
+//    always holds a live canvas reference.
 
 import React, {
   useCallback,
@@ -59,8 +62,8 @@ export default function BookEditorPage() {
     goBack,
   } = useBookEditor();
 
-  const canvasRef = useRef<FabricCanvasHandle>(null);
-  const prevPageIdxRef = useRef<number>(0);
+  const canvasRef       = useRef<FabricCanvasHandle>(null);
+  const prevPageIdxRef  = useRef<number>(0);
 
   const [activeTool,    setActiveTool]    = useState<EditorTool>("select");
   const [selectedObj,   setSelectedObj]   = useState<fabric.Object | null>(null);
@@ -68,13 +71,19 @@ export default function BookEditorPage() {
   const [saving,        setSaving]        = useState(false);
   const [exportingEpub, setExportingEpub] = useState(false);
 
-  // ✅ FIX: Store the fabric.Canvas instance in state (not derived from ref)
-  // so that DesignPanel re-renders whenever the canvas becomes available.
-  // canvasRef.current?.getCanvas() read during render is always null because
-  // the imperative handle isn't set until after the first mount effect runs.
+  // ── FIX 3a: Store fabricCanvas in state so DesignPanel re-renders reactively
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
 
   const currentPage = pages[currentPageIdx];
+
+  // ── FIX 3b: Keep a stable ref to current pages so handleCanvasChange
+  //    can build nextPages without closing over a stale snapshot.
+  //    Using a ref (not state) avoids unnecessary re-renders.
+  const pagesRef = useRef(pages);
+  useEffect(() => { pagesRef.current = pages; }, [pages]);
+
+  const currentPageIdxRef = useRef(currentPageIdx);
+  useEffect(() => { currentPageIdxRef.current = currentPageIdx; }, [currentPageIdx]);
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -106,10 +115,8 @@ export default function BookEditorPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // ✅ FIX: Grab the fabric.Canvas instance after mount and store in state
-  // so DesignPanel receives a live, reactive reference.
+  // ── Grab fabric.Canvas after mount and store in state ─────────────────────
   useEffect(() => {
-    // Small timeout lets FabricPageCanvas finish its mount effect first
     const id = setTimeout(() => {
       const fc = canvasRef.current?.getCanvas() ?? null;
       setFabricCanvas(fc);
@@ -117,15 +124,26 @@ export default function BookEditorPage() {
     return () => clearTimeout(id);
   }, []);
 
+  // ── Refresh fabricCanvas ref on every page switch ──────────────────────────
+  //    DesignPanel needs the same canvas instance that FabricPageCanvas uses.
+  //    Since the canvas element is reused (not remounted), this is safe.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const fc = canvasRef.current?.getCanvas() ?? null;
+      setFabricCanvas(fc);
+    }, 150);
+    return () => clearTimeout(id);
+  }, [currentPageIdx]);
+
   // ── Save current page canvas state before switching ────────────────────────
   const saveCurrentPageState = useCallback(() => {
-    const idx = prevPageIdxRef.current;
-    const json = canvasRef.current?.toJSON();
+    const idx  = prevPageIdxRef.current;
+    const json  = canvasRef.current?.toJSON();
     const thumb = canvasRef.current?.toDataURL();
-    if (json && pages[idx]) {
+    if (json && pagesRef.current[idx]) {
       updatePage(idx, { fabricJson: json, thumbnail: thumb });
     }
-  }, [pages, updatePage]);
+  }, [updatePage]);
 
   const handlePageSelect = useCallback(
     (idx: number) => {
@@ -153,13 +171,27 @@ export default function BookEditorPage() {
     setSelectedObj(obj);
   }, []);
 
+  // ── FIX 3c: handleCanvasChange — use json/thumb passed in from fireChange ──
+  //
+  // Previously this function re-called canvasRef.current?.toJSON() internally,
+  // which raced against the already-captured json in FabricPageCanvas.fireChange().
+  // Now we trust the json/thumb arguments (which ARE the current canvas state)
+  // and build nextPages from pagesRef (always fresh via the ref above).
+  //
+  // This means autoSave always receives the correct fabricJson for the current
+  // page, so styles are persisted on the next API call.
+
   const handleCanvasChange = useCallback(
     (json: object, thumbnail: string) => {
-      // Sync canvas text edits back to page data so preview reflects changes
-      const objects  = (json as any)?.objects ?? [];
+      const idx   = currentPageIdxRef.current;
+      const pages = pagesRef.current;
+
+      // Extract text edits from canvas objects so page.text stays in sync
+      const objects   = (json as any)?.objects ?? [];
       const bodyLeft  = objects.find((o: any) => o._role === "body-text");
       const bodyRight = objects.find((o: any) => o._role === "body-text-right");
       const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+
       const updates: Parameters<typeof updatePage>[1] = { fabricJson: json, thumbnail };
 
       if (bodyLeft?.text && bodyRight?.text) {
@@ -167,39 +199,35 @@ export default function BookEditorPage() {
       } else if (bodyLeft?.text) {
         updates.text = bodyLeft.text;
       }
-      if (titleObj?.text && currentPage?.type === "front-cover") {
+      if (titleObj?.text && pages[idx]?.type === "front-cover") {
         updates.title = titleObj.text;
       }
 
-      updatePage(currentPageIdx, updates);
+      // Update React state for the current page
+      updatePage(idx, updates);
 
-      // Auto-save debounced — updates the page in backend 1.5 s after edits stop.
-      // We build the optimistic next-pages array from current state + this update
-      // so the save includes the change that just happened.
+      // Build nextPages with the LIVE json already baked in (not from stale state)
+      // This is what we pass to autoSave — it must include the just-made change.
       const nextPages = pages.map((p, i) =>
-        i === currentPageIdx ? { ...p, ...updates } : p
+        i === idx ? { ...p, ...updates } : p
       );
       autoSave(nextPages);
     },
-    [currentPageIdx, currentPage, pages, updatePage, autoSave]
+    // stable: updatePage and autoSave are stable refs from useBookEditor
+    [updatePage, autoSave]
   );
 
   // ── Save (explicit — Save button) ──────────────────────────────────────────
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      // Read the current canvas state directly — don't rely on async React state.
-      // saveCurrentPageState() calls updatePage() which is async, so `pages` would
-      // still be stale by the time saveAllPages(pages) runs below.
       const json  = canvasRef.current?.toJSON();
       const thumb = canvasRef.current?.toDataURL();
 
-      // Build the payload with the current page's live canvas state baked in
-      const pagesToSave = pages.map((p, i) => {
-        if (i !== currentPageIdx || !json) return p;
+      const pagesToSave = pagesRef.current.map((p, i) => {
+        if (i !== currentPageIdxRef.current || !json) return p;
 
-        // Also extract any text edits from canvas objects
-        const objects  = (json as any)?.objects ?? [];
+        const objects   = (json as any)?.objects ?? [];
         const bodyLeft  = objects.find((o: any) => o._role === "body-text");
         const bodyRight = objects.find((o: any) => o._role === "body-text-right");
         const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
@@ -215,12 +243,12 @@ export default function BookEditorPage() {
 
       await saveAllPages(pagesToSave);
 
-      // Sync state so the in-memory pages match what was saved
-      if (json) updatePage(currentPageIdx, {
+      const idx = currentPageIdxRef.current;
+      if (json) updatePage(idx, {
         fabricJson: json,
         thumbnail:  thumb,
-        ...(pagesToSave[currentPageIdx]?.text  !== pages[currentPageIdx]?.text  && { text:  pagesToSave[currentPageIdx].text }),
-        ...(pagesToSave[currentPageIdx]?.title !== pages[currentPageIdx]?.title && { title: pagesToSave[currentPageIdx].title }),
+        ...(pagesToSave[idx]?.text  !== pagesRef.current[idx]?.text  && { text:  pagesToSave[idx].text }),
+        ...(pagesToSave[idx]?.title !== pagesRef.current[idx]?.title && { title: pagesToSave[idx].title }),
       });
 
       toast({ title: "Saved ✓", description: "All pages saved to your account" });
@@ -229,7 +257,7 @@ export default function BookEditorPage() {
     } finally {
       setSaving(false);
     }
-  }, [pages, currentPageIdx, saveAllPages, updatePage, toast]);
+  }, [saveAllPages, updatePage, toast]);
 
   // ── Export to PDF ──────────────────────────────────────────────────────────
   const handleExport = useCallback(async () => {
@@ -237,7 +265,7 @@ export default function BookEditorPage() {
     toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
     try {
       const { exportBookPdf } = await import("@/lib/exportBookPdf");
-      await exportBookPdf(pages, projectTitle, {
+      await exportBookPdf(pagesRef.current, projectTitle, {
         projectId: projectId ?? "",
         onProgress: (cur, total) => {
           if (cur === total) toast({ title: "PDF exported ✓" });
@@ -246,7 +274,7 @@ export default function BookEditorPage() {
     } catch (err) {
       toast({ title: "Export failed", description: (err as Error).message, variant: "destructive" });
     }
-  }, [pages, projectTitle, projectId, saveCurrentPageState, toast]);
+  }, [projectTitle, projectId, saveCurrentPageState, toast]);
 
   // ── EPUB export ────────────────────────────────────────────────────────────
   const handleExportEpub = useCallback(async () => {
@@ -254,7 +282,7 @@ export default function BookEditorPage() {
     setExportingEpub(true);
     toast({ title: "Generating EPUB…", description: "Building e-book file" });
     try {
-      await exportBookEpub(pages, projectTitle, {
+      await exportBookEpub(pagesRef.current, projectTitle, {
         onProgress: (cur, total) => {
           if (cur === total) toast({ title: "EPUB exported ✓" });
         },
@@ -268,7 +296,7 @@ export default function BookEditorPage() {
     } finally {
       setExportingEpub(false);
     }
-  }, [pages, projectTitle, saveCurrentPageState, toast]);
+  }, [projectTitle, saveCurrentPageState, toast]);
 
   // ── Image upload ───────────────────────────────────────────────────────────
   const handleImageUpload = useCallback((url: string) => {
@@ -373,7 +401,7 @@ export default function BookEditorPage() {
               </span>
             </div>
 
-            {/* Canvas wrapper — exact dimensions match canvas output */}
+            {/* Canvas wrapper */}
             <div
               className="relative rounded-sm overflow-hidden"
               style={{
@@ -425,7 +453,7 @@ export default function BookEditorPage() {
         {/* ── Design Panel ────────────────────────────────────────────────── */}
         <DesignPanel
           selectedObj={selectedObj}
-          canvas={fabricCanvas}         // ✅ reactive state, not dead ref read
+          canvas={fabricCanvas}
           projectId={projectId}
           onDelete={() => canvasRef.current?.deleteSelected()}
           onBringForward={() => canvasRef.current?.bringForward()}

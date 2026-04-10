@@ -11,7 +11,14 @@
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
       "Bash(pkill:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Read(//c/Users/Paklogics/Desktop/example_code/Fair/backend05/backend/server/routes/**)",
+      "Read(//c/Users/Paklogics/Desktop/example_code/Fair/backend05/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Paklogics\\Desktop\\example_code\\Fair\\backend05\\backend\\server\\routes",
+      "c:\\Users\\Paklogics\\Desktop\\example_code\\Fair\\backend05\\backend\\server",
+      "c:\\Users\\Paklogics\\Desktop\\example_code\\Fair\\backend05\\backend"
     ]
   }
 }

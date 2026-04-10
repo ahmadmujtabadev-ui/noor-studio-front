@@ -22,11 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useBookEditor } from "@/hooks/useBookEditor";
 import type { BookPage } from "@/hooks/useBookEditor";
-import { SpreadView } from "./SpreadView";
-import { SinglePage } from "./SinglePage";
 import { exportBookEpub } from "@/lib/exportBookEpub";
 import { exportBookPdf } from "@/lib/exportBookPdf";
-import { useLayoutPreferenceStore } from "@/lib/store/layoutPreferenceStore";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -86,6 +83,35 @@ function buildSpreads(pages: BookPage[]): Spread[] {
   }
 
   return spreads;
+}
+
+// ─── Canvas page image ────────────────────────────────────────────────────────
+
+function CanvasPageImage({ page }: { page: BookPage }) {
+  const src = page.thumbnail || page.imageUrl;
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={page.label}
+        className="w-full h-full object-cover"
+        draggable={false}
+      />
+    );
+  }
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center"
+      style={{
+        background:
+          page.type === "front-cover" || page.type === "back-cover"
+            ? "#0d1117"
+            : "#FAFAF8",
+      }}
+    >
+      <BookOpen className="w-8 h-8 text-white/10" />
+    </div>
+  );
 }
 
 // ─── Thumbnail ────────────────────────────────────────────────────────────────
@@ -160,10 +186,6 @@ export default function BookRenderer() {
   const [exportingEpub,  setExportingEpub]  = useState(false);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
-  // Layout preference chosen during book creation
-  const { pictureLayout, chapterLayout } = useLayoutPreferenceStore();
-  const preferredLayout = isChapterBook ? chapterLayout : pictureLayout;
-
   const spreads = useMemo(() => buildSpreads(pages), [pages]);
 
   const currentSpread = spreads[spreadIdx] ?? null;
@@ -218,7 +240,6 @@ export default function BookRenderer() {
     toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
     try {
       await exportBookPdf(pages, projectTitle, {
-        preferredLayout,
         onProgress: (cur, total) => {
           if (cur === total) {
             toast({ title: "PDF exported ✓" });
@@ -372,47 +393,54 @@ export default function BookRenderer() {
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
 
-        {/* Spread or single-page (covers render full portrait, no blank half) */}
+        {/* Spread or single-page — always show canvas thumbnails */}
         {(() => {
           const isSinglePage = !currentSpread.left || !currentSpread.right;
           const coverPage    = currentSpread.right ?? currentSpread.left;
+
           if (isSinglePage && coverPage) {
             return (
               <div
                 className="h-full flex items-center justify-center"
-                style={{ maxWidth: "calc((100vh - 14rem) * 2 / 3)" }}
+                style={{ maxWidth: "calc((100vh - 14rem) * 3 / 4)" }}
               >
                 <div
-                  className="w-full rounded-lg overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.75)]"
-                  style={{ aspectRatio: "2 / 3" }}
+                  className="w-full rounded-lg overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.75)] bg-[#1a1a2e]"
+                  style={{ aspectRatio: "3 / 4" }}
                 >
-                  <SinglePage
-                    page={coverPage}
-                    bookTitle={projectTitle}
-                    pageNum={currentSpread.rightPageNum || currentSpread.leftPageNum}
-                    preferredLayout={preferredLayout}
-                    projectId={projectId ?? ""}
-                    className="w-full h-full"
-                  />
+                  <CanvasPageImage page={coverPage} />
                 </div>
               </div>
             );
           }
+
           return (
             <div
-              className="w-full h-full flex items-center justify-center"
-              style={{ maxWidth: "calc((100vh - 14rem) * 4 / 3)" }}
+              className="h-full flex items-center justify-center gap-0"
+              style={{ maxWidth: "calc((100vh - 14rem) * 6 / 4)" }}
             >
-              <SpreadView
-                leftPage={currentSpread.left}
-                rightPage={currentSpread.right}
-                bookTitle={projectTitle}
-                leftPageNum={currentSpread.leftPageNum}
-                rightPageNum={currentSpread.rightPageNum}
-                preferredLayout={preferredLayout}
-                projectId={projectId ?? ""}
-                className="w-full"
-              />
+              {/* Left page */}
+              <div
+                className="h-full rounded-l-lg overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.75)] bg-[#111]"
+                style={{ aspectRatio: "3 / 4" }}
+              >
+                {currentSpread.left
+                  ? <CanvasPageImage page={currentSpread.left} />
+                  : <div className="w-full h-full bg-[#1a1a2e]" />}
+              </div>
+
+              {/* Spine */}
+              <div className="w-[2px] h-full bg-black/60 shrink-0" />
+
+              {/* Right page */}
+              <div
+                className="h-full rounded-r-lg overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.75)] bg-[#111]"
+                style={{ aspectRatio: "3 / 4" }}
+              >
+                {currentSpread.right
+                  ? <CanvasPageImage page={currentSpread.right} />
+                  : <div className="w-full h-full bg-[#1a1a2e]" />}
+              </div>
             </div>
           );
         })()}

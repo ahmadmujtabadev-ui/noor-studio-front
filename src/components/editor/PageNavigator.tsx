@@ -26,6 +26,7 @@ function placeholderBg(type: BookPage["type"]) {
 }
 
 export function PageNavigator({ pages, currentIdx, onSelect }: Props) {
+  console.log("Rendering PageNavigator with pages:", pages);
   return (
     <div className="flex flex-col h-full bg-[#1a1d23] border-r border-white/10 w-[148px] shrink-0">
       <div className="px-3 py-3 border-b border-white/10">

@@ -9,8 +9,11 @@ export interface User {
   name: string;
   email: string;
   credits: number;
-  plan: string;
+  plan: 'free' | 'creator' | 'author' | 'studio';
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'trialing' | 'inactive';
+  subscriptionCurrentPeriodEnd?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -606,6 +609,16 @@ export interface CreditTransaction {
 export interface CreditBalance {
   credits: number;
   plan: string;
+}
+
+export interface SubscriptionInfo {
+  subscription: {
+    id: string;
+    status: string;
+    plan: string;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string;
+  } | null;
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────

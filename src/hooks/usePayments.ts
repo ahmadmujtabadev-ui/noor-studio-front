@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentsApi } from '@/lib/api/payments.api';
 import { exportsApi } from '@/lib/api/exports.api';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -29,9 +29,46 @@ export function useTransactions(params?: { limit?: number; offset?: number }) {
   });
 }
 
+export function useSubscription() {
+  return useQuery({
+    queryKey: ['payments', 'subscription'],
+    queryFn: paymentsApi.getSubscription,
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+}
+
 export function useCreateCheckout() {
   return useMutation({
     mutationFn: paymentsApi.createCheckout,
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+  });
+}
+
+export function useCreateSubscription() {
+  return useMutation({
+    mutationFn: paymentsApi.createSubscription,
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+  });
+}
+
+export function useCancelSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: paymentsApi.cancelSubscription,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', 'subscription'] });
+    },
+  });
+}
+
+export function useCreatePortalSession() {
+  return useMutation({
+    mutationFn: paymentsApi.createPortalSession,
     onSuccess: ({ url }) => {
       window.location.href = url;
     },
@@ -54,14 +91,7 @@ export function useDownloadPdf(projectId: string) {
 
   return useMutation({
     mutationFn: () => exportsApi.downloadPdf(projectId),
-    onSuccess: (objectUrl) => {
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `noorstudio-book.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+    onSuccess: () => {
       refreshUser();
     },
   });

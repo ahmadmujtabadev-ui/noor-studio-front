@@ -400,15 +400,9 @@ function VignetteLayout({ page, pageNum, ts }: { page: BookPage; pageNum: number
 function TwoColumnLayout({
   page, bookTitle, pageNum, ts,
 }: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
-  const isEven = pageNum % 2 === 0;
-  const text   = page.text ?? "";
-  const wordCount = text.trim().split(/\s+/).length;
-
-  // Use the user's font if set; otherwise fall back to a clean serif
-  const bodyFont = ts.fontFamily && !ts.fontFamily.includes("Baloo")
-    ? ts.fontFamily
-    : "'Georgia', 'Times New Roman', serif";
-
+  const isEven   = pageNum % 2 === 0;
+  const text     = page.text ?? "";
+  const bodyFont = ts.fontFamily || "'Lato', sans-serif";
   const scaledSize = `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`;
 
   const bodyStyle: React.CSSProperties = {
@@ -418,27 +412,14 @@ function TwoColumnLayout({
     color:      ts.color,
     fontWeight: ts.fontWeight,
     fontStyle:  ts.fontStyle,
-    textAlign:  ts.textAlign,
+    textAlign:  ts.textAlign === "center" ? "center" : "left",
     margin:     0,
   };
 
   const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
   const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
-
-  // Short pages (≤ 120 words): single centred column — avoids mostly-blank two-column layout
-  const isShort = wordCount <= 120;
-
-  const firstChar = text.charAt(0);
-  const rest      = text.slice(1);
-
-  // For two-column: split at nearest sentence boundary to 50% word mark
-  let leftText = rest, rightText = "";
-  if (!isShort) {
-    const words     = rest.split(/\s+/);
-    const halfWords = Math.ceil(words.length / 2);
-    leftText  = words.slice(0, halfWords).join(" ");
-    rightText = words.slice(halfWords).join(" ");
-  }
+  const firstChar  = text.charAt(0);
+  const rest       = text.slice(1);
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
@@ -453,29 +434,13 @@ function TwoColumnLayout({
         </span>
       </div>
 
-      {isShort ? (
-        /* Short text: single centred column with vertical centering — no empty half-page */
-        <div className="flex-1 flex items-center justify-center px-10 py-6 overflow-hidden">
-          <p style={{ ...bodyStyle, textAlign: "center", maxWidth: "72%" }}>
-            {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
-            {rest}
-          </p>
-        </div>
-      ) : (
-        /* Full text: two columns */
-        <div className="flex-1 flex gap-5 px-8 py-5 overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            <p style={bodyStyle}>
-              {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
-              {leftText}
-            </p>
-          </div>
-          <div className="w-px shrink-0" style={{ background: `${TEAL}10` }} />
-          <div className="flex-1 overflow-hidden">
-            <p style={bodyStyle}>{rightText}</p>
-          </div>
-        </div>
-      )}
+      {/* Full-width single column — text fills the page */}
+      <div className="flex-1 overflow-hidden px-10 py-5">
+        <p style={bodyStyle}>
+          {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+          {rest}
+        </p>
+      </div>
 
       <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
         <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
@@ -490,31 +455,26 @@ function TwoColumnLayout({
 function TextInlineImageLayout({
   page, bookTitle, pageNum, ts,
 }: { page: BookPage; bookTitle: string; pageNum: number; ts: TextStyle }) {
-  const isEven        = pageNum % 2 === 0;
-  const text          = page.text ?? "";
-  const firstChar     = text.charAt(0);
-  const rest          = text.slice(1);
-  const hasImage      = !!page.imageUrl;
-  const hasBottomImg  = !!page.secondImageUrl;
-
-  const bodyFont = ts.fontFamily && !ts.fontFamily.includes("Baloo")
-    ? ts.fontFamily
-    : "'Georgia', 'Times New Roman', serif";
-
+  const isEven   = pageNum % 2 === 0;
+  const text     = page.text ?? "";
+  const hasImage = !!page.imageUrl;
+  const bodyFont = ts.fontFamily || "'Lato', sans-serif";
   const scaledSize = `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`;
 
   const bodyStyle: React.CSSProperties = {
     fontFamily: bodyFont,
     fontSize:   scaledSize,
-    lineHeight: 1.9,
+    lineHeight: 1.85,
     color:      ts.color,
     fontWeight: ts.fontWeight,
     fontStyle:  ts.fontStyle,
-    textAlign:  ts.textAlign,
+    textAlign:  ts.textAlign === "center" ? "center" : "left",
   };
 
   const leftLabel  = isEven ? truncate(bookTitle) : truncate(page.subTitle || bookTitle);
   const rightLabel = isEven ? truncate(page.subTitle || bookTitle) : truncate(bookTitle);
+  const firstChar  = text.charAt(0);
+  const rest       = text.slice(1);
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ backgroundColor: CREAM }}>
@@ -530,72 +490,57 @@ function TextInlineImageLayout({
         </span>
       </div>
 
-      {/* ── Text zone — uses CSS float so text wraps around image naturally ── */}
-      <div
-        className="overflow-hidden"
-        style={{
-          padding: "1.25rem 2rem 1.5rem",
-          flexShrink: 0,
-          // Hard-clamp at 53% — leaves room for gradient overlap + no bleed
-          ...(hasBottomImg ? { height: "53%" } : { flex: 1 }),
-        }}
-      >
-        {/* Float the inline image right — text flows around it on left AND below */}
-        {hasImage && (
-          <img
-            src={page.imageUrl}
-            alt={page.label}
-            className="rounded-lg object-cover"
-            style={{
-              float:         "right",
-              width:         "38%",
-              aspectRatio:   "2 / 3",
-              marginLeft:    "1rem",
-              marginBottom:  "0.5rem",
-              display:       "block",
-            }}
-            draggable={false}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
-        )}
-        <p style={bodyStyle}>
-          {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
-          {rest}
-        </p>
-      </div>
+      {hasImage ? (
+        /* 50 / 50 split — left half full-bleed image, right half text */
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left: full-bleed illustration */}
+          <div className="relative overflow-hidden shrink-0" style={{ width: "50%" }}>
+            <img
+              src={page.imageUrl}
+              alt={page.label}
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          </div>
 
-      {/* ── Bottom illustration zone — second moment, full bleed ── */}
-      {hasBottomImg ? (
-        <div className="flex-1 relative overflow-hidden">
-          {/* Tall cream-to-transparent gradient — covers any text bleed from the zone above */}
-          <div
-            className="absolute inset-x-0 top-0 z-10 pointer-events-none"
-            style={{ height: "42%", background: `linear-gradient(to bottom, ${CREAM} 0%, ${CREAM}CC 35%, transparent 100%)` }}
-          />
-          <img
-            src={page.secondImageUrl}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            draggable={false}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
+          {/* Thin gold separator */}
+          <div className="shrink-0 w-px self-stretch" style={{ background: `${GOLD}40` }} />
+
+          {/* Right: text panel */}
+          <div className="flex-1 overflow-hidden flex items-center px-7 py-6 relative" style={{ background: CREAM }}>
+            <div className="absolute top-4 right-4 pointer-events-none">
+              <IslamicStar size={20} color={TEAL} opacity={0.09} />
+            </div>
+            {text ? (
+              <p style={bodyStyle}>
+                {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+                {rest}
+              </p>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center opacity-20">
+                <BookOpen className="w-8 h-8" style={{ color: TEAL }} />
+              </div>
+            )}
+          </div>
         </div>
       ) : (
-        /* No bottom image — just page number row */
-        <div className={cn("flex items-center px-8 pb-5 shrink-0", isEven ? "justify-start" : "justify-end")}>
-          <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
+        /* No image — full-width single column (same as TwoColumnLayout) */
+        <div className="flex-1 overflow-hidden px-10 py-5">
+          <p style={bodyStyle}>
+            {firstChar && <DropCap char={firstChar} color={TEAL} font={bodyFont} />}
+            {rest}
+          </p>
         </div>
       )}
 
-      {/* Page number — overlaid when bottom image is present */}
-      {hasBottomImg && (
-        <div className={cn("absolute bottom-3 px-8 z-20", isEven ? "left-0" : "right-0")}>
-          <span className="text-[10px] italic text-white/60" style={{ fontFamily: "'Georgia', serif" }}>{pageNum}</span>
-        </div>
-      )}
+      {/* Page number */}
+      <div className={cn("flex items-center px-8 pb-4 shrink-0", isEven ? "justify-start" : "justify-end")}>
+        <span className="text-[10px] italic" style={{ color: `${TEAL}50`, fontFamily: "'Georgia', serif" }}>{pageNum}</span>
+      </div>
 
-      {/* Corner ornament — only when no bottom image */}
-      {!hasBottomImg && (
+      {/* Corner ornament — only when no image */}
+      {!hasImage && (
         <div className="absolute" style={{ [isEven ? "left" : "right"]: "1.75rem", bottom: "2.25rem" }}>
           <IslamicStar size={26} color={TEAL} opacity={0.08} />
         </div>
@@ -642,7 +587,7 @@ function DecorativeFullTextLayout({
           )}
           {english && (
             <p className="text-center italic leading-[1.8]" style={{
-              fontFamily: ts.fontFamily && !ts.fontFamily.includes("Baloo") ? ts.fontFamily : "'Georgia', serif",
+              fontFamily: ts.fontFamily || "'Lato', sans-serif",
               fontSize:   `${Math.max(0.65, Math.min(ts.fontSize * 0.046, 1.05))}rem`,
               color:      ts.color,
               fontWeight: ts.fontWeight,
@@ -871,7 +816,7 @@ export function SinglePage({
     projectId ? s.getStyle(projectId) : DEFAULT_STYLE,
   );
   const ts: TextStyle = {
-    fontFamily: stored.fontFamily ? `'${stored.fontFamily}', sans-serif` : "'Baloo 2', cursive",
+    fontFamily: stored.fontFamily ? `'${stored.fontFamily}', sans-serif` : "'Lato', sans-serif",
     color:      stored.textColor  || "#1a1a1a",
     fontSize:   stored.fontSize   || 20,
     fontWeight: stored.bold   ? "bold"   : "normal",
