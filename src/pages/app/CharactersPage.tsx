@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { characterTemplatesApi } from "@/lib/api/characterTemplates.api";
 import type { CharacterTemplate } from "@/lib/api/characterTemplates.api";
 import type { Character } from "@/lib/api/types";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 
 type StatusFilter = "draft" | "approved" | "generated";
 
@@ -43,10 +45,20 @@ export default function CharactersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
   // optimistic published set — chars that were just published this session
   const [localPublished, setLocalPublished] = useState<Set<string>>(new Set());
 
   const { data: characters = [], isLoading, error } = useCharacters();
+  const { canCreateCharacter, limits, usage } = usePlanLimits();
+
+  const handleCreateCharacter = () => {
+    if (!canCreateCharacter) {
+      setGateOpen(true);
+      return;
+    }
+    navigate("/app/characters/new");
+  };
 
   const filteredCharacters = characters.filter((char: Character) => {
     const matchesSearch =
@@ -90,6 +102,14 @@ export default function CharactersPage() {
   };
 
   return (
+    <>
+    <SubscriptionGateModal
+      open={gateOpen}
+      onOpenChange={setGateOpen}
+      workflow="character"
+      reason="limit"
+      usageInfo={{ used: usage.characters, limit: limits.characters, label: "characters" }}
+    />
     <AppLayout
       title="Character Studio"
       subtitle="Create and manage characters with consistent visual DNA and pose prompts"
@@ -101,12 +121,10 @@ export default function CharactersPage() {
               Templates
             </Button>
           </Link>
-          <Link to="/app/characters/new">
-            <Button variant="hero" size="default">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Character
-            </Button>
-          </Link>
+          <Button variant="hero" size="default" onClick={handleCreateCharacter}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Character
+          </Button>
         </div>
       }
     >
@@ -165,12 +183,10 @@ export default function CharactersPage() {
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Create your first character with detailed visual DNA and reusable pose prompts.
           </p>
-          <Link to="/app/characters/new">
-            <Button variant="hero">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Character
-            </Button>
-          </Link>
+          <Button variant="hero" onClick={handleCreateCharacter}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Character
+          </Button>
         </div>
       )}
 
@@ -273,5 +289,6 @@ export default function CharactersPage() {
         </div>
       )}
     </AppLayout>
+    </>
   );
 }

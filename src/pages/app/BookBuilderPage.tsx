@@ -15,9 +15,7 @@ import type { Character } from "@/lib/api/types";
 import { useBookBuilder } from "@/hooks/useBookBuilder";
 import { StoryStep } from "@/components/shared/StoryStep";
 import { StructureStep } from "@/components/shared/StructureStep";
-import { StyleStep } from "@/components/shared/Styestep";
 import { ProseStep } from "@/components/shared/ProseStep";
-import { LayoutStep } from "@/components/shared/LayoutStep";
 import { IllustrationsStep } from "@/components/shared/IllustrationStep";
 import { CoverStep } from "@/components/shared/CoverStep";
 import { EditorStep } from "@/components/shared/EditorStep";
@@ -78,12 +76,21 @@ export default function BookBuilderPage() {
     [allChars, bb.characterIds]
   );
 
-  // Picture book:  1→2→3→4(Layout)→5(Ill)→6(Cover)→7(Publish)
-  // Chapter book:  1→2→3→4(Writing)→5(Layout)→6(Ill)→7(Cover)→8(Publish)
-  const layoutStep = bb.isChapterBook ? 5 : 4;
-  const illStep    = bb.isChapterBook ? 6 : 5;
-  const coverStep  = bb.isChapterBook ? 7 : 6;
-  const editorStep = bb.isChapterBook ? 8 : 7;
+  // Auto-set artStyle from the selected universe
+  useEffect(() => {
+    if (!bb.universeId) return;
+    const universe = universes.find((u) => (u.id || u._id) === bb.universeId);
+    if (universe?.artStyle) {
+      bb.setArtStyle(universe.artStyle);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bb.universeId, universes]);
+
+  // Picture book:  1(Story)→2(Structure)→3(Ill)→4(Cover)→5(Editor)
+  // Chapter book:  1(Story)→2(Structure)→3(Prose)→4(Ill)→5(Cover)→6(Editor)
+  const illStep    = bb.isChapterBook ? 4 : 3;
+  const coverStep  = bb.isChapterBook ? 5 : 4;
+  const editorStep = bb.isChapterBook ? 6 : 5;
 
   // ─── Step navigation ──────────────────────────────────────────────────────
   const advance = (n: number) => {
@@ -161,36 +168,17 @@ export default function BookBuilderPage() {
           <StructureStep
             bb={bb}
             allCharacters={allChars as any[]}
+            universeId={bb.universeId}
             onBack={() => back(1)}
-            onContinue={() => advance(3)}
+            onContinue={() => advance(bb.isChapterBook ? 3 : illStep)}
           />
         )}
 
-        {/* ── Step 3: Style ── */}
-        {bb.step === 3 && (
-          <StyleStep
-            bb={bb}
-            selectedCharacters={selectedCharacters}
-            charsLoading={charsLoading}
-            onBack={() => back(2)}
-            onContinue={() => advance(bb.isChapterBook ? 4 : layoutStep)}
-          />
-        )}
-
-        {/* ── Step 4: Prose (chapter-book only) ── */}
-        {bb.step === 4 && bb.isChapterBook && (
+        {/* ── Step 3: Prose (chapter-book only) ── */}
+        {bb.step === 3 && bb.isChapterBook && (
           <ProseStep
             bb={bb}
-            onBack={() => back(3)}
-            onContinue={() => advance(layoutStep)}
-          />
-        )}
-
-        {/* ── Layout picker ── */}
-        {bb.step === layoutStep && (
-          <LayoutStep
-            bb={bb as any}
-            onBack={() => back(bb.isChapterBook ? 4 : 3)}
+            onBack={() => back(2)}
             onContinue={() => advance(illStep)}
           />
         )}
@@ -199,7 +187,7 @@ export default function BookBuilderPage() {
         {bb.step === illStep && (
           <IllustrationsStep
             bb={bb}
-            onBack={() => back(layoutStep)}
+            onBack={() => back(bb.isChapterBook ? 3 : 2)}
             onContinue={() => advance(coverStep)}
           />
         )}

@@ -621,6 +621,27 @@ export interface SubscriptionInfo {
   } | null;
 }
 
+export interface PlanLimitsResponse {
+  plan: string;
+  subscriptionStatus: string;
+  limits: {
+    credits: number;
+    booksPerMonth: number;
+    characters: number;
+    knowledgeBases: number;
+    kdpExport: boolean;
+    commercial: boolean;
+    teamCollab: boolean;
+    bulkExport: boolean;
+    apiAccess: boolean;
+  };
+  usage: {
+    characters: number;
+    knowledgeBases: number;
+    booksThisMonth: number;
+  };
+}
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export interface Export {

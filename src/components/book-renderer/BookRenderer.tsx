@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { useBookEditor } from "@/hooks/useBookEditor";
 import type { BookPage } from "@/hooks/useBookEditor";
 import { exportBookEpub } from "@/lib/exportBookEpub";
-import { exportBookPdf } from "@/lib/exportBookPdf";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -233,19 +232,27 @@ export default function BookRenderer() {
     btn?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [spreadIdx, currentSpread]);
 
-  // ── Export ─────────────────────────────────────────────────────────────────
+  // ── Export (backend Puppeteer) ─────────────────────────────────────────────
   const handleExport = useCallback(async () => {
     if (!pages.length) return;
     setExporting(true);
     toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
     try {
-      await exportBookPdf(pages, projectTitle, {
-        onProgress: (cur, total) => {
-          if (cur === total) {
-            toast({ title: "PDF exported ✓" });
-          }
-        },
+      const response = await fetch(`/api/projects/${projectId}/export/pdf`, {
+        method: "GET",
       });
+      if (!response.ok) {
+        const body = await response.text().catch(() => "Unknown error");
+        throw new Error(body || `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `${projectTitle}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF exported ✓" });
     } catch (err) {
       toast({
         title:       "Export failed",
@@ -255,7 +262,7 @@ export default function BookRenderer() {
     } finally {
       setExporting(false);
     }
-  }, [pages, projectTitle, toast]);
+  }, [projectId, projectTitle, pages.length, toast]);
 
   // ── EPUB Export ────────────────────────────────────────────────────────────
   const handleExportEpub = useCallback(async () => {

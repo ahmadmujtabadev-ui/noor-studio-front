@@ -624,15 +624,15 @@ export function useBookBuilder() {
       // Map workflow stage → step number
       const stage = reviewData.workflow?.currentStage || "story";
       const isChBook = getAgeMode(project.ageRange) === "chapter-book";
-      const illStepN  = isChBook ? 5 : 4;
-      const covStepN  = isChBook ? 6 : 5;
-      const edStepN   = isChBook ? 7 : 6;
+      const illStepN  = isChBook ? 4 : 3;
+      const covStepN  = isChBook ? 5 : 4;
+      const edStepN   = isChBook ? 6 : 5;
       const stageMap: Record<string, number> = {
         story:         1,
         structure:     2,
-        style:         3,
-        prose:         isChBook ? 4 : 3,
-        humanize:      isChBook ? 4 : 3,
+        style:         2,
+        prose:         isChBook ? 3 : 2,
+        humanize:      isChBook ? 3 : 2,
         illustrations: illStepN,
         cover:         covStepN,
         editor:        edStepN,

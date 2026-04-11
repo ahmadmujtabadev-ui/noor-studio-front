@@ -31,6 +31,12 @@ import FabricPageCanvas, {
 import { Loader2, AlertCircle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/useAuth";
+import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
+import { ExportPdfModal } from "@/components/editor/ExportPdfModal";
+import { tokenStorage } from "@/lib/api/client";
+
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:8000";
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
@@ -48,6 +54,14 @@ const TOOL_SHORTCUTS: Record<string, EditorTool> = {
 export default function BookEditorPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const user = useUser();
+  const isSubscriptionExpired =
+    user?.plan !== "free" &&
+    user?.subscriptionStatus !== "active" &&
+    user?.subscriptionStatus !== "trialing" &&
+    !!user?.subscriptionStatus;
+  const [editorGateOpen, setEditorGateOpen] = useState(isSubscriptionExpired);
+
   const {
     projectId,
     projectTitle,
@@ -65,11 +79,12 @@ export default function BookEditorPage() {
   const canvasRef       = useRef<FabricCanvasHandle>(null);
   const prevPageIdxRef  = useRef<number>(0);
 
-  const [activeTool,    setActiveTool]    = useState<EditorTool>("select");
-  const [selectedObj,   setSelectedObj]   = useState<fabric.Object | null>(null);
-  const [scale,         setScale]         = useState(0.7);
-  const [saving,        setSaving]        = useState(false);
-  const [exportingEpub, setExportingEpub] = useState(false);
+  const [activeTool,       setActiveTool]       = useState<EditorTool>("select");
+  const [selectedObj,      setSelectedObj]      = useState<fabric.Object | null>(null);
+  const [scale,            setScale]            = useState(0.7);
+  const [saving,           setSaving]           = useState(false);
+  const [exportModalOpen,  setExportModalOpen]  = useState(false);
+  const [exportingEpub,    setExportingEpub]    = useState(false);
 
   // ── FIX 3a: Store fabricCanvas in state so DesignPanel re-renders reactively
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
@@ -259,22 +274,41 @@ export default function BookEditorPage() {
     }
   }, [saveAllPages, updatePage, toast]);
 
-  // ── Export to PDF ──────────────────────────────────────────────────────────
-  const handleExport = useCallback(async () => {
-    saveCurrentPageState();
-    toast({ title: "Exporting…", description: "Rendering all pages to PDF" });
-    try {
-      const { exportBookPdf } = await import("@/lib/exportBookPdf");
-      await exportBookPdf(pagesRef.current, projectTitle, {
-        projectId: projectId ?? "",
-        onProgress: (cur, total) => {
-          if (cur === total) toast({ title: "PDF exported ✓" });
-        },
-      });
-    } catch (err) {
-      toast({ title: "Export failed", description: (err as Error).message, variant: "destructive" });
-    }
-  }, [projectTitle, projectId, saveCurrentPageState, toast]);
+  // ── Export to PDF — opens template picker modal ───────────────────────────
+  const handleExport = useCallback(() => {
+    saveCurrentPageState();   // capture current canvas state into pagesRef
+    setExportModalOpen(true);
+  }, [saveCurrentPageState]);
+
+  // Called by ExportPdfModal before it fetches the PDF.
+  // Mirrors the same logic as handleSave so the backend always gets fresh data.
+  const handleSaveFirst = useCallback(async () => {
+    const json  = canvasRef.current?.toJSON();
+    const thumb = canvasRef.current?.toDataURL();
+
+    const pagesToSave = pagesRef.current.map((p, i) => {
+      if (i !== currentPageIdxRef.current || !json) return p;
+
+      const objects   = (json as any)?.objects ?? [];
+      const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+      const bodyRight = objects.find((o: any) => o._role === "body-text-right");
+      const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+
+      let text  = p.text;
+      let title = p.title;
+      if (bodyLeft?.text && bodyRight?.text) text = `${bodyLeft.text} ${bodyRight.text}`;
+      else if (bodyLeft?.text) text = bodyLeft.text;
+      if (titleObj?.text && p.type === "front-cover") title = titleObj.text;
+
+      return { ...p, fabricJson: json, thumbnail: thumb, text, title };
+    });
+
+    await saveAllPages(pagesToSave);
+
+    // Sync React state so the UI reflects the saved version
+    const idx = currentPageIdxRef.current;
+    if (json) updatePage(idx, { fabricJson: json, thumbnail: thumb });
+  }, [saveAllPages, updatePage]);
 
   // ── EPUB export ────────────────────────────────────────────────────────────
   const handleExportEpub = useCallback(async () => {
@@ -352,6 +386,22 @@ export default function BookEditorPage() {
   }
 
   return (
+    <>
+    <SubscriptionGateModal
+      open={editorGateOpen}
+      onOpenChange={setEditorGateOpen}
+      workflow="editor"
+      reason="expired"
+    />
+    <ExportPdfModal
+      open={exportModalOpen}
+      onOpenChange={setExportModalOpen}
+      projectTitle={projectTitle}
+      projectId={projectId ?? ""}
+      apiBase={API_BASE}
+      token={tokenStorage.get()}
+      onSaveFirst={handleSaveFirst}
+    />
     <div className="flex flex-col h-screen bg-[#0f1117] overflow-hidden select-none">
       {/* ── Top Toolbar ─────────────────────────────────────────────────────── */}
       <EditorToolbar
@@ -479,5 +529,6 @@ export default function BookEditorPage() {
         </span>
       </div>
     </div>
+    </>
   );
 }

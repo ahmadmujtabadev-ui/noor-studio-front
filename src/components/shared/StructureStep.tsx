@@ -12,22 +12,24 @@ import { ChapterOutlineItem, normArr, SpreadStructureItem, StructureItem } from 
 import { ReviewModal, ReviewModalField } from "./ReviewModal";
 
 
-const ART_STYLES = [
-  { id: "pixar-3d",      name: "Pixar 3D"       },
-  { id: "watercolor",    name: "Watercolor"      },
-  { id: "flat-cartoon",  name: "Flat Cartoon"    },
-  { id: "storybook",     name: "Storybook"       },
-  { id: "ghibli",        name: "Ghibli-inspired" },
-];
-
 interface StructureStepProps {
   bb: BookBuilderHook;
-  allCharacters: Array<{ id?: string; _id?: string; name: string; role?: string; status?: string }>;
+  allCharacters: Array<{ id?: string; _id?: string; name: string; role?: string; status?: string; universeId?: string }>;
+  universeId?: string;
   onBack: () => void;
   onContinue: () => void;
 }
 
-export function StructureStep({ bb, allCharacters, onBack, onContinue }: StructureStepProps) {
+export function StructureStep({ bb, allCharacters, universeId, onBack, onContinue }: StructureStepProps) {
+  // Only show characters belonging to the selected universe
+  const universeCharacters = universeId
+    ? allCharacters.filter((c) => {
+        const cUid = (c as any).universeId;
+        if (!cUid) return false;
+        const cUidStr = typeof cUid === "string" ? cUid : cUid?._id?.toString() || cUid?.id || "";
+        return cUidStr === universeId;
+      })
+    : allCharacters;
   const [modalKey, setModalKey] = useState<string | null>(null);
   const [localItems, setLocalItems] = useState<Record<string, Partial<StructureItem["current"]>>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -88,7 +90,7 @@ export function StructureStep({ bb, allCharacters, onBack, onContinue }: Structu
         <div className="space-y-2">
           <Label>Characters (optional)</Label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {allCharacters
+            {universeCharacters
               .filter((c) => c.status === "approved" || !c.status)
               .map((c) => {
                 const id     = c.id || c._id || "";
@@ -110,28 +112,6 @@ export function StructureStep({ bb, allCharacters, onBack, onContinue }: Structu
                   </button>
                 );
               })}
-          </div>
-        </div>
-
-        {/* Art style */}
-        <div className="space-y-2">
-          <Label>Art style</Label>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {ART_STYLES.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => bb.setArtStyle(s.id)}
-                className={cn(
-                  "rounded-xl border-2 p-2.5 text-xs font-semibold transition-all",
-                  bb.artStyle === s.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border hover:border-primary/30"
-                )}
-              >
-                {s.name}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -203,7 +183,7 @@ export function StructureStep({ bb, allCharacters, onBack, onContinue }: Structu
 
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm truncate">
-                        {isChBook ? (c.title || `Chapter ${c.chapterNumber}`) : (c.text?.slice(0, 70) || `Page ${c.spreadIndex + 1}`)}
+                        {isChBook ? (c.title || `Chapter ${c.chapterNumber}`) : (c.text?.slice(0, 120) || `Page ${c.spreadIndex + 1}`)}
                       </p>
                       {isChBook && c.goal && (
                         <p className="text-xs text-muted-foreground truncate">{c.goal}</p>

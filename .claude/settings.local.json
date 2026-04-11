@@ -13,7 +13,11 @@
       "Bash(pkill:*)",
       "Bash(npx tsc:*)",
       "Read(//c/Users/Paklogics/Desktop/example_code/Fair/backend05/backend/server/routes/**)",
-      "Read(//c/Users/Paklogics/Desktop/example_code/Fair/backend05/**)"
+      "Read(//c/Users/Paklogics/Desktop/example_code/Fair/backend05/**)",
+      "Bash(git -C /c/Users/Paklogics/Desktop/example_code/example/Noorstudio ls-files --others --exclude-standard)",
+      "Bash(git -C /c/Users/Paklogics/Desktop/example_code/example/Noorstudio ls-files)",
+      "Bash(git -C /c/Users/Paklogics/Desktop/example_code/example/Noorstudio log --oneline -5)",
+      "Bash(git -C /c/Users/Paklogics/Desktop/example_code/example/Noorstudio show --stat HEAD)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Paklogics\\Desktop\\example_code\\Fair\\backend05\\backend\\server\\routes",

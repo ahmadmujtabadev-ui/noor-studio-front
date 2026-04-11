@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,9 @@ import { characterTemplatesApi, type CharacterTemplate } from "@/lib/api/charact
 import { useKBTemplates } from "@/hooks/useKnowledgeBase";
 import { DEFAULT_KB_STARTER_TEMPLATES } from "@/constants/kbStarterTemplates";
 import type { Project, PipelineStage } from "@/lib/api/types";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
+import type { GateWorkflow } from "@/components/shared/SubscriptionGateModal";
 
 type ListResponse<T> =
   | T[]
@@ -221,6 +224,8 @@ function KBTemplateCard({ tpl, onClick }: { tpl: typeof DEFAULT_KB_STARTER_TEMPL
 export default function DashboardPage() {
   const navigate = useNavigate();
   const user = useUser();
+  const [gateWorkflow, setGateWorkflow] = useState<GateWorkflow | null>(null);
+  const { canCreateBook, canCreateCharacter, limits, usage } = usePlanLimits();
 
   const { data: projectsResponse, isLoading: projectsLoading, error: projectsError } = useProjects();
   const { data: charactersResponse, isLoading: charsLoading, error: charactersError } = useCharacters();
@@ -234,6 +239,16 @@ export default function DashboardPage() {
 
   const sortedProjects = useMemo(() => [...projects].sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime()), [projects]);
 
+  const handleNewBook = () => {
+    if (!canCreateBook) { setGateWorkflow("book"); return; }
+    navigate("/app/books/new");
+  };
+
+  const handleNewCharacter = () => {
+    if (!canCreateCharacter) { setGateWorkflow("character"); return; }
+    navigate("/app/characters/new");
+  };
+
   const isStatsLoading = projectsLoading || charsLoading;
   const hasListError = Boolean(projectsError || charactersError);
 
@@ -244,6 +259,18 @@ export default function DashboardPage() {
   ], [characters.length, projects.length]);
 
   return (
+    <>
+    <SubscriptionGateModal
+      open={!!gateWorkflow}
+      onOpenChange={(open) => { if (!open) setGateWorkflow(null); }}
+      workflow={gateWorkflow ?? "book"}
+      reason="limit"
+      usageInfo={
+        gateWorkflow === "book"
+          ? { used: usage.booksThisMonth, limit: limits.booksPerMonth, label: "books this month" }
+          : { used: usage.characters, limit: limits.characters, label: "characters" }
+      }
+    />
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-6">
 
@@ -256,12 +283,12 @@ export default function DashboardPage() {
             <p className="text-muted-foreground text-sm">{user?.credits ?? 0} credits available</p>
           </div>
           <div className="flex gap-3">
-            <Link to="/app/characters/new">
-              <Button variant="soft"><Plus className="mr-2 h-4 w-4" />New Character</Button>
-            </Link>
-            <Link to="/app/books/new">
-              <Button variant="hero"><Plus className="mr-2 h-4 w-4" />New Book</Button>
-            </Link>
+            <Button variant="soft" onClick={handleNewCharacter}>
+              <Plus className="mr-2 h-4 w-4" />New Character
+            </Button>
+            <Button variant="hero" onClick={handleNewBook}>
+              <Plus className="mr-2 h-4 w-4" />New Book
+            </Button>
           </div>
         </div>
 
@@ -355,9 +382,9 @@ export default function DashboardPage() {
               <p className="mx-auto mb-6 max-w-md text-muted-foreground">
                 Create your first book project to start generating Islamic children's stories.
               </p>
-              <Link to="/app/books/new">
-                <Button variant="hero"><Plus className="mr-2 h-4 w-4" />Create Your First Book</Button>
-              </Link>
+              <Button variant="hero" onClick={handleNewBook}>
+                <Plus className="mr-2 h-4 w-4" />Create Your First Book
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -424,5 +451,6 @@ export default function DashboardPage() {
 
       </div>
     </AppLayout>
+    </>
   );
 }

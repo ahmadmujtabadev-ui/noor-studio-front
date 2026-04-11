@@ -3,6 +3,15 @@ import { paymentsApi } from '@/lib/api/payments.api';
 import { exportsApi } from '@/lib/api/exports.api';
 import { useAuthStore } from '@/lib/store/authStore';
 
+export function usePlanLimitsQuery() {
+  return useQuery({
+    queryKey: ['payments', 'plan-limits'],
+    queryFn: paymentsApi.getPlanLimits,
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+}
+
 // ─── Payments ────────────────────────────────────────────────────────────────
 
 export function useCreditPackages() {

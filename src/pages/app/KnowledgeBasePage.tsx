@@ -52,6 +52,8 @@ import { KBBackgroundSettings } from "@/components/kb/KBBackgroundSettings";
 import { KBBookFormatting } from "@/components/kb/KBBookFormatting";
 import { KBCoverDesign } from "@/components/kb/KBCoverDesign";
 import { KBCharacterVoiceBuilder } from "@/components/kb/KBCharacterVoiceBuilder";
+import { usePlanLimits } from "@/hooks/usePlanLimits";
+import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -459,6 +461,13 @@ export default function KnowledgeBasePage() {
   const deleteMutation = useDeleteKnowledgeBase();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { canCreateKnowledgeBase, limits, usage } = usePlanLimits();
+  const [kbGateOpen, setKbGateOpen] = useState(false);
+
+  const handleOpenCreate = () => {
+    if (!canCreateKnowledgeBase) { setKbGateOpen(true); return; }
+    setShowCreate(true);
+  };
   const { universes } = useUniverses();
 
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
@@ -1085,11 +1094,19 @@ export default function KnowledgeBasePage() {
   const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "coverDesign"]);
 
   return (
+    <>
+    <SubscriptionGateModal
+      open={kbGateOpen}
+      onOpenChange={setKbGateOpen}
+      workflow="knowledge-base"
+      reason="limit"
+      usageInfo={{ used: usage.knowledgeBases, limit: limits.knowledgeBases, label: "knowledge bases" }}
+    />
     <AppLayout
       title="Knowledge Base"
       subtitle="Define the universe rules that shape every story, chapter, and illustration"
       actions={
-        <Button variant="hero" onClick={() => setShowCreate(true)}>
+        <Button variant="hero" onClick={handleOpenCreate}>
           <Plus className="w-4 h-4 mr-2" />New Knowledge Base
         </Button>
       }
@@ -1152,7 +1169,7 @@ export default function KnowledgeBasePage() {
           <p className="text-muted-foreground text-sm max-w-xs leading-relaxed mb-6">
             Create a knowledge base to define Islamic values, du'as, character voices, backgrounds, book format, and cover design rules for your universe.
           </p>
-          <Button variant="hero" onClick={() => setShowCreate(true)}>
+          <Button variant="hero" onClick={handleOpenCreate}>
             <Plus className="w-4 h-4 mr-2" />Create First Knowledge Base
           </Button>
           <div className="flex gap-2 mt-6 flex-wrap justify-center">
@@ -1446,5 +1463,6 @@ export default function KnowledgeBasePage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
+    </>
   );
 }

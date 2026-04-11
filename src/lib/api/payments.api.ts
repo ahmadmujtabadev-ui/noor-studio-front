@@ -1,11 +1,13 @@
 import { api } from './client';
-import type { CreditPackage, CreditTransaction, CreditBalance, SubscriptionInfo } from './types';
+import type { CreditPackage, CreditTransaction, CreditBalance, SubscriptionInfo, PlanLimitsResponse } from './types';
 
 export const paymentsApi = {
   getPackages: () =>
     api.get<{ packages: CreditPackage[] }>('/api/payments/packages').then((r) => r.packages),
 
   getBalance: () => api.get<CreditBalance>('/api/payments/balance'),
+
+  getPlanLimits: () => api.get<PlanLimitsResponse>('/api/payments/plan-limits'),
 
   getTransactions: (params?: { limit?: number; offset?: number }) =>
     api

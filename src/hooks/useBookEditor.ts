@@ -45,27 +45,27 @@ export type TextLayoutType =
 export type LayoutType = SpreadLayoutType | TextLayoutType;
 
 export interface BookPage {
-  id:              string;
-  label:           string;
-  type:            BookPageType;
-  imageUrl:        string;
+  id: string;
+  label: string;
+  type: BookPageType;
+  imageUrl: string;
   secondImageUrl?: string;
-  title?:          string;
-  subTitle?:       string;
-  text?:           string;
-  pageNum?:        number;
-  layoutType?:     LayoutType;
-  fabricJson?:     object | null;
-  thumbnail?:      string;
+  title?: string;
+  subTitle?: string;
+  text?: string;
+  pageNum?: number;
+  layoutType?: LayoutType;
+  fabricJson?: object | null;
+  thumbnail?: string;
 }
 
 // ─── Layout auto-assignment ───────────────────────────────────────────────────
 
 function resolveSpreadLayout(text: string, imageUrl: string): SpreadLayoutType {
   if (!text || !text.trim()) return imageUrl ? "full_bleed" : "vignette";
-  const words     = text.trim().split(/\s+/).length;
+  const words = text.trim().split(/\s+/).length;
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim()).length;
-  if (words <= 10)    return "image_top_text_bottom";
+  if (words <= 10) return "image_top_text_bottom";
   if (sentences <= 2) return "full_bleed";
   return "image_left_text_right";
 }
@@ -80,7 +80,7 @@ function resolveTextLayout(text: string): TextLayoutType {
 
 function illusUrl(illus: any): string {
   const variants = normArr(illus?.current?.variants ?? []);
-  const selIdx   = illus?.current?.selectedVariantIndex ?? 0;
+  const selIdx = illus?.current?.selectedVariantIndex ?? 0;
   return (variants[selIdx] as any)?.imageUrl || illus?.current?.imageUrl || "";
 }
 
@@ -101,7 +101,7 @@ function splitProse(text: string, wordsPerPage = 150): string[] {
     const words = sentence.split(/\s+/).length;
     if (wordCount + words > wordsPerPage && current.length > 0) {
       pages.push(current.join(" "));
-      current   = [];
+      current = [];
       wordCount = 0;
     }
     current.push(sentence);
@@ -130,8 +130,8 @@ function buildSpreadPages(illustrations: any[], structures: any[]): BookPage[] {
       const struct = structures.find(
         (s: any) => s.current?.spreadIndex === ill.spreadIndex,
       ) as any;
-      const text   = struct?.current?.text || ill.current?.text || "";
-      const title  = `Spread ${(ill.spreadIndex ?? idx) + 1}`;
+      const text = struct?.current?.text || ill.current?.text || "";
+      const title = `Spread ${(ill.spreadIndex ?? idx) + 1}`;
       const imgUrl = illusUrl(ill);
       return {
         id: `spread-${ill.key}`, label: title, type: "spread" as BookPageType,
@@ -160,56 +160,67 @@ function buildChapterPages(
   let runningPageNum = 1;
 
   allChapterIdxs.forEach((chIdx) => {
-    const chNum       = chIdx + 1;
-    const humanNode   = humanized.find((h: any) => Number(h.chapterIndex) === chIdx) as any;
-    const proseNode   = prose.find((p: any) => Number(p.chapterIndex) === chIdx) as any;
+    const chNum = chIdx + 1;
+    const humanNode = humanized.find((h: any) => Number(h.chapterIndex) === chIdx) as any;
+    const proseNode = prose.find((p: any) => Number(p.chapterIndex) === chIdx) as any;
     const chapterNode = humanNode || proseNode;
 
     const chapterTitle = chapterNode?.current?.chapterTitle || `Chapter ${chNum}`;
-    const chapterText  = chapterNode?.current?.chapterText  || "";
+    const chapterText = chapterNode?.current?.chapterText || "";
 
     const chMoments = moments
       .filter((m: any) => Number(m.chapterIndex) === chIdx)
       .sort((a: any, b: any) => (a.spreadIndex ?? 0) - (b.spreadIndex ?? 0));
 
     const firstMoment = chMoments[0];
+    const secondMoment = chMoments[1];
 
-    // 1. Chapter opener
+    // 1. Chapter opener — always uses img0 (firstMoment)
     pages.push({
-      id: `chapter-${chIdx}-opener`, label: `Ch.${chNum} — ${chapterTitle}`,
-      type: "chapter-opener", imageUrl: firstMoment ? illusUrl(firstMoment) : "",
-      subTitle: `Chapter ${chNum}`, title: chapterTitle,
+      id: `chapter-${chIdx}-opener`,
+      label: `Ch.${chNum} — ${chapterTitle}`,
+      type: "chapter-opener",
+      imageUrl: firstMoment ? illusUrl(firstMoment) : "",
+      subTitle: `Chapter ${chNum}`,
+      title: chapterTitle,
     });
 
-    // 2. Text pages
+    // 2. Text pages — pure text, no embedded illustrations
     if (chapterText) {
-      const chunks         = splitProse(chapterText);
-      const chapterIllUrl  = firstMoment ? illusUrl(firstMoment) : "";
-      const secondIllUrl   = chMoments[1] ? illusUrl(chMoments[1]) : "";
-      const img1PageIdx    = chunks.length >= 5 ? 4 : -1;
-      const img2PageIdx    = chunks.length >= 9 ? 8 : -1;
-
+      const chunks = splitProse(chapterText);
       chunks.forEach((chunk, ci) => {
-        const imgUrl       = (chapterIllUrl && ci === img1PageIdx) ? chapterIllUrl : "";
-        const secondImgUrl = (secondIllUrl  && ci === img2PageIdx) ? secondIllUrl  : "";
-        const lt: TextLayoutType =
-          imgUrl || secondImgUrl ? "text_inline_image" : resolveTextLayout(chunk);
-
         pages.push({
-          id: `chapter-${chIdx}-text-${ci}`, label: `Ch.${chNum} — Page ${ci + 1}`,
-          type: "text-page", imageUrl: imgUrl,
-          secondImageUrl: secondImgUrl || undefined,
-          subTitle: chapterTitle, text: chunk,
-          pageNum: runningPageNum++, layoutType: lt,
+          id: `chapter-${chIdx}-text-${ci}`,
+          label: `Ch.${chNum} — Page ${ci + 1}`,
+          type: "text-page",
+          imageUrl: "",
+          subTitle: chapterTitle,
+          text: chunk,
+          pageNum: runningPageNum++,
+          layoutType: resolveTextLayout(chunk),
         });
       });
     }
 
-    // 3. Standalone moment pages — only beyond the 2nd
+    // 3. img1 (secondMoment) as its own dedicated full-bleed page
+    //    — always shown, never buried inside a text page
+    if (secondMoment) {
+      pages.push({
+        id: `chapter-${chIdx}-moment-1`,
+        label: `Ch.${chNum} — Scene 2`,
+        type: "chapter-moment",
+        imageUrl: illusUrl(secondMoment),
+        text: secondMoment.current?.momentTitle || "",
+      });
+    }
+
+    // 4. Any additional moments beyond the 2nd (img2, img3 …)
     chMoments.slice(2).forEach((moment: any, mi: number) => {
       pages.push({
-        id: `chapter-${chIdx}-moment-${mi}`, label: `Ch.${chNum} — Scene ${mi + 3}`,
-        type: "chapter-moment", imageUrl: illusUrl(moment),
+        id: `chapter-${chIdx}-moment-${mi + 2}`,
+        label: `Ch.${chNum} — Scene ${mi + 3}`,
+        type: "chapter-moment",
+        imageUrl: illusUrl(moment),
         text: moment.current?.momentTitle || "",
       });
     });
@@ -218,18 +229,16 @@ function buildChapterPages(
   return pages;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
 export function useBookEditor() {
   const { id: projectId } = useParams<{ id: string }>();
-  const navigate           = useNavigate();
+  const navigate = useNavigate();
 
-  const [pages,          setPages]          = useState<BookPage[]>([]);
+  const [pages, setPages] = useState<BookPage[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const [loading,        setLoading]        = useState(true);
-  const [error,          setError]          = useState<string | null>(null);
-  const [projectTitle,   setProjectTitle]   = useState("Untitled Book");
-  const [isChapterBook,  setIsChapterBook]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [projectTitle, setProjectTitle] = useState("Untitled Book");
+  const [isChapterBook, setIsChapterBook] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -247,29 +256,29 @@ export function useBookEditor() {
         reviewApi.getEditorPages(pid).catch(() => ({ pages: [] })),
       ]);
 
-      const r         = reviewData.review;
+      const r = reviewData.review;
       const bookTitle = r?.story?.current?.bookTitle || "Untitled Book";
-      const author    = (reviewData as any).authorName || "";
-      const mode      = reviewData.workflow?.mode || "picture-book";
+      const author = (reviewData as any).authorName || "";
+      const mode = reviewData.workflow?.mode || "picture-book";
       const isChapter = mode === "chapter-book";
 
       setProjectTitle(bookTitle);
       setIsChapterBook(isChapter);
 
-      const frontNode     = (coverData as any)?.cover?.front;
+      const frontNode = (coverData as any)?.cover?.front;
       const frontVariants = normArr(frontNode?.current?.variants ?? []);
-      const frontSelIdx   = frontNode?.current?.selectedVariantIndex ?? 0;
-      const frontUrl      = (frontVariants[frontSelIdx] as any)?.imageUrl || frontNode?.current?.imageUrl || "";
+      const frontSelIdx = frontNode?.current?.selectedVariantIndex ?? 0;
+      const frontUrl = (frontVariants[frontSelIdx] as any)?.imageUrl || frontNode?.current?.imageUrl || "";
 
-      const backNode      = (coverData as any)?.cover?.back;
-      const backVariants  = normArr(backNode?.current?.variants ?? []);
-      const backSelIdx    = backNode?.current?.selectedVariantIndex ?? 0;
-      const backUrl       = (backVariants[backSelIdx] as any)?.imageUrl || backNode?.current?.imageUrl || "";
+      const backNode = (coverData as any)?.cover?.back;
+      const backVariants = normArr(backNode?.current?.variants ?? []);
+      const backSelIdx = backNode?.current?.selectedVariantIndex ?? 0;
+      const backUrl = (backVariants[backSelIdx] as any)?.imageUrl || backNode?.current?.imageUrl || "";
 
       const illustrations = normArr(r?.illustrations ?? []);
-      const structures    = normArr(r?.structure?.items ?? []);
-      const humanized     = normArr(r?.humanized ?? []);
-      const prose         = normArr(r?.prose ?? []);
+      const structures = normArr(r?.structure?.items ?? []);
+      const humanized = normArr(r?.humanized ?? []);
+      const prose = normArr(r?.prose ?? []);
 
       const bookPages: BookPage[] = [];
 
@@ -318,9 +327,9 @@ export function useBookEditor() {
         return {
           ...p,
           ...(saved.fabricJson !== undefined && { fabricJson: saved.fabricJson }),
-          ...(saved.thumbnail  !== undefined && { thumbnail:  saved.thumbnail  }),
-          ...(saved.text       !== undefined && { text:       saved.text       }),
-          ...(saved.title      !== undefined && { title:      saved.title      }),
+          ...(saved.thumbnail !== undefined && { thumbnail: saved.thumbnail }),
+          ...(saved.text !== undefined && { text: saved.text }),
+          ...(saved.title !== undefined && { title: saved.title }),
         };
       });
 
@@ -345,11 +354,11 @@ export function useBookEditor() {
     async (latestPages: BookPage[]): Promise<void> => {
       if (!projectId) return;
       const payload = latestPages.map((p) => ({
-        id:         p.id,
+        id: p.id,
         fabricJson: p.fabricJson ?? null,
-        thumbnail:  p.thumbnail  ?? null,
-        text:       p.text       ?? "",
-        title:      p.title      ?? "",
+        thumbnail: p.thumbnail ?? null,
+        text: p.text ?? "",
+        title: p.title ?? "",
       }));
       await reviewApi.saveEditorPages(projectId, payload);
     },
