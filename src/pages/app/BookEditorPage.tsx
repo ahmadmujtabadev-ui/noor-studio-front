@@ -35,18 +35,19 @@ import { useUser } from "@/hooks/useAuth";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 import { ExportPdfModal } from "@/components/editor/ExportPdfModal";
 import { tokenStorage } from "@/lib/api/client";
+import { reviewApi } from "@/lib/api/review.api";
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9005";
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
 const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   v: "select", V: "select",
-  t: "text",   T: "text",
-  r: "rect",   R: "rect",
+  t: "text", T: "text",
+  r: "rect", R: "rect",
   c: "circle", C: "circle",
-  l: "line",   L: "line",
-  s: "star",   S: "star",
+  l: "line", L: "line",
+  s: "star", S: "star",
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -76,15 +77,15 @@ export default function BookEditorPage() {
     goBack,
   } = useBookEditor();
 
-  const canvasRef       = useRef<FabricCanvasHandle>(null);
-  const prevPageIdxRef  = useRef<number>(0);
+  const canvasRef = useRef<FabricCanvasHandle>(null);
+  const prevPageIdxRef = useRef<number>(0);
 
-  const [activeTool,       setActiveTool]       = useState<EditorTool>("select");
-  const [selectedObj,      setSelectedObj]      = useState<fabric.Object | null>(null);
-  const [scale,            setScale]            = useState(0.7);
-  const [saving,           setSaving]           = useState(false);
-  const [exportModalOpen,  setExportModalOpen]  = useState(false);
-  const [exportingEpub,    setExportingEpub]    = useState(false);
+  const [activeTool, setActiveTool] = useState<EditorTool>("select");
+  const [selectedObj, setSelectedObj] = useState<fabric.Object | null>(null);
+  const [scale, setScale] = useState(0.7);
+  const [saving, setSaving] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportingEpub, setExportingEpub] = useState(false);
 
   // ── FIX 3a: Store fabricCanvas in state so DesignPanel re-renders reactively
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
@@ -152,8 +153,8 @@ export default function BookEditorPage() {
 
   // ── Save current page canvas state before switching ────────────────────────
   const saveCurrentPageState = useCallback(() => {
-    const idx  = prevPageIdxRef.current;
-    const json  = canvasRef.current?.toJSON();
+    const idx = prevPageIdxRef.current;
+    const json = canvasRef.current?.toJSON();
     const thumb = canvasRef.current?.toDataURL();
     if (json && pagesRef.current[idx]) {
       updatePage(idx, { fabricJson: json, thumbnail: thumb });
@@ -198,14 +199,14 @@ export default function BookEditorPage() {
 
   const handleCanvasChange = useCallback(
     (json: object, thumbnail: string) => {
-      const idx   = currentPageIdxRef.current;
+      const idx = currentPageIdxRef.current;
       const pages = pagesRef.current;
 
       // Extract text edits from canvas objects so page.text stays in sync
-      const objects   = (json as any)?.objects ?? [];
-      const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+      const objects = (json as any)?.objects ?? [];
+      const bodyLeft = objects.find((o: any) => o._role === "body-text");
       const bodyRight = objects.find((o: any) => o._role === "body-text-right");
-      const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
 
       const updates: Parameters<typeof updatePage>[1] = { fabricJson: json, thumbnail };
 
@@ -236,18 +237,18 @@ export default function BookEditorPage() {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const json  = canvasRef.current?.toJSON();
+      const json = canvasRef.current?.toJSON();
       const thumb = canvasRef.current?.toDataURL();
 
       const pagesToSave = pagesRef.current.map((p, i) => {
         if (i !== currentPageIdxRef.current || !json) return p;
 
-        const objects   = (json as any)?.objects ?? [];
-        const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+        const objects = (json as any)?.objects ?? [];
+        const bodyLeft = objects.find((o: any) => o._role === "body-text");
         const bodyRight = objects.find((o: any) => o._role === "body-text-right");
-        const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+        const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
 
-        let text  = p.text;
+        let text = p.text;
         let title = p.title;
         if (bodyLeft?.text && bodyRight?.text) text = `${bodyLeft.text} ${bodyRight.text}`;
         else if (bodyLeft?.text) text = bodyLeft.text;
@@ -261,8 +262,8 @@ export default function BookEditorPage() {
       const idx = currentPageIdxRef.current;
       if (json) updatePage(idx, {
         fabricJson: json,
-        thumbnail:  thumb,
-        ...(pagesToSave[idx]?.text  !== pagesRef.current[idx]?.text  && { text:  pagesToSave[idx].text }),
+        thumbnail: thumb,
+        ...(pagesToSave[idx]?.text !== pagesRef.current[idx]?.text && { text: pagesToSave[idx].text }),
         ...(pagesToSave[idx]?.title !== pagesRef.current[idx]?.title && { title: pagesToSave[idx].title }),
       });
 
@@ -283,18 +284,18 @@ export default function BookEditorPage() {
   // Called by ExportPdfModal before it fetches the PDF.
   // Mirrors the same logic as handleSave so the backend always gets fresh data.
   const handleSaveFirst = useCallback(async () => {
-    const json  = canvasRef.current?.toJSON();
+    const json = canvasRef.current?.toJSON();
     const thumb = canvasRef.current?.toDataURL();
 
     const pagesToSave = pagesRef.current.map((p, i) => {
       if (i !== currentPageIdxRef.current || !json) return p;
 
-      const objects   = (json as any)?.objects ?? [];
-      const bodyLeft  = objects.find((o: any) => o._role === "body-text");
+      const objects = (json as any)?.objects ?? [];
+      const bodyLeft = objects.find((o: any) => o._role === "body-text");
       const bodyRight = objects.find((o: any) => o._role === "body-text-right");
-      const titleObj  = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
 
-      let text  = p.text;
+      let text = p.text;
       let title = p.title;
       if (bodyLeft?.text && bodyRight?.text) text = `${bodyLeft.text} ${bodyRight.text}`;
       else if (bodyLeft?.text) text = bodyLeft.text;
@@ -333,11 +334,29 @@ export default function BookEditorPage() {
   }, [projectTitle, saveCurrentPageState, toast]);
 
   // ── Image upload ───────────────────────────────────────────────────────────
-  const handleImageUpload = useCallback((url: string) => {
-    canvasRef.current?.addImageFromUrl(url);
+  // Upload the image to Cloudinary via the backend BEFORE adding it to the
+  // canvas so fabricJson never contains a base64 blob — only a permanent URL.
+  const handleImageUpload = useCallback(async (dataUrl: string) => {
+    if (!projectId) return;
+
+    let imageUrl = dataUrl;
+
+    // Only upload if it's a local base64 data URI (not already a remote URL)
+    if (dataUrl.startsWith("data:")) {
+      try {
+        const suffix = `user_${Date.now()}`;
+        const { url } = await reviewApi.uploadEditorImage(projectId, dataUrl, suffix);
+        imageUrl = url;
+      } catch (err) {
+        console.error("[handleImageUpload] Upload failed, using data URL as fallback:", err);
+        // Fall through with the original dataUrl so the image still appears on canvas
+      }
+    }
+
+    canvasRef.current?.addImageFromUrl(imageUrl);
     setActiveTool("select");
     canvasRef.current?.setTool("select");
-  }, []);
+  }, [projectId]);
 
   // ── Loading / error states ─────────────────────────────────────────────────
   if (loading) {
@@ -387,148 +406,150 @@ export default function BookEditorPage() {
 
   return (
     <>
-    <SubscriptionGateModal
-      open={editorGateOpen}
-      onOpenChange={setEditorGateOpen}
-      workflow="editor"
-      reason="expired"
-    />
-    <ExportPdfModal
-      open={exportModalOpen}
-      onOpenChange={setExportModalOpen}
-      projectTitle={projectTitle}
-      projectId={projectId ?? ""}
-      apiBase={API_BASE}
-      token={tokenStorage.get()}
-      onSaveFirst={handleSaveFirst}
-    />
-    <div className="flex flex-col h-screen bg-[#0f1117] overflow-hidden select-none">
-      {/* ── Top Toolbar ─────────────────────────────────────────────────────── */}
-      <EditorToolbar
-        title={projectTitle}
-        activeTool={activeTool}
-        onToolChange={handleToolChange}
-        scale={scale}
-        onZoomIn={() => setScale((s) => Math.min(s + 0.1, 2))}
-        onZoomOut={() => setScale((s) => Math.max(s - 0.1, 0.25))}
-        onSave={handleSave}
-        onExport={handleExport}
-        onExportEpub={handleExportEpub}
-        exportingEpub={exportingEpub}
-        onBack={goBack}
-        onPreview={() => navigate(`/app/projects/${projectId}/preview`)}
-        saving={saving}
+      <SubscriptionGateModal
+        open={editorGateOpen}
+        onOpenChange={setEditorGateOpen}
+        workflow="editor"
+        reason="expired"
       />
-
-      {/* ── Body ─────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Elements Panel ──────────────────────────────────────────────── */}
-        <ElementsPanel
-          canvasRef={canvasRef}
+      <ExportPdfModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        projectTitle={projectTitle}
+        projectId={projectId ?? ""}
+        apiBase={API_BASE}
+        token={tokenStorage.get()}
+        onSaveFirst={handleSaveFirst}
+      />
+      <div className="flex flex-col h-screen bg-[#0f1117] overflow-hidden select-none">
+        {/* ── Top Toolbar ─────────────────────────────────────────────────────── */}
+        <EditorToolbar
+          title={projectTitle}
           activeTool={activeTool}
           onToolChange={handleToolChange}
-          onImageUpload={handleImageUpload}
+          scale={scale}
+          onZoomIn={() => setScale((s) => Math.min(s + 0.1, 2))}
+          onZoomOut={() => setScale((s) => Math.max(s - 0.1, 0.25))}
+          onSave={handleSave}
+          onExport={handleExport}
+          onExportEpub={handleExportEpub}
+          exportingEpub={exportingEpub}
+          onBack={goBack}
+          onPreview={() => navigate(`/app/projects/${projectId}/preview`)}
+          saving={saving}
         />
 
-        {/* ── Page Navigator ──────────────────────────────────────────────── */}
-        <PageNavigator
-          pages={pages}
-          currentIdx={currentPageIdx}
-          onSelect={handlePageSelect}
-        />
+        {/* ── Body ─────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* ── Elements Panel ──────────────────────────────────────────────── */}
+          <ElementsPanel
+            canvasRef={canvasRef}
+            activeTool={activeTool}
+            onToolChange={handleToolChange}
+            onImageUpload={handleImageUpload}
+          />
 
-        {/* ── Canvas Area ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-auto bg-[#0f1117] flex items-start justify-center p-8">
-          <div className="relative" style={{ marginTop: "auto", marginBottom: "auto" }}>
-            {/* Page label */}
-            <div className="absolute -top-7 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none">
-              <span className="text-xs text-white/30 font-medium">
-                {currentPage.label}
-              </span>
-              <span className="text-white/15">·</span>
-              <span className="text-xs text-white/20">
-                {currentPageIdx + 1} / {pages.length}
-              </span>
-            </div>
+          {/* ── Page Navigator ──────────────────────────────────────────────── */}
+          <PageNavigator
+            pages={pages}
+            currentIdx={currentPageIdx}
+            onSelect={handlePageSelect}
+          />
 
-            {/* Canvas wrapper */}
-            <div
-              className="relative rounded-sm overflow-hidden"
-              style={{
-                width: PAGE_W * scale,
-                height: PAGE_H * scale,
-                boxShadow:
-                  "0 20px 80px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6)",
-              }}
-            >
-              <FabricPageCanvas
-                ref={canvasRef}
-                page={currentPage}
-                scale={scale}
-                tool={activeTool}
-                onSelectionChange={handleSelectionChange}
-                onCanvasChange={handleCanvasChange}
-              />
-            </div>
+          {/* ── Canvas Area ─────────────────────────────────────────────────── */}
+          <div className="flex-1 overflow-auto bg-[#0f1117]">
+            <div className="flex items-center justify-center min-h-full p-8">
+              <div className="relative">
+                {/* Page label */}
+                <div className="absolute -top-7 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none">
+                  <span className="text-xs text-white/30 font-medium">
+                    {currentPage.label}
+                  </span>
+                  <span className="text-white/15">·</span>
+                  <span className="text-xs text-white/20">
+                    {currentPageIdx + 1} / {pages.length}
+                  </span>
+                </div>
 
-            {/* Page arrow navigation */}
-            <div className="absolute -bottom-12 left-0 right-0 flex items-center justify-center gap-4 pointer-events-auto">
-              <button
-                onClick={() =>
-                  handlePageSelect(Math.max(0, currentPageIdx - 1))
-                }
-                disabled={currentPageIdx === 0}
-                className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
-              >
-                ← Prev
-              </button>
-              <span className="text-xs text-white/20">
-                {currentPageIdx + 1} of {pages.length}
-              </span>
-              <button
-                onClick={() =>
-                  handlePageSelect(
-                    Math.min(pages.length - 1, currentPageIdx + 1)
-                  )
-                }
-                disabled={currentPageIdx === pages.length - 1}
-                className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
+                {/* Canvas wrapper */}
+                <div
+                  className="relative rounded-sm overflow-hidden"
+                  style={{
+                    width: PAGE_W * scale,
+                    height: PAGE_H * scale,
+                    boxShadow:
+                      "0 20px 80px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6)",
+                  }}
+                >
+                  <FabricPageCanvas
+                    ref={canvasRef}
+                    page={currentPage}
+                    scale={scale}
+                    tool={activeTool}
+                    onSelectionChange={handleSelectionChange}
+                    onCanvasChange={handleCanvasChange}
+                  />
+                </div>
+
+                {/* Page arrow navigation */}
+                <div className="absolute -bottom-12 left-0 right-0 flex items-center justify-center gap-4 pointer-events-auto">
+                  <button
+                    onClick={() =>
+                      handlePageSelect(Math.max(0, currentPageIdx - 1))
+                    }
+                    disabled={currentPageIdx === 0}
+                    className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="text-xs text-white/20">
+                    {currentPageIdx + 1} of {pages.length}
+                  </span>
+                  <button
+                    onClick={() =>
+                      handlePageSelect(
+                        Math.min(pages.length - 1, currentPageIdx + 1)
+                      )
+                    }
+                    disabled={currentPageIdx === pages.length - 1}
+                    className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5"
+                  >
+                    Next →
+                  </button>
+                </div>  {/* canvas wrapper */}
+              </div>    {/* relative */}
+            </div>      {/* centering flex */}
+          </div>        {/* canvas area */}
+
+          {/* ── Design Panel ────────────────────────────────────────────────── */}
+          <DesignPanel
+            selectedObj={selectedObj}
+            canvas={fabricCanvas}
+            projectId={projectId}
+            onDelete={() => canvasRef.current?.deleteSelected()}
+            onBringForward={() => canvasRef.current?.bringForward()}
+            onSendBackward={() => canvasRef.current?.sendBackward()}
+          />
         </div>
 
-        {/* ── Design Panel ────────────────────────────────────────────────── */}
-        <DesignPanel
-          selectedObj={selectedObj}
-          canvas={fabricCanvas}
-          projectId={projectId}
-          onDelete={() => canvasRef.current?.deleteSelected()}
-          onBringForward={() => canvasRef.current?.bringForward()}
-          onSendBackward={() => canvasRef.current?.sendBackward()}
-        />
-      </div>
-
-      {/* ── Status bar ───────────────────────────────────────────────────────── */}
-      <div className="h-6 bg-[#13151a] border-t border-white/5 flex items-center px-4 gap-4">
-        <span className="text-[10px] text-white/25">
-          Tool: <span className="text-white/40 capitalize">{activeTool}</span>
-        </span>
-        <span className="text-[10px] text-white/25">
-          Zoom: <span className="text-white/40">{Math.round(scale * 100)}%</span>
-        </span>
-        {selectedObj && (
+        {/* ── Status bar ───────────────────────────────────────────────────────── */}
+        <div className="h-6 bg-[#13151a] border-t border-white/5 flex items-center px-4 gap-4">
           <span className="text-[10px] text-white/25">
-            Selected: <span className="text-white/40">{selectedObj.type}</span>
+            Tool: <span className="text-white/40 capitalize">{activeTool}</span>
           </span>
-        )}
-        <span className="ml-auto text-[10px] text-white/20">
-          Press V·T·R·C to switch tools · Delete to remove
-        </span>
+          <span className="text-[10px] text-white/25">
+            Zoom: <span className="text-white/40">{Math.round(scale * 100)}%</span>
+          </span>
+          {selectedObj && (
+            <span className="text-[10px] text-white/25">
+              Selected: <span className="text-white/40">{selectedObj.type}</span>
+            </span>
+          )}
+          <span className="ml-auto text-[10px] text-white/20">
+            Press V·T·R·C to switch tools · Delete to remove
+          </span>
+        </div>
       </div>
-    </div>
     </>
   );
 }

@@ -123,4 +123,7 @@ export const reviewApi = {
 
   saveEditorPages: (pid: string, pages: EditorPageSave[]): Promise<{ saved: number; total: number }> =>
     api.patch(`/api/projects/${pid}/editor/pages`, { pages }),
+
+  uploadEditorImage: (pid: string, dataUri: string, suffix: string): Promise<{ url: string }> =>
+    api.post(`/api/projects/${pid}/editor/upload-image`, { dataUri, suffix }),
 };

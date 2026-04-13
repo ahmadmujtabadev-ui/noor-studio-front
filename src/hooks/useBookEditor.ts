@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { reviewApi } from "@/lib/api/review.api";
 import { normArr } from "@/lib/api/reviewTypes";
+import { sanitizeFabricImages } from "@/lib/api/sanitizeFabricImages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -353,12 +354,29 @@ export function useBookEditor() {
   const saveAllPages = useCallback(
     async (latestPages: BookPage[]): Promise<void> => {
       if (!projectId) return;
-      const payload = latestPages.map((p) => ({
+
+      // Strip base64 image blobs from fabricJson BEFORE building the payload.
+      // Process pages SEQUENTIALLY (not Promise.all) to avoid flooding the
+      // backend with 30+ concurrent Cloudinary uploads.
+      // The session cache in sanitizeFabricImages means each unique image is
+      // only uploaded once per browser session — subsequent saves are instant.
+      const sanitizedPages: BookPage[] = [];
+      for (const p of latestPages) {
+        const cleanFabric = await sanitizeFabricImages(
+          p.fabricJson ?? null,
+          projectId,
+          p.id,
+        );
+        sanitizedPages.push({ ...p, fabricJson: cleanFabric ?? null });
+      }
+
+      const payload = sanitizedPages.map((p) => ({
         id: p.id,
         fabricJson: p.fabricJson ?? null,
         thumbnail: p.thumbnail ?? null,
         text: p.text ?? "",
         title: p.title ?? "",
+        imageUrl: p.imageUrl ?? "",
       }));
       await reviewApi.saveEditorPages(projectId, payload);
     },

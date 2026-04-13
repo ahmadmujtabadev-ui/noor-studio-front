@@ -104,48 +104,48 @@ function SplitPanelPreview() {
 }
 
 // ── Storybook Header preview ─────────────────────────────────────────────────
-function StorybookPreview() {
-  return (
-    <div className="w-full h-full bg-[#fdf6ee] relative overflow-hidden">
-      {/* Coral header band */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[14%]"
-        style={{ background: "linear-gradient(135deg, #c94f1e 0%, #e07b54 100%)" }}
-      />
-      {/* Chapter label in band */}
-      <div className="absolute top-[3%] left-[8%] right-[40%] h-[2px] rounded-full bg-white/40" />
-      <div className="absolute top-[8%] left-[8%] right-[55%] h-[2px] rounded-full bg-white/25" />
-      {/* Image block — right half */}
-      <div className="absolute top-[20%] right-[5%] w-[46%] h-[40%] rounded bg-[#e8d8c0]/60 border border-[#c94f1e]/15 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-1 opacity-50">
-          <div className="w-8 h-6 rounded bg-[#c94f1e]/20" />
-          <div className="w-5 h-5 rounded-full bg-[#e07b54]/20" />
-        </div>
-      </div>
-      {/* Text lines — left half */}
-      {[22, 30, 38, 46, 54].map((top, i) => (
-        <div
-          key={top}
-          className="absolute rounded-full bg-[#2d1a0e]/20"
-          style={{ top: `${top}%`, left: "6%", right: i === 4 ? "55%" : "53%", height: "2px" }}
-        />
-      ))}
-      {/* Text lines — full width below image */}
-      {[66, 74, 82, 90].map((top, i) => (
-        <div
-          key={top}
-          className="absolute rounded-full bg-[#2d1a0e]/15"
-          style={{ top: `${top}%`, left: "6%", right: i === 3 ? "35%" : "6%", height: "2px" }}
-        />
-      ))}
-      {/* Bottom warm glow */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-[4%] pointer-events-none"
-        style={{ background: "linear-gradient(0deg, rgba(201,79,30,0.15) 0%, transparent 100%)" }}
-      />
-    </div>
-  );
-}
+// function StorybookPreview() {
+//   return (
+//     <div className="w-full h-full bg-[#fdf6ee] relative overflow-hidden">
+//       {/* Coral header band */}
+//       <div
+//         className="absolute top-0 left-0 right-0 h-[14%]"
+//         style={{ background: "linear-gradient(135deg, #c94f1e 0%, #e07b54 100%)" }}
+//       />
+//       {/* Chapter label in band */}
+//       <div className="absolute top-[3%] left-[8%] right-[40%] h-[2px] rounded-full bg-white/40" />
+//       <div className="absolute top-[8%] left-[8%] right-[55%] h-[2px] rounded-full bg-white/25" />
+//       {/* Image block — right half */}
+//       <div className="absolute top-[20%] right-[5%] w-[46%] h-[40%] rounded bg-[#e8d8c0]/60 border border-[#c94f1e]/15 flex items-center justify-center">
+//         <div className="flex flex-col items-center gap-1 opacity-50">
+//           <div className="w-8 h-6 rounded bg-[#c94f1e]/20" />
+//           <div className="w-5 h-5 rounded-full bg-[#e07b54]/20" />
+//         </div>
+//       </div>
+//       {/* Text lines — left half */}
+//       {[22, 30, 38, 46, 54].map((top, i) => (
+//         <div
+//           key={top}
+//           className="absolute rounded-full bg-[#2d1a0e]/20"
+//           style={{ top: `${top}%`, left: "6%", right: i === 4 ? "55%" : "53%", height: "2px" }}
+//         />
+//       ))}
+//       {/* Text lines — full width below image */}
+//       {[66, 74, 82, 90].map((top, i) => (
+//         <div
+//           key={top}
+//           className="absolute rounded-full bg-[#2d1a0e]/15"
+//           style={{ top: `${top}%`, left: "6%", right: i === 3 ? "35%" : "6%", height: "2px" }}
+//         />
+//       ))}
+//       {/* Bottom warm glow */}
+//       <div
+//         className="absolute bottom-0 left-0 right-0 h-[4%] pointer-events-none"
+//         style={{ background: "linear-gradient(0deg, rgba(201,79,30,0.15) 0%, transparent 100%)" }}
+//       />
+//     </div>
+//   );
+// }
 
 // ─── Template list ────────────────────────────────────────────────────────────
 
@@ -156,18 +156,18 @@ const TEMPLATES: TemplateDef[] = [
     description: "Cream pages, serif fonts, gold accents — timeless book feel",
     Preview: ClassicPreview,
   },
-  {
-    id: "splitpanel",
-    name: "Split Panel",
-    description: "Dark teal left panel, content right — matches the screenshot layout",
-    Preview: SplitPanelPreview,
-  },
-  {
-    id: "storyheader",
-    name: "Storybook",
-    description: "Warm cream with coral header band — playful children's book style",
-    Preview: StorybookPreview,
-  },
+  // {
+  //   id: "splitpanel",
+  //   name: "Split Panel",
+  //   description: "Dark teal left panel, content right — matches the screenshot layout",
+  //   Preview: SplitPanelPreview,
+  // },
+  // {
+  //   id: "storyheader",
+  //   name: "Storybook",
+  //   description: "Warm cream with coral header band — playful children's book style",
+  //   Preview: StorybookPreview,
+  // },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -261,7 +261,7 @@ export function ExportPdfModal({
         </div>
 
         {/* Template grid */}
-        <div className="px-6 py-5 grid grid-cols-3 gap-4">
+        <div className="px-6 py-5 ap-4">
           {TEMPLATES.map(({ id, name, description, Preview }) => {
             const isSelected = selectedId === id;
             return (
