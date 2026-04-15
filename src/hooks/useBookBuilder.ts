@@ -87,6 +87,44 @@ export function useBookBuilder() {
   const mode          = useMemo(() => getAgeMode(ageRange), [ageRange]);
   const isChapterBook = mode === "chapter-book";
 
+  // ─── Credit gate ────────────────────────────────────────────────────────────
+  const pendingFnRef = useRef<(() => Promise<void>) | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    cost: number;
+    isRunning: boolean;
+  }>({ open: false, title: '', description: '', cost: 0, isRunning: false });
+
+  /** Opens the credit-confirmation dialog; fn runs only when user confirms. */
+  const gateCredits = useCallback((
+    opts: { title: string; description: string; cost: number },
+    fn: () => Promise<void>
+  ) => {
+    pendingFnRef.current = fn;
+    setConfirmDialog({ open: true, ...opts, isRunning: false });
+  }, []);
+
+  /** Called when user clicks Confirm in the dialog. */
+  const runConfirmed = useCallback(async () => {
+    const fn = pendingFnRef.current;
+    if (!fn) return;
+    setConfirmDialog(prev => ({ ...prev, isRunning: true }));
+    try {
+      await fn();
+    } finally {
+      pendingFnRef.current = null;
+      setConfirmDialog(prev => ({ ...prev, open: false, isRunning: false }));
+    }
+  }, []);
+
+  /** Called when user clicks Cancel in the dialog. */
+  const dismissConfirm = useCallback(() => {
+    pendingFnRef.current = null;
+    setConfirmDialog(prev => ({ ...prev, open: false }));
+  }, []);
+
   const markDone = useCallback((n: number) => {
     setCompletedSteps((prev) => new Set([...prev, n]));
   }, []);
@@ -124,40 +162,49 @@ export function useBookBuilder() {
   }, [getPid, hydrateReview]);
 
   // ─── STEP 1: Story ─────────────────────────────────────────────────────────
-  const generateStory = useCallback(async () => {
+  const generateStory = useCallback(() => {
     if (!storyIdea.trim()) {
       toast({ title: "Story idea is required", variant: "destructive" });
       return;
     }
-    setGlobalLoading(true);
-    try {
-      const created = await projectsApi.create({
-        title:             storyIdea.slice(0, 80),
-        storyIdea,
-        ageRange,
-        language,
-        authorName:        authorName        || undefined,
-        universeId:        universeId        || undefined,
-        knowledgeBaseId:   knowledgeBaseId   || undefined,
-        learningObjective: theme             || undefined,
-        chapterCount:      isChapterBook ? 4 : 10,
-      });
+    gateCredits(
+      {
+        title: 'Generate Story',
+        description: 'AI will generate a complete story from your idea. Credits are deducted once the generation completes successfully.',
+        cost: 1,
+      },
+      async () => {
+        setGlobalLoading(true);
+        try {
+          const created = await projectsApi.create({
+            title:             storyIdea.slice(0, 80),
+            storyIdea,
+            ageRange,
+            language,
+            authorName:        authorName        || undefined,
+            universeId:        universeId        || undefined,
+            knowledgeBaseId:   knowledgeBaseId   || undefined,
+            learningObjective: theme             || undefined,
+            chapterCount:      isChapterBook ? 4 : 10,
+          });
 
-      const pid = getProjectId(created);
-      pidRef.current = pid;
+          const pid = getProjectId(created);
+          pidRef.current = pid;
 
-      await reviewApi.bootstrap(pid);
-      if (storyIdea) await aiApi.generateStory(pid, storyIdea);
+          await reviewApi.bootstrap(pid);
+          if (storyIdea) await aiApi.generateStory(pid, storyIdea);
 
-      const data = await refreshReview();
-      hydrateReview(data);
-      toast({ title: "Story generated ✓" });
-    } catch (err) {
-      toast({ title: "Story generation failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setGlobalLoading(false);
-    }
-  }, [storyIdea, ageRange, language, authorName, universeId, theme, isChapterBook, refreshReview, hydrateReview, toast]);
+          const data = await refreshReview();
+          hydrateReview(data);
+          toast({ title: "Story generated ✓" });
+        } catch (err) {
+          toast({ title: "Story generation failed", description: (err as Error).message, variant: "destructive" });
+        } finally {
+          setGlobalLoading(false);
+        }
+      }
+    );
+  }, [storyIdea, ageRange, language, authorName, universeId, theme, isChapterBook, refreshReview, hydrateReview, toast, gateCredits]);
 
   const saveAndApproveStory = useCallback(async () => {
     const pid     = getPid();
@@ -263,21 +310,30 @@ export function useBookBuilder() {
   }, [structureReview]);
 
   // ─── STEP 3: Style ─────────────────────────────────────────────────────────
-  const generatePortrait = useCallback(async (characterId: string) => {
-    const pid = getPid();
-    setLoadingKey(`portrait-${characterId}`);
-    try {
-      const res = await aiApi.generateCharacterStyle(pid, characterId, artStyle);
-      const url = res.masterReferenceUrl || res.imageUrl;
-      if (url) setPortraits((prev) => ({ ...prev, [characterId]: url }));
-      await refreshUser();
-      toast({ title: "Portrait generated ✓" });
-    } catch (err) {
-      toast({ title: "Portrait failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setLoadingKey(null);
-    }
-  }, [getPid, artStyle, refreshUser, toast]);
+  const generatePortrait = useCallback((characterId: string) => {
+    gateCredits(
+      {
+        title: 'Generate Character Portrait',
+        description: 'AI will generate a styled portrait for this character. Credits are deducted once generation completes.',
+        cost: 4,
+      },
+      async () => {
+        const pid = getPid();
+        setLoadingKey(`portrait-${characterId}`);
+        try {
+          const res = await aiApi.generateCharacterStyle(pid, characterId, artStyle);
+          const url = res.masterReferenceUrl || res.imageUrl;
+          if (url) setPortraits((prev) => ({ ...prev, [characterId]: url }));
+          await refreshUser();
+          toast({ title: "Portrait generated ✓" });
+        } catch (err) {
+          toast({ title: "Portrait failed", description: (err as Error).message, variant: "destructive" });
+        } finally {
+          setLoadingKey(null);
+        }
+      }
+    );
+  }, [getPid, artStyle, refreshUser, toast, gateCredits]);
 
   // ─── STEP 4: Prose ─────────────────────────────────────────────────────────
 
@@ -306,37 +362,48 @@ export function useBookBuilder() {
     }
   }, [getPid, refreshReview, toast]);
 
-  const generateAllChapterProse = useCallback(async () => {
-    const pid = getPid();
+  const generateAllChapterProse = useCallback(() => {
     const items = normArr<StructureItem>(structureReview?.items).filter(
       (i) => i.unitType === "chapter-outline"
     );
-    if (!items.length) return;
-    setLoadingKey("prose-gen-all");
-    const failed: number[] = [];
-    try {
-      for (let i = 0; i < items.length; i++) {
+    const chapterCount = items.length || 1;
+    const cost = chapterCount * 2;
+    gateCredits(
+      {
+        title: 'Write All Chapters',
+        description: `AI will write the full prose for all ${chapterCount} chapter${chapterCount !== 1 ? 's' : ''}. Credits are deducted per chapter as generation completes.`,
+        cost,
+      },
+      async () => {
+        const pid = getPid();
+        if (!items.length) return;
+        setLoadingKey("prose-gen-all");
+        const failed: number[] = [];
         try {
-          setLoadingKey(`prose-gen-${i}`);
-          await reviewApi.regenerateChapterProse(pid, i);
-          await refreshReview();
-        } catch (_err) {
-          failed.push(i + 1);
+          for (let i = 0; i < items.length; i++) {
+            try {
+              setLoadingKey(`prose-gen-${i}`);
+              await reviewApi.regenerateChapterProse(pid, i);
+              await refreshReview();
+            } catch (_err) {
+              failed.push(i + 1);
+            }
+          }
+          if (failed.length === 0) {
+            toast({ title: `All ${items.length} chapters written ✓` });
+          } else {
+            toast({
+              title: `${items.length - failed.length} of ${items.length} chapters written`,
+              description: `Chapter${failed.length > 1 ? "s" : ""} ${failed.join(", ")} failed — retry individually`,
+              variant: "destructive",
+            });
+          }
+        } finally {
+          setLoadingKey(null);
         }
       }
-      if (failed.length === 0) {
-        toast({ title: `All ${items.length} chapters written ✓` });
-      } else {
-        toast({
-          title: `${items.length - failed.length} of ${items.length} chapters written`,
-          description: `Chapter${failed.length > 1 ? "s" : ""} ${failed.join(", ")} failed — retry individually`,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setLoadingKey(null);
-    }
-  }, [getPid, structureReview, refreshReview, toast]);
+    );
+  }, [getPid, structureReview, refreshReview, toast, gateCredits]);
 
   const humanizeChapterProse = useCallback(async (chapterIndex: number) => {
     const pid = getPid();
@@ -415,25 +482,36 @@ export function useBookBuilder() {
     }
   }, [getPid, toast]);
 
-  const regenerateIllustration = useCallback(async (
+  const regenerateIllustration = useCallback((
     key: string,
     opts?: { prompt?: string; variantCount?: number }
   ) => {
-    const pid = getPid();
-    setLoadingKey(`ill-${key}`);
-    try {
-      await reviewApi.regenerateIllustration(pid, key, {
-        variantCount: opts?.variantCount ?? 4,
-        prompt: opts?.prompt,
-      });
-      await loadIllustrations();
-      toast({ title: "Illustration generated ✓" });
-    } catch (err) {
-      toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setLoadingKey(null);
-    }
-  }, [getPid, loadIllustrations, toast]);
+    const variantCount = opts?.variantCount ?? 1;
+    const cost = 4 * variantCount;
+    gateCredits(
+      {
+        title: 'Generate Illustration',
+        description: `AI will generate ${variantCount} illustration variant${variantCount !== 1 ? 's' : ''} for this page. Credits are deducted once generation completes.`,
+        cost,
+      },
+      async () => {
+        const pid = getPid();
+        setLoadingKey(`ill-${key}`);
+        try {
+          await reviewApi.regenerateIllustration(pid, key, {
+            variantCount: opts?.variantCount ?? 4,
+            prompt: opts?.prompt,
+          });
+          await loadIllustrations();
+          toast({ title: "Illustration generated ✓" });
+        } catch (err) {
+          toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
+        } finally {
+          setLoadingKey(null);
+        }
+      }
+    );
+  }, [getPid, loadIllustrations, toast, gateCredits]);
 
   const selectIllustrationVariant = useCallback(async (key: string, variantIndex: number) => {
     const pid = getPid();
@@ -483,46 +561,59 @@ export function useBookBuilder() {
     return illustrationNodes.length > 0 && illustrationNodes.every((n) => n.status === "approved");
   }, [illustrationNodes]);
 
-  const generateAllIllustrations = useCallback(async (force = false, variantCount = 1) => {
-    const pid = getPid();
-    setGlobalLoading(true);
-    setLoadingKey("generate-all-illustrations");
-    try {
-      // Fetch current nodes first
-      const res = await reviewApi.getIllustrations(pid);
-      const allNodes = normArr<IllustrationNode>(res.illustrations);
+  const generateAllIllustrations = useCallback((force = false, variantCount = 1) => {
+    const pending = force
+      ? illustrationNodes.length
+      : illustrationNodes.filter((n) => !n.current?.variants?.length && !n.current?.imageUrl).length;
+    const estimatedCount = Math.max(pending, 1);
+    const cost = estimatedCount * 4;
+    const label = force ? 'Regenerate All Illustrations' : 'Generate All Illustrations';
+    gateCredits(
+      {
+        title: label,
+        description: `AI will generate illustrations for ~${estimatedCount} page${estimatedCount !== 1 ? 's' : ''} (${variantCount} variant${variantCount !== 1 ? 's' : ''} each). Credits are deducted per image as generation completes.`,
+        cost,
+      },
+      async () => {
+        const pid = getPid();
+        setGlobalLoading(true);
+        setLoadingKey("generate-all-illustrations");
+        try {
+          const res = await reviewApi.getIllustrations(pid);
+          const allNodes = normArr<IllustrationNode>(res.illustrations);
 
-      const toGenerate = force
-        ? allNodes
-        : allNodes.filter((n) => !n.current?.variants?.length && !n.current?.imageUrl);
+          const toGenerate = force
+            ? allNodes
+            : allNodes.filter((n) => !n.current?.variants?.length && !n.current?.imageUrl);
 
-      if (!toGenerate.length) {
-        toast({ title: "All illustrations already generated. Use Regenerate All to refresh." });
-        return;
+          if (!toGenerate.length) {
+            toast({ title: "All illustrations already generated. Use Regenerate All to refresh." });
+            return;
+          }
+
+          setIllustrationNodes(allNodes);
+
+          for (const node of toGenerate) {
+            setLoadingKey(`ill-${node.key}`);
+            await reviewApi.regenerateIllustration(pid, node.key, { variantCount, style: artStyle });
+            const updated = await reviewApi.getIllustrations(pid);
+            const updatedNodes = normArr<IllustrationNode>(updated.illustrations);
+            setIllustrationNodes(updatedNodes);
+            const sv: Record<string, number> = {};
+            updatedNodes.forEach((n) => { sv[n.key] = n.current.selectedVariantIndex ?? 0; });
+            setSelectedVariants(sv);
+          }
+
+          toast({ title: force ? `${toGenerate.length} illustrations regenerated ✓` : `${toGenerate.length} illustrations generated ✓` });
+        } catch (err) {
+          toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
+        } finally {
+          setGlobalLoading(false);
+          setLoadingKey(null);
+        }
       }
-
-      setIllustrationNodes(allNodes);
-
-      for (const node of toGenerate) {
-        setLoadingKey(`ill-${node.key}`);
-        await reviewApi.regenerateIllustration(pid, node.key, { variantCount, style: artStyle });
-        // Refresh to show progressive updates
-        const updated = await reviewApi.getIllustrations(pid);
-        const updatedNodes = normArr<IllustrationNode>(updated.illustrations);
-        setIllustrationNodes(updatedNodes);
-        const sv: Record<string, number> = {};
-        updatedNodes.forEach((n) => { sv[n.key] = n.current.selectedVariantIndex ?? 0; });
-        setSelectedVariants(sv);
-      }
-
-      toast({ title: force ? `${toGenerate.length} illustrations regenerated ✓` : `${toGenerate.length} illustrations generated ✓` });
-    } catch (err) {
-      toast({ title: "Generation failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setGlobalLoading(false);
-      setLoadingKey(null);
-    }
-  }, [getPid, artStyle, toast]);
+    );
+  }, [getPid, artStyle, toast, illustrationNodes, gateCredits]);
 
   // ─── STEP 5/6: Cover ──────────────────────────────────────────────────────
   const loadCover = useCallback(async () => {
@@ -535,19 +626,29 @@ export function useBookBuilder() {
     }
   }, [getPid, toast]);
 
-  const regenerateCover = useCallback(async (side: "front" | "back" | "spine", opts?: { prompt?: string; previewMode?: boolean }) => {
-    const pid = getPid();
-    setLoadingKey(`cover-${side}`);
-    try {
-      await reviewApi.regenerateCover(pid, side, { variantCount: 1, prompt: opts?.prompt, previewMode: opts?.previewMode });
-      await loadCover();
-      toast({ title: `${side} cover generated ✓` });
-    } catch (err) {
-      toast({ title: "Cover generation failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setLoadingKey(null);
-    }
-  }, [getPid, loadCover, toast]);
+  const regenerateCover = useCallback((side: "front" | "back" | "spine", opts?: { prompt?: string; previewMode?: boolean }) => {
+    const sideLabel = side.charAt(0).toUpperCase() + side.slice(1);
+    gateCredits(
+      {
+        title: `Generate ${sideLabel} Cover`,
+        description: `AI will generate the ${side} cover for your book. Credits are deducted once generation completes.`,
+        cost: 3,
+      },
+      async () => {
+        const pid = getPid();
+        setLoadingKey(`cover-${side}`);
+        try {
+          await reviewApi.regenerateCover(pid, side, { variantCount: 1, prompt: opts?.prompt, previewMode: opts?.previewMode });
+          await loadCover();
+          toast({ title: `${side} cover generated ✓` });
+        } catch (err) {
+          toast({ title: "Cover generation failed", description: (err as Error).message, variant: "destructive" });
+        } finally {
+          setLoadingKey(null);
+        }
+      }
+    );
+  }, [getPid, loadCover, toast, gateCredits]);
 
   const selectCoverVariant = useCallback(async (side: "front" | "back" | "spine", variantIndex: number) => {
     const pid = getPid();
@@ -743,6 +844,11 @@ export function useBookBuilder() {
     loadExistingProject,
     openEditor,
     refreshReview,
+
+    // Credit gate
+    confirmDialog,
+    runConfirmed,
+    dismissConfirm,
   };
 }
 

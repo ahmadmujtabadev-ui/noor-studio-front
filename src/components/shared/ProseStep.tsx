@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { reviewApi } from "@/lib/api/review.api";
 import { ChapterOutlineItem, normArr, ProseReviewNode, StructureItem } from "@/lib/api/reviewTypes";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
+import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
 
 interface ProseStepProps {
   bb: BookBuilderHook;
@@ -42,6 +43,15 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
   const [expanded,  setExpanded]  = useState<Record<number, boolean>>({});
   const [viewMode,  setViewMode]  = useState<Record<number, ViewMode>>({});
   const [saving,    setSaving]    = useState<Record<number, boolean>>({});
+
+  // Credit confirmation for chapter prose AI calls
+  const [pendingAction, setPendingAction] = useState<{
+    title: string;
+    description: string;
+    cost: number;
+    fn: () => Promise<void>;
+    isRunning: boolean;
+  } | null>(null);
 
   const localEdits = useRef<Record<number, Partial<ProseReviewNode["current"]>>>({});
 
@@ -102,18 +112,52 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
     bb.updateProseNode(ci, { [field]: value } as any);
   };
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-  const handleGenerate = async (ci: number) => {
-    await saveLocalEdits(ci);
-    await bb.generateChapterProse(ci);
-    await bb.refreshReview();
+  // ── Credit gate helper ────────────────────────────────────────────────────
+  const confirmAndRun = (opts: { title: string; description: string; cost: number }, fn: () => Promise<void>) => {
+    setPendingAction({ ...opts, fn, isRunning: false });
   };
 
-  const handlePolish = async (ci: number) => {
-    await saveLocalEdits(ci);
-    await bb.humanizeChapterProse(ci);
-    await bb.refreshReview();
-    setViewMode((p) => ({ ...p, [ci]: "compare" }));
+  const handleConfirm = async () => {
+    if (!pendingAction) return;
+    const fn = pendingAction.fn;
+    setPendingAction(prev => prev ? { ...prev, isRunning: true } : null);
+    try {
+      await fn();
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const handleGenerate = (ci: number) => {
+    confirmAndRun(
+      {
+        title: `Write Chapter ${ci + 1}`,
+        description: `AI will write the full prose for Chapter ${ci + 1}. Credits are deducted once generation completes.`,
+        cost: 2,
+      },
+      async () => {
+        await saveLocalEdits(ci);
+        await bb.generateChapterProse(ci);
+        await bb.refreshReview();
+      }
+    );
+  };
+
+  const handlePolish = (ci: number) => {
+    confirmAndRun(
+      {
+        title: `Polish Chapter ${ci + 1}`,
+        description: `AI will humanize and polish the prose for Chapter ${ci + 1}. Credits are deducted once generation completes.`,
+        cost: 1,
+      },
+      async () => {
+        await saveLocalEdits(ci);
+        await bb.humanizeChapterProse(ci);
+        await bb.refreshReview();
+        setViewMode((p) => ({ ...p, [ci]: "compare" }));
+      }
+    );
   };
 
   const handleSave = async (ci: number) => {
@@ -133,6 +177,16 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
 
   return (
     <div className="space-y-6">
+      {/* ── Credit confirmation ── */}
+      <CreditConfirmModal
+        open={!!pendingAction}
+        onOpenChange={(open) => { if (!open) setPendingAction(null); }}
+        onConfirm={handleConfirm}
+        title={pendingAction?.title ?? ''}
+        description={pendingAction?.description ?? ''}
+        creditCost={pendingAction?.cost ?? 0}
+        isLoading={pendingAction?.isRunning ?? false}
+      />
       {/* ── Header ── */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center gap-3 mb-4">

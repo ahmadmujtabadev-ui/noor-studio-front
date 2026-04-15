@@ -19,6 +19,7 @@ import { ProseStep } from "@/components/shared/ProseStep";
 import { IllustrationsStep } from "@/components/shared/IllustrationStep";
 import { CoverStep } from "@/components/shared/CoverStep";
 import { EditorStep } from "@/components/shared/EditorStep";
+import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
 
 // ─── Loading overlay ────────────────────────────────────────────────────────
 
@@ -152,6 +153,17 @@ export default function BookBuilderPage() {
     >
       {/* ── Global loading overlay ── */}
       {showOverlay && <LoadingOverlay message={loadingMsg} />}
+
+      {/* ── Credit confirmation dialog ── */}
+      <CreditConfirmModal
+        open={bb.confirmDialog.open}
+        onOpenChange={(open) => { if (!open) bb.dismissConfirm(); }}
+        onConfirm={bb.runConfirmed}
+        title={bb.confirmDialog.title}
+        description={bb.confirmDialog.description}
+        creditCost={bb.confirmDialog.cost}
+        isLoading={bb.confirmDialog.isRunning}
+      />
 
       <div className={bb.step === coverStep ? "w-full" : "max-w-4xl mx-auto"}>
         {/* ── Step 1: Story ── */}

@@ -14,6 +14,7 @@ import {
 import { useGenerateCover } from "@/hooks/useAI";
 import { useAuthStore } from "@/hooks/useAuth";
 import type { CoverArtifact } from "@/lib/api/types";
+import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
 
 const COVER_STYLES = [
   { value: "pixar-3d", label: "Pixar 3D" },
@@ -34,6 +35,7 @@ export function CoverStudio({ projectId, cover, onSelectCover }: CoverStudioProp
   const generateMutation = useGenerateCover(projectId);
 
   const [showDialog, setShowDialog] = useState(false);
+  const [showCreditConfirm, setShowCreditConfirm] = useState(false);
   const [form, setForm] = useState({
     style: "flat-illustration",
     title: "",
@@ -42,6 +44,13 @@ export function CoverStudio({ projectId, cover, onSelectCover }: CoverStudioProp
     prompt: "",
   });
 
+  /** Step 1: close the settings dialog and open the credit confirmation. */
+  const requestGenerate = () => {
+    setShowDialog(false);
+    setShowCreditConfirm(true);
+  };
+
+  /** Step 2: called when user confirms in CreditConfirmModal. */
   const handleGenerate = async () => {
     try {
       const updated = await generateMutation.mutateAsync({
@@ -54,7 +63,6 @@ export function CoverStudio({ projectId, cover, onSelectCover }: CoverStudioProp
       refreshUser();
       if (updated.artifacts?.cover) onSelectCover?.(updated.artifacts.cover);
       toast({ title: "Cover generated!" });
-      setShowDialog(false);
     } catch (err) {
       toast({ title: "Failed", description: (err as Error).message, variant: "destructive" });
     }
@@ -156,16 +164,26 @@ export function CoverStudio({ projectId, cover, onSelectCover }: CoverStudioProp
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setShowDialog(false)}>Cancel</Button>
-            <Button variant="hero" onClick={handleGenerate} disabled={generateMutation.isPending}>
-              {generateMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</>
-              ) : (
-                <><Sparkles className="w-4 h-4 mr-2" />Generate Cover (3 cr)</>
-              )}
+            <Button variant="hero" onClick={requestGenerate}>
+              <Sparkles className="w-4 h-4 mr-2" />Generate Cover (3 cr)
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Credit confirmation — shown after the settings dialog */}
+      <CreditConfirmModal
+        open={showCreditConfirm}
+        onOpenChange={(open) => { if (!open) setShowCreditConfirm(false); }}
+        onConfirm={async () => {
+          setShowCreditConfirm(false);
+          await handleGenerate();
+        }}
+        title="Generate Book Cover"
+        description="AI will generate front and back cover art for your book. Credits are deducted once generation completes."
+        creditCost={3}
+        isLoading={generateMutation.isPending}
+      />
     </div>
   );
 }
