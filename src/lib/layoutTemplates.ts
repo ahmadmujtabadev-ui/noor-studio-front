@@ -38,6 +38,7 @@ export interface LayoutTemplate {
 
 // ─── 1. FULL BLEED ────────────────────────────────────────────────────────────
 // Full-page illustration with text overlay at bottom
+// ─── 1. FULL BLEED ────────────────────────────────────────────────────────────
 const FULL_BLEED: LayoutTemplate = {
   id: "full-bleed",
   label: "Full Bleed",
@@ -47,16 +48,16 @@ const FULL_BLEED: LayoutTemplate = {
     version: "5.3.1",
     background: "#111111",
     objects: [
-      // Background colour block (image placeholder)
+      // Image zone — full page (NOT __background so image inserts above it)
       {
         type: "rect",
         version: "5.3.1",
+        _role: "image-zone",
         originX: "left", originY: "top",
         left: 0, top: 0,
         width: PAGE_W, height: PAGE_H,
         fill: "#1a2744",
         selectable: false, evented: false,
-        __background: true,
       },
       // Gradient overlay — bottom third darkens for text readability
       {
@@ -94,6 +95,7 @@ const FULL_BLEED: LayoutTemplate = {
 
 // ─── 2. TEXT BOTTOM ───────────────────────────────────────────────────────────
 // Top 62% illustration, bottom 38% cream text panel
+// ─── 2. TEXT BOTTOM ───────────────────────────────────────────────────────────
 const TEXT_BOTTOM: LayoutTemplate = {
   id: "text-bottom",
   label: "Text Bottom",
@@ -103,7 +105,7 @@ const TEXT_BOTTOM: LayoutTemplate = {
     version: "5.3.1",
     background: "#fffef7",
     objects: [
-      // Image zone background
+      // Image zone — top 62% (NO __background flag)
       {
         type: "rect",
         version: "5.3.1",
@@ -113,7 +115,6 @@ const TEXT_BOTTOM: LayoutTemplate = {
         width: PAGE_W, height: 620,
         fill: "#c8d8e8",
         selectable: false, evented: false,
-        __background: true,
       },
       // Cream text panel
       {

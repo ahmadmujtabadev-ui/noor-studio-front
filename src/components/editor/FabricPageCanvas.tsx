@@ -511,16 +511,14 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
       imageZoneIndex: number,
     ) {
       canvas.add(img);
-      if (imageZoneIndex >= 0) {
-        // Move image down from top of stack to the image-zone's position
-        const objects = canvas.getObjects();
-        const currentIdx = objects.length - 1; // just added = top
-        const stepsBack = currentIdx - imageZoneIndex;
-        for (let i = 0; i < stepsBack; i++) {
-          canvas.sendBackwards(img, true);
-        }
-      } else {
-        canvas.sendToBack(img);
+      if (imageZoneIndex < 0) return; // stays on top
+
+      const objs = canvas.getObjects();
+      const currentIdx = objs.length - 1;
+      const targetIdx = imageZoneIndex + 1;
+      const stepsBack = currentIdx - targetIdx;
+      for (let i = 0; i < stepsBack; i++) {
+        canvas.sendBackwards(img, true);
       }
     }
 
@@ -689,7 +687,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
             return;
           }
 
-          // Find image-zone rect and its stack index
+          // Find image-zone rect — may not exist (Full Bleed has none)
           const allObjects = canvas.getObjects();
           const imageZoneIndex = allObjects.findIndex(
             (o) => (o as any)._role === "image-zone"
@@ -698,7 +696,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
             ? allObjects[imageZoneIndex] as fabric.Rect
             : undefined;
 
-          // Read clip bounds directly from rect properties (not getScaledWidth)
+          // Full page clip when no zone (Full Bleed, Chapter Opener)
           const clipRect = imageZone
             ? {
               left: imageZone.left ?? 0,
@@ -708,7 +706,12 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
             }
             : { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
 
-          // Hide placeholder
+          console.log("[applyLayout] image-zone found:", !!imageZone,
+            "clipRect:", clipRect,
+            "imageZoneIndex:", imageZoneIndex,
+            "total objects:", allObjects.length);
+
+          // Hide the placeholder rect so the image can take its visual place
           if (imageZone) {
             imageZone.set({ visible: false, opacity: 0 });
             canvas.renderAll();
@@ -755,17 +758,20 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
 
             (fabricImg as any).__background = true;
 
-            // Insert at correct z-index
+            // Insert image ABOVE all __background objects but BELOW user objects
             fabricRef.current.add(fabricImg);
+
             if (imageZoneIndex >= 0) {
+              // Move image from top of stack DOWN to imageZoneIndex + 1
+              // (right above the hidden image-zone placeholder)
               const objs = fabricRef.current.getObjects();
               const currentIdx = objs.length - 1;
-              const stepsBack = currentIdx - imageZoneIndex;
+              const targetIdx = imageZoneIndex + 1;
+              const stepsBack = currentIdx - targetIdx;
               for (let i = 0; i < stepsBack; i++) {
                 fabricRef.current.sendBackwards(fabricImg, true);
               }
-            } else {
-              fabricRef.current.sendToBack(fabricImg);
+
             }
 
             fabricRef.current.renderAll();
@@ -880,7 +886,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
     }, [scale]);
 
     // ── Load page ──────────────────────────────────────────────────────────────
- // ── Load page ──────────────────────────────────────────────────────────────
+    // ── Load page ──────────────────────────────────────────────────────────────
     useEffect(() => {
       const c = live(); if (!c) return;
       if (pageIdRef.current === page.id) return;
@@ -944,11 +950,11 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
 
             const clipRect = imageZone
               ? {
-                  left: imageZone.left ?? 0,
-                  top: imageZone.top ?? 0,
-                  width: (imageZone.width ?? PAGE_W) * (imageZone.scaleX ?? 1),
-                  height: (imageZone.height ?? PAGE_H) * (imageZone.scaleY ?? 1),
-                }
+                left: imageZone.left ?? 0,
+                top: imageZone.top ?? 0,
+                width: (imageZone.width ?? PAGE_W) * (imageZone.scaleX ?? 1),
+                height: (imageZone.height ?? PAGE_H) * (imageZone.scaleY ?? 1),
+              }
               : { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
 
             if (imageZone) imageZone.set({ visible: false, opacity: 0 });
@@ -1042,4 +1048,3 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
 
 FabricPageCanvas.displayName = "FabricPageCanvas";
 export default FabricPageCanvas;
- 
