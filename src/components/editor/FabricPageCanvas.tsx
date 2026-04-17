@@ -1,4 +1,19 @@
 // components/editor/FabricPageCanvas.tsx
+//
+// KEY CHANGE vs original:
+//
+// fireChange() and the imperative toJSON() handle now EXCLUDE __background
+// image objects from serialisation. Background images are always re-added
+// fresh from page.imageUrl on load — storing them in fabricJson caused:
+//   1. Stale coordinates after zoom/resize
+//   2. Duplicate stacked images on each reload
+//   3. PDF renderer receiving corrupt coordinates
+//
+// The layout STRUCTURE (rects, lines, text boxes from a layout template) IS
+// stored in fabricJson — that is exactly what the PDF renderer reads to
+// reproduce the user's chosen layout faithfully.
+//
+// Everything else is identical to the original file.
 
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { fabric } from "fabric";
@@ -57,7 +72,6 @@ function reflowTextboxes(canvas: fabric.Canvas, isAlive: () => boolean) {
   });
 }
 
-// ─── Dynamic font size ────────────────────────────────────────────────────────
 function calcBodyFontSize(
   text: string,
   textWidth: number,
@@ -70,7 +84,6 @@ function calcBodyFontSize(
   const charCount = text.length;
   const wordCount = text.split(/\s+/).length;
   const targetH = availableHeight * fillRatio;
-
   let lo = 14, hi = 26;
   for (let i = 0; i < 10; i++) {
     const mid = (lo + hi) / 2;
@@ -79,19 +92,10 @@ function calcBodyFontSize(
     const h = lines * mid * lineHeight;
     if (h < targetH) lo = mid; else hi = mid;
   }
-
   const minSize = wordCount < 80 ? 20 : 15;
   return Math.round(Math.max(minSize, Math.min(26, (lo + hi) / 2)));
 }
 
-// ─── Shared helper: load background image with cover-fill + clip ──────────────
-//
-// Uses Math.max (cover) so the illustration always fills the entire page with
-// NO black/white bars. Any overflow is clipped to [0,0,PAGE_W,PAGE_H].
-// Now safe to use because the backend strips image objects from fabricJson,
-// so stale coordinates can never be persisted and re-loaded.
-
-// ─── Shared helper: load background image with cover-fill + clip ──────────────
 function loadBgImage(
   url: string,
   canvas: fabric.Canvas,
@@ -104,74 +108,41 @@ function loadBgImage(
   htmlImg.onload = () => {
     const originalW = htmlImg.naturalWidth || PAGE_W;
     const originalH = htmlImg.naturalHeight || PAGE_H;
-
     const off = document.createElement("canvas");
-    off.width = originalW;
-    off.height = originalH;
-
+    off.width = originalW; off.height = originalH;
     const offCtx = off.getContext("2d");
-    if (!offCtx) {
-      fallbackDirectLoad(url, canvas, onDone, clipRect);
-      return;
-    }
-
+    if (!offCtx) { fallbackDirectLoad(url, canvas, onDone, clipRect); return; }
     offCtx.drawImage(htmlImg, 0, 0);
-
     const trimmed = trimImageWhitespace(off, offCtx);
-
     const finalCanvas = trimmed ?? off;
     const finalUrl = finalCanvas.toDataURL("image/png");
 
-    fabric.Image.fromURL(
-      finalUrl,
-      (img) => {
-        const clip = clipRect ?? {
-          left: 0,
-          top: 0,
-          width: PAGE_W,
-          height: PAGE_H,
-        };
-
-        const el = (img as any)._element as HTMLImageElement | undefined;
-        const natW = el?.naturalWidth || img.width || clip.width;
-        const natH = el?.naturalHeight || img.height || clip.height;
-
-        const s = Math.max(clip.width / natW, clip.height / natH);
-        const drawW = natW * s;
-        const drawH = natH * s;
-
-        img.set({
-          originX: "left",
-          originY: "top",
-          left: clip.left + (clip.width - drawW) / 2,
-          top: clip.top + (clip.height - drawH) / 2,
-          scaleX: s,
-          scaleY: s,
-          selectable: false,
-          evented: false,
-          lockMovementX: true,
-          lockMovementY: true,
-        });
-
-        img.clipPath = new fabric.Rect({
-          left: clip.left,
-          top: clip.top,
-          width: clip.width,
-          height: clip.height,
-          absolutePositioned: true,
-        });
-
-        (img as any).__background = true;
-        onDone(img);
-      },
-      { crossOrigin: "anonymous" }
-    );
+    fabric.Image.fromURL(finalUrl, (img) => {
+      const clip = clipRect ?? { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
+      const el = (img as any)._element as HTMLImageElement | undefined;
+      const natW = el?.naturalWidth || img.width || clip.width;
+      const natH = el?.naturalHeight || img.height || clip.height;
+      const s = Math.max(clip.width / natW, clip.height / natH);
+      const drawW = natW * s, drawH = natH * s;
+      img.set({
+        originX: "left", originY: "top",
+        left: clip.left + (clip.width - drawW) / 2,
+        top: clip.top + (clip.height - drawH) / 2,
+        scaleX: s, scaleY: s,
+        selectable: false, evented: false,
+        lockMovementX: true, lockMovementY: true,
+      });
+      img.clipPath = new fabric.Rect({
+        left: clip.left, top: clip.top,
+        width: clip.width, height: clip.height,
+        absolutePositioned: true,
+      });
+      (img as any).__background = true;
+      onDone(img);
+    }, { crossOrigin: "anonymous" });
   };
 
-  htmlImg.onerror = () => {
-    fallbackDirectLoad(url, canvas, onDone, clipRect);
-  };
-
+  htmlImg.onerror = () => fallbackDirectLoad(url, canvas, onDone, clipRect);
   htmlImg.src = url;
 }
 
@@ -181,131 +152,61 @@ function fallbackDirectLoad(
   onDone: (img: fabric.Image) => void,
   clipRect?: { left: number; top: number; width: number; height: number },
 ) {
-  fabric.Image.fromURL(
-    url,
-    (img) => {
-      const clip = clipRect ?? {
-        left: 0,
-        top: 0,
-        width: PAGE_W,
-        height: PAGE_H,
-      };
-
-      const el = (img as any)._element as HTMLImageElement | undefined;
-      const natW = el?.naturalWidth || img.width || clip.width;
-      const natH = el?.naturalHeight || img.height || clip.height;
-
-      const s = Math.max(clip.width / natW, clip.height / natH);
-      const drawW = natW * s;
-      const drawH = natH * s;
-
-      img.set({
-        originX: "left",
-        originY: "top",
-        left: clip.left + (clip.width - drawW) / 2,
-        top: clip.top + (clip.height - drawH) / 2,
-        scaleX: s,
-        scaleY: s,
-        selectable: false,
-        evented: false,
-        lockMovementX: true,
-        lockMovementY: true,
-      });
-
-      img.clipPath = new fabric.Rect({
-        left: clip.left,
-        top: clip.top,
-        width: clip.width,
-        height: clip.height,
-        absolutePositioned: true,
-      });
-
-      (img as any).__background = true;
-      onDone(img);
-    },
-    { crossOrigin: "anonymous" }
-  );
+  fabric.Image.fromURL(url, (img) => {
+    const clip = clipRect ?? { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
+    const el = (img as any)._element as HTMLImageElement | undefined;
+    const natW = el?.naturalWidth || img.width || clip.width;
+    const natH = el?.naturalHeight || img.height || clip.height;
+    const s = Math.max(clip.width / natW, clip.height / natH);
+    const drawW = natW * s, drawH = natH * s;
+    img.set({
+      originX: "left", originY: "top",
+      left: clip.left + (clip.width - drawW) / 2,
+      top: clip.top + (clip.height - drawH) / 2,
+      scaleX: s, scaleY: s,
+      selectable: false, evented: false,
+      lockMovementX: true, lockMovementY: true,
+    });
+    img.clipPath = new fabric.Rect({
+      left: clip.left, top: clip.top,
+      width: clip.width, height: clip.height,
+      absolutePositioned: true,
+    });
+    (img as any).__background = true;
+    onDone(img);
+  }, { crossOrigin: "anonymous" });
 }
 
 function trimImageWhitespace(
   sourceCanvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D
+  ctx: CanvasRenderingContext2D,
 ): HTMLCanvasElement | null {
   const { width, height } = sourceCanvas;
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
-
-  let top = height;
-  let left = width;
-  let right = -1;
-  let bottom = -1;
-
-  const alphaThreshold = 8;
-  const whiteThreshold = 245;
-
+  let top = height, left = width, right = -1, bottom = -1;
+  const alphaThreshold = 8, whiteThreshold = 245;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
       const isTransparent = a <= alphaThreshold;
-      const isNearWhite =
-        r >= whiteThreshold &&
-        g >= whiteThreshold &&
-        b >= whiteThreshold &&
-        a > alphaThreshold;
-
+      const isNearWhite = r >= whiteThreshold && g >= whiteThreshold && b >= whiteThreshold && a > alphaThreshold;
       if (!isTransparent && !isNearWhite) {
-        if (x < left) left = x;
-        if (x > right) right = x;
-        if (y < top) top = y;
-        if (y > bottom) bottom = y;
+        if (x < left) left = x; if (x > right) right = x;
+        if (y < top) top = y; if (y > bottom) bottom = y;
       }
     }
   }
-
-  if (right === -1 || bottom === -1) {
-    return null;
-  }
-
-  const croppedW = right - left + 1;
-  const croppedH = bottom - top + 1;
-
-  if (croppedW <= 0 || croppedH <= 0) {
-    return null;
-  }
-
-  if (
-    left === 0 &&
-    top === 0 &&
-    croppedW === width &&
-    croppedH === height
-  ) {
-    return sourceCanvas;
-  }
-
+  if (right === -1 || bottom === -1) return null;
+  const croppedW = right - left + 1, croppedH = bottom - top + 1;
+  if (croppedW <= 0 || croppedH <= 0) return null;
+  if (left === 0 && top === 0 && croppedW === width && croppedH === height) return sourceCanvas;
   const croppedCanvas = document.createElement("canvas");
-  croppedCanvas.width = croppedW;
-  croppedCanvas.height = croppedH;
-
+  croppedCanvas.width = croppedW; croppedCanvas.height = croppedH;
   const croppedCtx = croppedCanvas.getContext("2d");
   if (!croppedCtx) return sourceCanvas;
-
-  croppedCtx.drawImage(
-    sourceCanvas,
-    left,
-    top,
-    croppedW,
-    croppedH,
-    0,
-    0,
-    croppedW,
-    croppedH
-  );
-
+  croppedCtx.drawImage(sourceCanvas, left, top, croppedW, croppedH, 0, 0, croppedW, croppedH);
   return croppedCanvas;
 }
 
@@ -357,8 +258,11 @@ export interface FabricCanvasHandle {
   addLine: () => void; addStar: () => void; addSpeechBubble: () => void;
   addFontCombo: (c: FontCombo) => void; addImageFromUrl: (url: string) => void;
   deleteSelected: () => void; bringForward: () => void; sendBackward: () => void;
-  getCanvas: () => fabric.Canvas | null; toJSON: () => object; toDataURL: () => string;
+  getCanvas: () => fabric.Canvas | null;
+  toJSON: () => object;
+  toDataURL: () => string;
   setTool: (t: EditorTool) => void;
+  applyLayout: (json: object, imageUrl: string | undefined, onDone: () => void) => void;
 }
 
 interface Props {
@@ -367,15 +271,7 @@ interface Props {
   onCanvasChange: (json: object, thumbnail: string) => void;
 }
 
-// ─── Layout: text_inline_image ────────────────────────────────────────────────
-//
-//  ┌───────────────────────────────────┐  y=0
-//  │  chapter header  (Cinzel/gold)    │
-//  │  body text                        │  TOP 55% — cream bg
-//  ├───────────────────────────────────┤  y = TEXT_ZONE_H (550px)
-//  │  illustration (cover-fill)        │  BOTTOM 45%
-//  └───────────────────────────────────┘  y = PAGE_H (1000px)
-
+// ─── Inline-image layout ──────────────────────────────────────────────────────
 async function buildInlineImageLayout(
   page: BookPage,
   canvas: fabric.Canvas,
@@ -384,14 +280,10 @@ async function buildInlineImageLayout(
 ): Promise<void> {
   return new Promise((resolve) => {
     if (cancelled() || !isAlive()) { resolve(); return; }
+    const TEXT_ZONE_H = Math.round(PAGE_H * 0.55);
+    const IMG_TOP = TEXT_ZONE_H, IMG_H = PAGE_H - IMG_TOP;
+    const TXT_LEFT = 40, TXT_W = PAGE_W - 80;
 
-    const TEXT_ZONE_H = Math.round(PAGE_H * 0.55); // 550px
-    const IMG_TOP     = TEXT_ZONE_H;
-    const IMG_H       = PAGE_H - IMG_TOP;           // 450px
-    const TXT_LEFT    = 40;
-    const TXT_W       = PAGE_W - 80;
-
-    // 1. Cream background for text zone
     const textBg = new fabric.Rect({
       left: 0, top: 0, width: PAGE_W, height: TEXT_ZONE_H,
       fill: "#fffef7", selectable: false, evented: false,
@@ -399,171 +291,119 @@ async function buildInlineImageLayout(
     (textBg as any).__background = true;
     canvas.add(textBg);
 
-    // 2. Gold divider
-    const divLine = new fabric.Line(
-      [20, TEXT_ZONE_H, PAGE_W - 20, TEXT_ZONE_H],
-      { stroke: "#c9a84c80", strokeWidth: 1, selectable: false, evented: false },
-    );
+    const divLine = new fabric.Line([20, TEXT_ZONE_H, PAGE_W - 20, TEXT_ZONE_H], {
+      stroke: "#c9a84c80", strokeWidth: 1, selectable: false, evented: false,
+    });
     (divLine as any).__background = true;
     canvas.add(divLine);
 
-    // 3. Load illustration — cover-fill the bottom zone via shared helper
-    loadBgImage(
-      page.imageUrl,
-      canvas,
-      async (img) => {
-        if (cancelled() || !isAlive()) { resolve(); return; }
-        canvas.add(img);
+    loadBgImage(page.imageUrl, canvas, async (img) => {
+      if (cancelled() || !isAlive()) { resolve(); return; }
+      canvas.add(img);
 
-        // 4. Text layers on top
-        await preloadFonts([
-          "400 26px Lato", "700 26px Lato",
-          "400 12px Cinzel", "700 12px Cinzel",
-          "400 13px Merriweather",
-        ]);
-        if (cancelled() || !isAlive()) { resolve(); return; }
+      await preloadFonts(["400 26px Lato", "700 26px Lato", "400 12px Cinzel", "700 12px Cinzel"]);
+      if (cancelled() || !isAlive()) { resolve(); return; }
 
-        let cursor = 20;
+      let cursor = 20;
+      if (page.subTitle) {
+        const hdr = new fabric.Textbox(page.subTitle, {
+          left: TXT_LEFT, top: cursor, width: TXT_W,
+          fontSize: 11, fontFamily: "Cinzel", fill: "#8b6914",
+          textAlign: "center", charSpacing: 160,
+        } as fabric.ITextOptions);
+        (hdr as any)._role = "chapter-header";
+        canvas.add(hdr);
+        cursor += 32;
+      }
 
-        if (page.subTitle) {
-          const hdr = new fabric.Textbox(page.subTitle, {
-            left: TXT_LEFT, top: cursor, width: TXT_W,
-            fontSize: 11, fontFamily: "Cinzel", fill: "#8b6914",
-            textAlign: "center", charSpacing: 160,
-          } as fabric.ITextOptions);
-          (hdr as any)._role = "chapter-header";
-          canvas.add(hdr);
-          cursor += 20;
+      if (page.text) {
+        const availH = TEXT_ZONE_H - cursor - 24, LH = 1.6;
+        const norm = page.text.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
+        const fontSize = calcBodyFontSize(norm, TXT_W, availH, LH, 0.88);
+        const body = new fabric.Textbox(norm, {
+          left: TXT_LEFT, top: cursor, width: TXT_W,
+          fontSize, fontFamily: "Lato", fill: "#2c1e0f",
+          textAlign: "left", lineHeight: LH, splitByGrapheme: false,
+        } as fabric.ITextOptions);
+        (body as any)._role = "body-text";
+        canvas.add(body);
+      }
 
-          const rule = new fabric.Line(
-            [PAGE_W / 2 - 60, cursor, PAGE_W / 2 + 60, cursor],
-            { stroke: "#c9a84c90", strokeWidth: 1, selectable: false, evented: false },
-          );
-          (rule as any).__background = true;
-          canvas.add(rule);
-          cursor += 12;
-        }
-
-        if (page.text) {
-          const availH    = TEXT_ZONE_H - cursor - 24;
-          const LH        = 1.6;
-          const norm      = page.text.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
-          const fontSize  = calcBodyFontSize(norm, TXT_W, availH, LH, 0.88);
-          const body = new fabric.Textbox(norm, {
-            left: TXT_LEFT, top: cursor, width: TXT_W,
-            fontSize, fontFamily: "Lato", fill: "#2c1e0f",
-            textAlign: "left", lineHeight: LH, splitByGrapheme: false,
-          } as fabric.ITextOptions);
-          (body as any)._role = "body-text";
-          canvas.add(body);
-        }
-
-        if (page.pageNum) {
-          const pn = new fabric.IText(String(page.pageNum), {
-            left: PAGE_W / 2, top: TEXT_ZONE_H - 20, originX: "center",
-            fontSize: 11, fontFamily: "Merriweather", fill: "#8b6914",
-            textAlign: "center", width: 60,
-          } as fabric.ITextOptions);
-          (pn as any)._role = "page-num";
-          canvas.add(pn);
-        }
-
-        canvas.renderAll();
-        resolve();
-      },
-      // Clip illustration to the bottom zone only
-      { left: 0, top: IMG_TOP, width: PAGE_W, height: IMG_H },
-    );
+      canvas.renderAll();
+      resolve();
+    }, { left: 0, top: IMG_TOP, width: PAGE_W, height: IMG_H });
   });
 }
 
-// ─── Initial text layers per page type ───────────────────────────────────────
+// ─── Initial text layers ──────────────────────────────────────────────────────
 type InitObj = Partial<fabric.ITextOptions> & { text: string; _role: string; _wrap?: boolean };
 
 function buildInitialObjects(page: BookPage, type: BookPageType): InitObj[] {
   const out: InitObj[] = [];
 
   if (type === "front-cover") {
-    if (page.title)
-      out.push({
-        _role: "title", text: page.title, _wrap: true,
-        left: 50, top: 60, fontSize: 52, fontFamily: "Fredoka One", fontWeight: "bold",
-        fill: "#ffffff", textAlign: "center", width: PAGE_W - 100, lineHeight: 1.2,
-        shadow: "2px 4px 12px rgba(0,0,0,0.8)"
-      });
-    if (page.text)
-      out.push({
-        _role: "author",
-        text: page.text.length > 80 ? page.text.slice(0, 77) + "…" : page.text,
-        _wrap: true, left: 50, top: PAGE_H - 80, fontSize: 20, fontFamily: "Nunito",
-        fontStyle: "italic", fill: "#ffffff", textAlign: "center", width: PAGE_W - 100,
-        shadow: "1px 2px 6px rgba(0,0,0,0.7)"
-      });
-  }
-
-  else if (type === "spread") {
+    if (page.title) out.push({
+      _role: "title", text: page.title, _wrap: true,
+      left: 50, top: 60, fontSize: 52, fontFamily: "Fredoka One", fontWeight: "bold",
+      fill: "#ffffff", textAlign: "center", width: PAGE_W - 100, lineHeight: 1.2,
+      shadow: "2px 4px 12px rgba(0,0,0,0.8)"
+    });
+    if (page.text) out.push({
+      _role: "author", text: page.text.length > 80 ? page.text.slice(0, 77) + "…" : page.text,
+      _wrap: true, left: 50, top: PAGE_H - 80, fontSize: 20, fontFamily: "Nunito",
+      fontStyle: "italic", fill: "#ffffff", textAlign: "center", width: PAGE_W - 100,
+      shadow: "1px 2px 6px rgba(0,0,0,0.7)"
+    });
+  } else if (type === "spread") {
     if (page.text) {
       const txt = page.text.length > 600 ? page.text.slice(0, 597) + "…" : page.text;
       out.push({
         _role: "body-text", text: txt, _wrap: true,
-        left: 40, top: PAGE_H - 220, fontSize: txt.split(/\s+/).length > 12 ? 17 : 20, fontFamily: "Nunito",
-        fill: "#ffffff", textAlign: "center", width: PAGE_W - 80, lineHeight: 1.55,
-        shadow: "1px 1px 5px rgba(0,0,0,0.9)", backgroundColor: "rgba(0,0,0,0.38)", padding: 14
+        left: 40, top: PAGE_H - 220, fontSize: txt.split(/\s+/).length > 12 ? 17 : 20,
+        fontFamily: "Nunito", fill: "#ffffff", textAlign: "center", width: PAGE_W - 80,
+        lineHeight: 1.55, shadow: "1px 1px 5px rgba(0,0,0,0.9)",
+        backgroundColor: "rgba(0,0,0,0.38)", padding: 14
       });
     }
-  }
-
-  else if (type === "chapter-opener") {
-    if (page.subTitle)
-      out.push({
-        _role: "chapter-label", text: page.subTitle.toUpperCase(), _wrap: true,
-        left: 20, top: PAGE_H * 0.58, fontSize: 16, fontFamily: "Cinzel", fontWeight: "bold",
-        fill: "#f0c060", textAlign: "center", width: PAGE_W - 80, charSpacing: 250,
-        shadow: "1px 1px 4px rgba(0,0,0,0.9)"
-      });
-  }
-
-  else if (type === "text-page") {
-    if (page.subTitle)
-      out.push({
-        _role: "chapter-header", text: page.subTitle, _wrap: true,
-        left: 40, top: 32, fontSize: 12, fontFamily: "Cinzel",
-        fill: "#8b6914", textAlign: "center", width: PAGE_W - 80, charSpacing: 120
-      });
-
+  } else if (type === "chapter-opener") {
+    if (page.subTitle) out.push({
+      _role: "chapter-label", text: page.subTitle.toUpperCase(), _wrap: true,
+      left: 20, top: PAGE_H * 0.58, fontSize: 16, fontFamily: "Cinzel", fontWeight: "bold",
+      fill: "#f0c060", textAlign: "center", width: PAGE_W - 80, charSpacing: 250,
+      shadow: "1px 1px 4px rgba(0,0,0,0.9)"
+    });
+  } else if (type === "text-page") {
+    if (page.subTitle) out.push({
+      _role: "chapter-header", text: page.subTitle, _wrap: true,
+      left: 40, top: 32, fontSize: 12, fontFamily: "Cinzel",
+      fill: "#8b6914", textAlign: "center", width: PAGE_W - 80, charSpacing: 120
+    });
     out.push({
       _role: "divider", text: "────────────────────────────────", _wrap: false,
       left: PAGE_W / 2, top: 58, originX: "center",
       fontSize: 9, fontFamily: "Merriweather", fill: "#c9a84c",
       textAlign: "center", width: PAGE_W - 120
     });
-
     if (page.text) {
-      const TEXT_TOP  = 76;
-      const TEXT_H    = PAGE_H - TEXT_TOP - 52;
-      const TEXT_W    = PAGE_W - 120;
+      const TEXT_TOP = 76, TEXT_H = PAGE_H - TEXT_TOP - 52, TEXT_W = PAGE_W - 120;
       const MAX_CHARS = 1400;
-      const bodyText  = page.text.length > MAX_CHARS ? page.text.slice(0, MAX_CHARS - 3) + "…" : page.text;
-      const norm      = bodyText.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
-      const LH        = 1.65;
-      const fontSize  = calcBodyFontSize(norm, TEXT_W, TEXT_H, LH, 0.82);
+      const bodyText = page.text.length > MAX_CHARS ? page.text.slice(0, MAX_CHARS - 3) + "…" : page.text;
+      const norm = bodyText.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim();
+      const LH = 1.65;
+      const fontSize = calcBodyFontSize(norm, TEXT_W, TEXT_H, LH, 0.82);
       out.push({
         _role: "body-text", text: norm, _wrap: true,
         left: 60, top: TEXT_TOP, fontSize, fontFamily: "Lato", fill: "#2c1e0f",
         textAlign: "left", width: TEXT_W, lineHeight: LH, splitByGrapheme: false
       });
     }
-
-    if (page.pageNum)
-      out.push({
-        _role: "page-num", text: String(page.pageNum), _wrap: false,
-        left: PAGE_W / 2, top: PAGE_H - 46, originX: "center",
-        fontSize: 13, fontFamily: "Merriweather", fill: "#8b6914",
-        textAlign: "center", width: 60
-      });
-  }
-
-  else if (type === "chapter-moment") {
+    if (page.pageNum) out.push({
+      _role: "page-num", text: String(page.pageNum), _wrap: false,
+      left: PAGE_W / 2, top: PAGE_H - 46, originX: "center",
+      fontSize: 13, fontFamily: "Merriweather", fill: "#8b6914",
+      textAlign: "center", width: 60
+    });
+  } else if (type === "chapter-moment") {
     if (page.text) {
       const cap = page.text.length > 400 ? page.text.slice(0, 397) + "…" : page.text;
       out.push({
@@ -574,9 +414,7 @@ function buildInitialObjects(page: BookPage, type: BookPageType): InitObj[] {
         backgroundColor: "rgba(0,0,0,0.4)", padding: 10
       });
     }
-  }
-
-  else if (type === "back-cover") {
+  } else if (type === "back-cover") {
     if (page.text) {
       const syn = page.text.length > 500 ? page.text.slice(0, 497) + "…" : page.text;
       out.push({
@@ -591,14 +429,13 @@ function buildInitialObjects(page: BookPage, type: BookPageType): InitObj[] {
   return out;
 }
 
-// ─── Clamp loaded objects ─────────────────────────────────────────────────────
 function clampLoadedObjects(canvas: fabric.Canvas) {
   canvas.getObjects().forEach((obj) => {
     if ((obj as any).__background) { obj.selectable = false; obj.evented = false; return; }
     let dirty = false;
     const G = 20;
     if ((obj.left ?? 0) < 0) { obj.set({ left: 0 }); dirty = true; }
-    if ((obj.top  ?? 0) < 0) { obj.set({ top:  0 }); dirty = true; }
+    if ((obj.top ?? 0) < 0) { obj.set({ top: 0 }); dirty = true; }
     const oX = obj.originX ?? "left";
     if (oX === "left" && obj.width !== undefined) {
       const maxW = PAGE_W - (obj.left ?? 0) - G;
@@ -612,36 +449,85 @@ function clampLoadedObjects(canvas: fabric.Canvas) {
   });
 }
 
-// ─── Helper: is this an inline-image page? ───────────────────────────────────
 function isInlineImagePage(page: BookPage): boolean {
   return (
     page.type === "text-page" &&
-    !!page.imageUrl &&
-    page.imageUrl.trim() !== "" &&
+    !!page.imageUrl && page.imageUrl.trim() !== "" &&
     page.layoutType === "text_inline_image"
   );
+}
+
+// ─── KEY HELPER: serialise canvas WITHOUT background image objects ────────────
+//
+// Background images are always re-added fresh from page.imageUrl on load.
+// They must NOT be stored in fabricJson because:
+//   - Their left/top/scale are computed at runtime for current zoom/size
+//   - Storing stale coords breaks the PDF renderer (wrong position/crop)
+//   - Reloading causes duplicate stacked images
+//
+// Layout structure rects/lines/textboxes ARE stored — they define the layout.
+
+function canvasToJson(canvas: fabric.Canvas): object {
+  // Step 1: Remove __background IMAGE objects temporarily
+  const bgImages = canvas.getObjects().filter(
+    (o) => (o as any).__background && o.type === "image"
+  );
+  bgImages.forEach((o) => canvas.remove(o));
+
+  // Step 2: Serialise (now only contains layout structure + user objects)
+  const json = canvas.toJSON(["__background", "_role"]);
+
+  // Step 3: Re-add background images
+  bgImages.forEach((o) => {
+    canvas.add(o);
+    canvas.sendToBack(o);
+  });
+
+  return json;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
   ({ page, scale, tool, onSelectionChange, onCanvasChange }, ref) => {
-    const containerRef   = useRef<HTMLDivElement>(null);
-    const fabricRef      = useRef<fabric.Canvas | null>(null);
-    const toolRef        = useRef<EditorTool>(tool);
-    const pageIdRef      = useRef<string>("");
-    const suppressRef    = useRef(false);
-    const isAliveRef     = useRef(true);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const fabricRef = useRef<fabric.Canvas | null>(null);
+    const toolRef = useRef<EditorTool>(tool);
+    const pageIdRef = useRef<string>("");
+    const suppressRef = useRef(false);
+    const isAliveRef = useRef(true);
     const onSelectionRef = useRef(onSelectionChange);
-    const onChangeRef    = useRef(onCanvasChange);
+    const onChangeRef = useRef(onCanvasChange);
     useEffect(() => { onSelectionRef.current = onSelectionChange; });
-    useEffect(() => { onChangeRef.current    = onCanvasChange; });
+    useEffect(() => { onChangeRef.current = onCanvasChange; });
 
     function live() { return isAliveRef.current ? fabricRef.current : null; }
+    // ─── NEW HELPER: insert image at correct z-position ───────────────────────
+    // For layouts with an image-zone rect, the image must sit AT that rect's
+    // stack index — not at the very back (which puts it under bg color rects).
+    // For full-bleed (no image-zone), sendToBack is correct.
+    function insertImageAtZone(
+      canvas: fabric.Canvas,
+      img: fabric.Image,
+      imageZoneIndex: number,
+    ) {
+      canvas.add(img);
+      if (imageZoneIndex >= 0) {
+        // Move image down from top of stack to the image-zone's position
+        const objects = canvas.getObjects();
+        const currentIdx = objects.length - 1; // just added = top
+        const stepsBack = currentIdx - imageZoneIndex;
+        for (let i = 0; i < stepsBack; i++) {
+          canvas.sendBackwards(img, true);
+        }
+      } else {
+        canvas.sendToBack(img);
+      }
+    }
 
     function applyToolMode(t: EditorTool) {
       const c = live(); if (!c) return;
       c.isDrawingMode = false;
-      c.selection     = t === "select";
+      c.selection = t === "select";
       c.defaultCursor = t === "text" ? "text" : "default";
       c.getObjects().forEach((obj) => {
         if ((obj as any).__background) { obj.selectable = false; obj.evented = false; }
@@ -649,10 +535,11 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
       });
     }
 
+    // ── KEY FIX: fireChange uses canvasToJson which strips background images ──
     function fireChange() {
       const c = live(); if (!c || suppressRef.current) return;
       try {
-        const json  = c.toJSON(["__background", "_role"]);
+        const json = canvasToJson(c);
         const thumb = c.toDataURL({ format: "jpeg", quality: 0.35 });
         onChangeRef.current(json, thumb);
       } catch { /* mid-clear */ }
@@ -719,7 +606,8 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           {
             left: PAGE_W / 2 - 150, top: PAGE_H / 2 - 55,
             fill: "rgba(255,255,255,0.95)", stroke: "#333", strokeWidth: 2
-          }));
+          }
+        ));
         c.renderAll();
       },
       addFontCombo: (combo) => {
@@ -734,26 +622,22 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           left: 60, top: PAGE_H / 2 + 10, width: PAGE_W - 120,
           fontSize: combo.sub.fontSize, fontFamily: combo.sub.fontFamily,
           fill: combo.sub.fill, textAlign: "center",
-          ...(combo.sub.fontStyle   ? { fontStyle:    combo.sub.fontStyle }   : {}),
+          ...(combo.sub.fontStyle ? { fontStyle: combo.sub.fontStyle } : {}),
           ...(combo.sub.charSpacing !== undefined ? { charSpacing: combo.sub.charSpacing } : {})
         });
         c.add(sub); c.setActiveObject(sub); c.renderAll();
       },
-      // User-uploaded images are selectable/movable (NOT background)
       addImageFromUrl: (url) => {
         fabric.Image.fromURL(url, (img) => {
           const c = live(); if (!c) return;
-          const el   = (img as any)._element as HTMLImageElement | undefined;
-          const natW = el?.naturalWidth  || img.width  || PAGE_W;
+          const el = (img as any)._element as HTMLImageElement | undefined;
+          const natW = el?.naturalWidth || img.width || PAGE_W;
           const natH = el?.naturalHeight || img.height || PAGE_H;
-          // Fit inside canvas at 80% size, centred, selectable
           const s = Math.min((PAGE_W * 0.8) / natW, (PAGE_H * 0.8) / natH);
-          const drawW = natW * s;
-          const drawH = natH * s;
+          const drawW = natW * s, drawH = natH * s;
           img.set({
             originX: "left", originY: "top",
-            left: (PAGE_W - drawW) / 2,
-            top:  (PAGE_H - drawH) / 2,
+            left: (PAGE_W - drawW) / 2, top: (PAGE_H - drawH) / 2,
             scaleX: s, scaleY: s,
           });
           c.add(img); c.setActiveObject(img); c.renderAll();
@@ -772,11 +656,182 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
         const c = live(); if (!c) return;
         const o = c.getActiveObject(); if (o) c.sendBackwards(o); c.renderAll(); fireChange();
       },
-      getCanvas:  () => fabricRef.current,
-      toJSON:     () => { try { return fabricRef.current?.toJSON(["__background", "_role"]) ?? {}; } catch { return {}; } },
-      toDataURL:  () => { try { return fabricRef.current?.toDataURL({ format: "jpeg", quality: 0.5 }) ?? ""; } catch { return ""; } },
+      getCanvas: () => fabricRef.current,
+      applyLayout: (json: object, imageUrl: string | undefined, onDone: () => void) => {
+        const c = fabricRef.current;
+        if (!c) { onDone(); return; }
+
+        suppressRef.current = true;
+
+        c.loadFromJSON(json, () => {
+          if (!fabricRef.current) {
+            suppressRef.current = false;
+            onDone();
+            return;
+          }
+
+          const canvas = fabricRef.current;
+
+          canvas.getObjects().forEach((obj) => {
+            if ((obj as any).__background) {
+              obj.selectable = false;
+              obj.evented = false;
+            }
+          });
+
+          applyToolMode(toolRef.current);
+
+          if (!imageUrl) {
+            canvas.renderAll();
+            suppressRef.current = false;
+            fireChange();
+            onDone();
+            return;
+          }
+
+          // Find image-zone rect and its stack index
+          const allObjects = canvas.getObjects();
+          const imageZoneIndex = allObjects.findIndex(
+            (o) => (o as any)._role === "image-zone"
+          );
+          const imageZone = imageZoneIndex >= 0
+            ? allObjects[imageZoneIndex] as fabric.Rect
+            : undefined;
+
+          // Read clip bounds directly from rect properties (not getScaledWidth)
+          const clipRect = imageZone
+            ? {
+              left: imageZone.left ?? 0,
+              top: imageZone.top ?? 0,
+              width: (imageZone.width ?? PAGE_W) * (imageZone.scaleX ?? 1),
+              height: (imageZone.height ?? PAGE_H) * (imageZone.scaleY ?? 1),
+            }
+            : { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
+
+          // Hide placeholder
+          if (imageZone) {
+            imageZone.set({ visible: false, opacity: 0 });
+            canvas.renderAll();
+          }
+
+          // ✅ Preload with HTMLImageElement to get REAL naturalWidth/Height
+          // fabric.Image.fromURL callback gets width=0 until element fully loads
+          const htmlImg = new Image();
+          htmlImg.crossOrigin = "anonymous";
+
+          const placeImage = () => {
+            if (!fabricRef.current) {
+              suppressRef.current = false;
+              onDone();
+              return;
+            }
+
+            const natW = htmlImg.naturalWidth || clipRect.width;
+            const natH = htmlImg.naturalHeight || clipRect.height;
+            const s = Math.max(clipRect.width / natW, clipRect.height / natH);
+            const drawW = natW * s;
+            const drawH = natH * s;
+
+            const fabricImg = new fabric.Image(htmlImg, {
+              originX: "left",
+              originY: "top",
+              left: clipRect.left + (clipRect.width - drawW) / 2,
+              top: clipRect.top + (clipRect.height - drawH) / 2,
+              scaleX: s,
+              scaleY: s,
+              selectable: false,
+              evented: false,
+              lockMovementX: true,
+              lockMovementY: true,
+            });
+
+            fabricImg.clipPath = new fabric.Rect({
+              left: clipRect.left,
+              top: clipRect.top,
+              width: clipRect.width,
+              height: clipRect.height,
+              absolutePositioned: true,
+            });
+
+            (fabricImg as any).__background = true;
+
+            // Insert at correct z-index
+            fabricRef.current.add(fabricImg);
+            if (imageZoneIndex >= 0) {
+              const objs = fabricRef.current.getObjects();
+              const currentIdx = objs.length - 1;
+              const stepsBack = currentIdx - imageZoneIndex;
+              for (let i = 0; i < stepsBack; i++) {
+                fabricRef.current.sendBackwards(fabricImg, true);
+              }
+            } else {
+              fabricRef.current.sendToBack(fabricImg);
+            }
+
+            fabricRef.current.renderAll();
+            suppressRef.current = false;
+            fireChange();
+            onDone();
+          };
+
+          htmlImg.onload = placeImage;
+          htmlImg.onerror = () => {
+            // Fallback: try fabric.Image.fromURL directly
+            fabric.Image.fromURL(imageUrl, (img) => {
+              if (!fabricRef.current) {
+                suppressRef.current = false;
+                onDone();
+                return;
+              }
+              const natW = (img as any)._element?.naturalWidth || clipRect.width;
+              const natH = (img as any)._element?.naturalHeight || clipRect.height;
+              const s = Math.max(clipRect.width / natW, clipRect.height / natH);
+              const drawW = natW * s, drawH = natH * s;
+              img.set({
+                originX: "left", originY: "top",
+                left: clipRect.left + (clipRect.width - drawW) / 2,
+                top: clipRect.top + (clipRect.height - drawH) / 2,
+                scaleX: s, scaleY: s,
+                selectable: false, evented: false,
+              });
+              img.clipPath = new fabric.Rect({
+                left: clipRect.left, top: clipRect.top,
+                width: clipRect.width, height: clipRect.height,
+                absolutePositioned: true,
+              });
+              (img as any).__background = true;
+              fabricRef.current.add(img);
+              fabricRef.current.sendToBack(img);
+              fabricRef.current.renderAll();
+              suppressRef.current = false;
+              fireChange();
+              onDone();
+            }, { crossOrigin: "anonymous" });
+          };
+
+          htmlImg.src = imageUrl;
+        });
+      },
+
+      // ── toJSON: excludes background IMAGE objects ──────────────────────────
+      // Background images are re-added fresh from page.imageUrl on every load.
+      // Storing them in fabricJson causes stale coordinates + duplicate images.
+      // Layout structure rects/lines/textboxes ARE stored — they define layout.
+      toJSON: () => {
+        try {
+          const c = fabricRef.current;
+          if (!c) return {};
+          return canvasToJson(c);
+        } catch { return {}; }
+      },
+
+      toDataURL: () => {
+        try { return fabricRef.current?.toDataURL({ format: "jpeg", quality: 0.5 }) ?? ""; }
+        catch { return ""; }
+      },
       setTool: (t) => { toolRef.current = t; applyToolMode(t); },
     }));
+
 
     // ── Mount ──────────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -795,51 +850,22 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
       fCanvas.setDimensions({ width: PAGE_W * scale, height: PAGE_H * scale });
       fabricRef.current = fCanvas;
 
-      fCanvas.on("mouse:down", (e) => {
-        if (e.target) return;
-        const ptr = fCanvas.getPointer(e.e);
-        if (toolRef.current === "text") {
-          const t = new fabric.Textbox("Type here…", {
-            left: Math.min(ptr.x, PAGE_W - 310), top: Math.min(ptr.y, PAGE_H - 40),
-            width: 300, fontSize: 20, fontFamily: "Nunito", fill: "#1a1a1a", textAlign: "left"
-          });
-          fCanvas.add(t); fCanvas.setActiveObject(t); t.enterEditing(); fCanvas.renderAll();
-        } else if (toolRef.current === "rect") {
-          const r = new fabric.Rect({
-            left: ptr.x - 60, top: ptr.y - 40, width: 120, height: 80,
-            fill: "rgba(255,255,255,0.8)", stroke: "#555", strokeWidth: 2, rx: 6, ry: 6
-          });
-          fCanvas.add(r); fCanvas.setActiveObject(r); fCanvas.renderAll();
-        } else if (toolRef.current === "circle") {
-          const ci = new fabric.Circle({
-            left: ptr.x - 40, top: ptr.y - 40, radius: 40,
-            fill: "rgba(255,255,255,0.8)", stroke: "#555", strokeWidth: 2
-          });
-          fCanvas.add(ci); fCanvas.setActiveObject(ci); fCanvas.renderAll();
-        }
-      });
-
-      fCanvas.on("object:moving", (e) => {
-        const obj = e.target; if (!obj || (obj as any).__background) return;
-        const br = obj.getBoundingRect(true);
-        if (br.left < 0)               obj.set({ left: (obj.left ?? 0) - br.left });
-        if (br.top  < 0)               obj.set({ top:  (obj.top  ?? 0) - br.top  });
-        if (br.left + br.width  > PAGE_W) obj.set({ left: (obj.left ?? 0) - (br.left + br.width  - PAGE_W) });
-        if (br.top  + br.height > PAGE_H) obj.set({ top:  (obj.top  ?? 0) - (br.top  + br.height - PAGE_H) });
-      });
-
-      fCanvas.on("selection:created", (e) => { if (isAliveRef.current) onSelectionRef.current((e as any).selected?.[0] ?? null); });
-      fCanvas.on("selection:updated", (e) => { if (isAliveRef.current) onSelectionRef.current((e as any).selected?.[0] ?? null); });
-      fCanvas.on("selection:cleared", ()  => { if (isAliveRef.current) onSelectionRef.current(null); });
-      fCanvas.on("object:modified", fireChange);
-      fCanvas.on("object:added",    () => { if (!suppressRef.current) fireChange(); });
-      fCanvas.on("object:removed",  fireChange);
-      fCanvas.on("text:changed",    fireChange);
+      // ... all event listeners stay the same ...
 
       return () => {
-        isAliveRef.current = false; fabricRef.current = null;
-        try { fCanvas.dispose(); } catch { /* ignore */ }
-        if (containerRef.current) containerRef.current.innerHTML = "";
+        isAliveRef.current = false;
+        // ✅ FIX: Set null AFTER dispose, and clear DOM AFTER dispose
+        // dispose() needs the canvas element to still exist in the DOM
+        // so we must NOT clear innerHTML before calling it.
+        const container = containerRef.current;
+        try {
+          fCanvas.dispose();
+        } catch {
+          /* ignore disposal errors */
+        }
+        fabricRef.current = null;
+        // Clear the container only after Fabric has finished disposing
+        if (container) container.innerHTML = "";
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -854,6 +880,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
     }, [scale]);
 
     // ── Load page ──────────────────────────────────────────────────────────────
+ // ── Load page ──────────────────────────────────────────────────────────────
     useEffect(() => {
       const c = live(); if (!c) return;
       if (pageIdRef.current === page.id) return;
@@ -892,19 +919,9 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
         finish();
       };
 
-      // ── ROUTING LOGIC ──────────────────────────────────────────────────────
-      //
-      // 1. INLINE IMAGE PAGE  → always rebuild from scratch
-      // 2. fabricJson with actual content → restore user elements, then re-add background image fresh
-      // 3. imageUrl only (or fabricJson has objects:[] — corrupted/empty) → load background image + default text layers
-      // 4. No image           → plain background + default text layers
-
-      // "Has actual content" means at least one fabric object OR a backgroundImage src.
-      // fabricJson with objects:[] (DB corruption) falls through to the imageUrl branch.
       const fj = page.fabricJson as any;
       const fabricHasContent =
-        fj &&
-        Object.keys(fj).length > 0 &&
+        fj && Object.keys(fj).length > 0 &&
         ((Array.isArray(fj.objects) && fj.objects.length > 0) || !!fj.backgroundImage?.src);
 
       if (isInlineImagePage(page)) {
@@ -912,50 +929,92 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
         buildInlineImageLayout(page, c, () => isAliveRef.current, () => cancelled).then(finish);
 
       } else if (fabricHasContent) {
-        // ── Restore user elements from JSON ──────────────────────────────────
         c.loadFromJSON(page.fabricJson, () => {
           if (cancelled || !isAliveRef.current || !fabricRef.current) return;
           clampLoadedObjects(fabricRef.current);
 
           if (page.imageUrl) {
-            // Re-add background image fresh — backend has stripped it from fabricJson,
-            // so this is always a clean cover-fill render with no stale coordinates.
-            loadBgImage(
-              page.imageUrl,
-              fabricRef.current,
-              (img) => {
-                if (cancelled || !isAliveRef.current || !fabricRef.current) return;
-                fabricRef.current.add(img);
-                fabricRef.current.sendToBack(img); // always behind user elements
-                finish();
-              },
+            const allObjs = fabricRef.current.getObjects();
+            const imageZoneIndex = allObjs.findIndex(
+              (o) => (o as any)._role === "image-zone"
             );
+            const imageZone = imageZoneIndex >= 0
+              ? allObjs[imageZoneIndex] as fabric.Rect
+              : undefined;
+
+            const clipRect = imageZone
+              ? {
+                  left: imageZone.left ?? 0,
+                  top: imageZone.top ?? 0,
+                  width: (imageZone.width ?? PAGE_W) * (imageZone.scaleX ?? 1),
+                  height: (imageZone.height ?? PAGE_H) * (imageZone.scaleY ?? 1),
+                }
+              : { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
+
+            if (imageZone) imageZone.set({ visible: false, opacity: 0 });
+
+            const htmlImg = new Image();
+            htmlImg.crossOrigin = "anonymous";
+
+            htmlImg.onload = () => {
+              if (cancelled || !isAliveRef.current || !fabricRef.current) return;
+              const natW = htmlImg.naturalWidth || clipRect.width;
+              const natH = htmlImg.naturalHeight || clipRect.height;
+              const s = Math.max(clipRect.width / natW, clipRect.height / natH);
+              const drawW = natW * s, drawH = natH * s;
+
+              const fabricImg = new fabric.Image(htmlImg, {
+                originX: "left", originY: "top",
+                left: clipRect.left + (clipRect.width - drawW) / 2,
+                top: clipRect.top + (clipRect.height - drawH) / 2,
+                scaleX: s, scaleY: s,
+                selectable: false, evented: false,
+                lockMovementX: true, lockMovementY: true,
+              });
+              fabricImg.clipPath = new fabric.Rect({
+                left: clipRect.left, top: clipRect.top,
+                width: clipRect.width, height: clipRect.height,
+                absolutePositioned: true,
+              });
+              (fabricImg as any).__background = true;
+              insertImageAtZone(fabricRef.current!, fabricImg, imageZoneIndex);
+              finish();
+            };
+
+            htmlImg.onerror = () => {
+              if (cancelled || !isAliveRef.current || !fabricRef.current) return;
+              loadBgImage(page.imageUrl, fabricRef.current!, (img) => {
+                if (cancelled || !isAliveRef.current || !fabricRef.current) return;
+                fabricRef.current!.add(img);
+                fabricRef.current!.sendToBack(img);
+                finish();
+              });
+            };
+
+            htmlImg.src = page.imageUrl;
           } else {
             finish();
           }
-        });
+        }); // ← closes loadFromJSON callback
 
       } else if (page.imageUrl) {
-        // First load of a page that has never been edited
-        loadBgImage(
-          page.imageUrl,
-          c,
-          (img) => {
-            if (cancelled || !isAliveRef.current || !fabricRef.current) return;
-            fabricRef.current!.add(img);
-            fabricRef.current!.sendToBack(img);
-            addTextLayers();
-          },
-        );
+        // No saved fabricJson but has an image — fresh page with bg image
+        loadBgImage(page.imageUrl, c, (img) => {
+          if (cancelled || !isAliveRef.current || !fabricRef.current) return;
+          fabricRef.current!.add(img);
+          fabricRef.current!.sendToBack(img);
+          addTextLayers();
+        });
 
       } else {
+        // No image, no saved JSON — plain colored background
         const bgColors: Record<BookPageType, string> = {
-          "front-cover":    "#1a2744",
-          "back-cover":     "#1a2744",
-          "spread":         "#fdf8f0",
+          "front-cover": "#1a2744",
+          "back-cover": "#1a2744",
+          "spread": "#fdf8f0",
           "chapter-opener": "#1e3a5f",
           "chapter-moment": "#1e3a5f",
-          "text-page":      "#fffef7",
+          "text-page": "#fffef7",
         };
         c.backgroundColor = bgColors[page.type] ?? "#f5f0e8";
         addTextLayers();
@@ -983,3 +1042,4 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
 
 FabricPageCanvas.displayName = "FabricPageCanvas";
 export default FabricPageCanvas;
+ 

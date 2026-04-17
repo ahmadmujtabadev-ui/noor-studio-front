@@ -1,8 +1,10 @@
 // components/editor/ElementsPanel.tsx
-// Canva-style left sidebar with Text, Shapes, Elements, Uploads tabs.
+// Canva-style left sidebar — Text, Shapes, Layouts, Elements, Uploads tabs.
 //
-// NOTE: All interactive buttons use onMouseDown + e.preventDefault() to prevent
-// blurring a Fabric Textbox that is currently in editing mode.
+// CHANGE: Added "Layouts" tab that renders LayoutPickerPanel.
+// When user picks a layout it loads a Fabric JSON template into the canvas.
+// The same fabricJson is saved to DB and used by renderPageHtml.js for PDF —
+// so PDF always matches what the user sees.
 
 import React, { useRef, useState } from "react";
 import { fabric } from "fabric";
@@ -17,6 +19,7 @@ import {
   Minus,
   Star,
   MessageSquare,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   type FabricCanvasHandle,
@@ -26,6 +29,7 @@ import {
   PAGE_W,
   PAGE_H,
 } from "./FabricPageCanvas";
+import { LayoutPickerPanel } from "./LayoutPickerPanel";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -38,13 +42,14 @@ interface ElementsPanelProps {
 
 // ─── Tab types ────────────────────────────────────────────────────────────────
 
-type Tab = "text" | "shapes" | "elements" | "uploads";
+type Tab = "layouts" | "text" | "shapes" | "elements" | "uploads";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: "text",     label: "Text",     icon: Type },
-  { id: "shapes",   label: "Shapes",   icon: Square },
+  { id: "layouts", label: "Layouts", icon: LayoutTemplate },
+  { id: "text", label: "Text", icon: Type },
+  { id: "shapes", label: "Shapes", icon: Square },
   { id: "elements", label: "Elements", icon: Layers },
-  { id: "uploads",  label: "Uploads",  icon: Upload },
+  { id: "uploads", label: "Uploads", icon: Upload },
 ];
 
 // ─── Shape buttons ────────────────────────────────────────────────────────────
@@ -54,13 +59,13 @@ const SHAPE_BUTTONS: {
   icon: React.FC<{ className?: string }>;
   action: (h: FabricCanvasHandle) => void;
 }[] = [
-  { label: "Rectangle",     icon: Square,        action: (h) => h.addRect() },
-  { label: "Circle",        icon: Circle,        action: (h) => h.addCircle() },
-  { label: "Triangle",      icon: Triangle,      action: (h) => h.addTriangle() },
-  { label: "Line",          icon: Minus,         action: (h) => h.addLine() },
-  { label: "Star",          icon: Star,          action: (h) => h.addStar() },
-  { label: "Speech Bubble", icon: MessageSquare, action: (h) => h.addSpeechBubble() },
-];
+    { label: "Rectangle", icon: Square, action: (h) => h.addRect() },
+    { label: "Circle", icon: Circle, action: (h) => h.addCircle() },
+    { label: "Triangle", icon: Triangle, action: (h) => h.addTriangle() },
+    { label: "Line", icon: Minus, action: (h) => h.addLine() },
+    { label: "Star", icon: Star, action: (h) => h.addStar() },
+    { label: "Speech Bubble", icon: MessageSquare, action: (h) => h.addSpeechBubble() },
+  ];
 
 // ─── Decorative elements ──────────────────────────────────────────────────────
 
@@ -207,10 +212,11 @@ function FontComboCard({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ElementsPanel({
+  currentPage,
   canvasRef,
   onImageUpload,
-}: ElementsPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("text");
+}: any) {
+  const [activeTab, setActiveTab] = useState<Tab>("layouts");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,13 +247,13 @@ export function ElementsPanel({
     <div className="w-[280px] shrink-0 bg-[#1a1d23] border-r border-white/10 flex flex-col h-full overflow-hidden">
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="flex border-b border-white/10 shrink-0">
+      <div className="flex border-b border-white/10 shrink-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onMouseDown={(e) => { e.preventDefault(); setActiveTab(id); }}
             className={cn(
-              "flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-all relative",
+              "flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-all relative shrink-0",
               activeTab === id
                 ? "text-primary"
                 : "text-white/40 hover:text-white/70",
@@ -264,6 +270,17 @@ export function ElementsPanel({
 
       {/* ── Tab content ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
+
+        {/* ── LAYOUTS ───────────────────────────────────────────────────────── */}
+        {activeTab === "layouts" && (
+          <LayoutPickerPanel
+            canvasRef={canvasRef}
+            currentPage={currentPage} // ← pass from props
+            onLayoutApplied={(key) => {
+              canvasRef.current?.setTool("select");
+            }}
+          />
+        )}
 
         {/* ── TEXT ──────────────────────────────────────────────────────────── */}
         {activeTab === "text" && (

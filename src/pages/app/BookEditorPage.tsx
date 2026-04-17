@@ -447,6 +447,7 @@ export default function BookEditorPage() {
             activeTool={activeTool}
             onToolChange={handleToolChange}
             onImageUpload={handleImageUpload}
+            currentPage={pages[currentPageIdx]}
           />
 
           {/* ── Page Navigator ──────────────────────────────────────────────── */}
