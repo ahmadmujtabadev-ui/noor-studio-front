@@ -144,22 +144,6 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
     );
   };
 
-  const handlePolish = (ci: number) => {
-    confirmAndRun(
-      {
-        title: `Polish Chapter ${ci + 1}`,
-        description: `AI will humanize and polish the prose for Chapter ${ci + 1}. Credits are deducted once generation completes.`,
-        cost: 1,
-      },
-      async () => {
-        await saveLocalEdits(ci);
-        await bb.humanizeChapterProse(ci);
-        await bb.refreshReview();
-        setViewMode((p) => ({ ...p, [ci]: "compare" }));
-      }
-    );
-  };
-
   const handleSave = async (ci: number) => {
     await saveLocalEdits(ci);
     await bb.refreshReview();
@@ -196,7 +180,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
           <div>
             <h2 className="text-xl font-bold">Chapter Writing</h2>
             <p className="text-sm text-muted-foreground">
-              Write each chapter → polish → compare → approve.
+              Write each chapter, review it, then approve.
             </p>
           </div>
         </div>
@@ -259,7 +243,6 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
         const polishedText  = humanNode?.current?.chapterText ?? "";
 
         const isWriting    = bb.loadingKey === `prose-gen-${i}`;
-        const isPolishing  = bb.loadingKey === `prose-humanize-${i}`;
         const isApproving  = bb.loadingKey === `prose-approve-${i}`;
         const isSaving     = saving[i] ?? false;
         const c            = chapter.current;
@@ -295,13 +278,13 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
               <div className={cn(
                 "w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-sm transition-all",
                 approved ? "bg-emerald-500 text-white"
-                  : isWriting || isPolishing ? "bg-primary text-primary-foreground"
+                  : isWriting ? "bg-primary text-primary-foreground"
                   : isOpen ? "bg-primary/20 text-primary"
                   : "bg-muted text-muted-foreground",
               )}>
                 {approved
                   ? <Check className="w-4 h-4" />
-                  : (isWriting || isPolishing)
+                  : isWriting
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : i + 1
                 }
@@ -363,21 +346,6 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                       : <><RefreshCw className="w-3 h-3 mr-1.5" />{hasText ? "Rewrite" : "Write Chapter"}</>
                     }
                   </Button>
-
-                  {hasText && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isPolishing || isSaving}
-                      onClick={() => handlePolish(i)}
-                      className="h-8"
-                    >
-                      {isPolishing
-                        ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Polishing…</>
-                        : <><Sparkles className="w-3 h-3 mr-1.5" />Polish Text</>
-                      }
-                    </Button>
-                  )}
 
                   {hasPolished && (
                     <Button

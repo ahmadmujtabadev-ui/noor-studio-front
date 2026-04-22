@@ -65,7 +65,7 @@ export function useBookBuilder() {
   const [step,           setStep]           = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [storyIdea,  setStoryIdea]  = useState("");
-  const [ageRange,   setAgeRange]   = useState("6-8");
+  const [ageRange,   setAgeRange]   = useState("1-6");
   const [language,   setLanguage]   = useState("english");
   const [authorName, setAuthorName] = useState("");
   const [universeId,      setUniverseId]      = useState("");

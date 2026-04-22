@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { CoverSideNode, ImageVariant, normArr } from "@/lib/api/reviewTypes";
+import { CoverSideNode } from "@/lib/api/reviewTypes";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 import { knowledgeBasesApi } from "@/lib/api/knowledgeBases.api";
 import type { KnowledgeBase } from "@/lib/api/types";
@@ -385,6 +385,142 @@ function CoverSideCard({ side, node, loadingKey, previewMode, onGenerate, onAppr
 
 // ─── CoverStep ────────────────────────────────────────────────────────────────
 
+interface CoverSpreadPanelProps {
+  frontUrl: string | null;
+  spineUrl: string | null;
+  backUrl: string | null;
+  frontApproved: boolean;
+  backApproved: boolean;
+  spineApproved: boolean;
+  spineWidth: number;
+  previewMode: boolean;
+  onPreviewModeChange: (value: boolean) => void;
+}
+
+function CoverSpreadPanel({
+  frontUrl,
+  spineUrl,
+  backUrl,
+  frontApproved,
+  backApproved,
+  spineApproved,
+  spineWidth,
+  previewMode,
+  onPreviewModeChange,
+}: CoverSpreadPanelProps) {
+  const totalWidth = 12 + spineWidth;
+  const spinePct = Math.max((spineWidth / totalWidth) * 100, 5.75);
+  const coverPct = (100 - spinePct) / 2;
+
+  const face = (side: "back" | "front", url: string | null, approved: boolean) => (
+    <div className="relative h-full overflow-visible bg-[#f4c15b]" style={{ flex: `0 0 ${coverPct}%` }}>
+      <div className="relative h-full overflow-hidden">
+        {url ? (
+          <img src={url} alt={`${side} cover`} className="h-full w-full object-cover" draggable={false} />
+        ) : side === "front" ? (
+          <div className="h-full w-full bg-gradient-to-b from-[#9bd5e2] via-[#f2bd58] to-[#cc8d26]">
+            <div className="absolute left-[20%] right-[18%] top-[11%] h-[9%] rounded-full bg-white/80" />
+            <div className="absolute left-[31%] right-[30%] top-[11%] rounded-lg border border-[#dacba9] bg-[#fbf0d2] px-2 py-2 text-center shadow-sm">
+              <p className="text-lg font-bold leading-none text-[#9b5137]">Yusuf</p>
+              <p className="text-lg font-bold leading-none text-[#9b5137]">Sky &</p>
+              <p className="font-serif text-sm font-bold italic leading-none text-[#5e3323]">kufi</p>
+            </div>
+            <div className="absolute bottom-[12%] left-[33%] h-[40%] w-[25%] bg-gradient-to-b from-[#b8b3a3] to-[#8c6d42]" style={{ clipPath: "polygon(33% 0, 68% 0, 100% 32%, 82% 100%, 0 100%, 18% 32%)" }} />
+          </div>
+        ) : (
+          <div className="h-full w-full bg-gradient-to-b from-[#7b5518] via-[#edb043] to-[#f4c044]">
+            <div className="absolute left-[22%] right-[22%] top-[17%] h-[38%] rounded-t-full border-2 border-white/45 bg-white/10" />
+            <div className="absolute bottom-[17%] left-[14%] right-[14%] rounded border border-white/35 px-4 py-5 text-center text-[10px] font-bold uppercase tracking-[0.35em] text-white/55">Blurb Zone</div>
+            <div className="absolute left-[16%] right-[16%] top-[9%] flex justify-between text-white/65">
+              {Array.from({ length: 6 }).map((_, i) => <span key={i}>•</span>)}
+            </div>
+          </div>
+        )}
+        <div className="absolute inset-[5%] border border-dashed border-emerald-500/75" />
+        <div className="absolute inset-0 border border-dashed border-red-400/80" />
+        {approved && <div className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Approved</div>}
+      </div>
+      <div className="absolute -bottom-7 left-0 right-0 text-center text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+        {side === "back" ? "Back Cover" : "Front Cover"}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="grid gap-3 border-b border-border bg-card px-4 py-3 text-xs text-muted-foreground lg:grid-cols-[repeat(5,minmax(0,1fr))]">
+        <div><span className="block text-[10px] uppercase tracking-wider">Trim size</span><span className="font-bold text-foreground">6.0&quot; x 9.0&quot;</span></div>
+        <div><span className="block text-[10px] uppercase tracking-wider">Spine</span><span className="font-bold text-foreground">{spineWidth.toFixed(2)}&quot;</span></div>
+        <div><span className="block text-[10px] uppercase tracking-wider">Bleed</span><span className="font-bold text-foreground">0.125&quot;</span></div>
+        <div><span className="block text-[10px] uppercase tracking-wider">Resolution</span><span className="font-bold text-foreground">300 DPI</span></div>
+        <label className="flex items-center justify-start gap-2 lg:justify-end">
+          <Switch checked={previewMode} onCheckedChange={onPreviewModeChange} />
+          <span className="font-medium text-foreground">Preview mode</span>
+        </label>
+      </div>
+      <div className="overflow-auto px-7 pb-12 pt-8" style={{ backgroundColor: "#efe3c7", backgroundImage: "linear-gradient(rgba(124,96,46,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(124,96,46,.12) 1px, transparent 1px)", backgroundSize: "22px 22px" }}>
+        <div className="mx-auto min-w-[720px] max-w-[820px]">
+          <div className="mb-2 grid grid-cols-12 text-[10px] text-muted-foreground/70">
+            {Array.from({ length: 12 }).map((_, i) => <span key={i}>{i + 1}&quot;</span>)}
+          </div>
+          <div className="relative mx-auto flex aspect-[12.5/9] w-full border-2 border-orange-400 bg-background shadow-sm">
+            {face("back", backUrl, backApproved)}
+            <div className="relative h-full overflow-visible bg-[#b89055]" style={{ flex: `0 0 ${spinePct}%` }}>
+              <div className="relative h-full overflow-hidden">
+                {spineUrl ? <img src={spineUrl} alt="spine cover" className="h-full w-full object-cover" draggable={false} /> : <div className="h-full w-full bg-gradient-to-b from-[#cfb382] to-[#9b763e]" />}
+                <div className="absolute inset-x-[22%] inset-y-[6%] border border-dashed border-emerald-600/70" />
+                <div className="absolute inset-0 border border-dashed border-red-400/80" />
+                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tracking-widest text-[#5d4122]" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>Bismillah in Kufi</div>
+                {spineApproved && <CheckCircle2 className="absolute bottom-3 left-1/2 h-4 w-4 -translate-x-1/2 text-emerald-600" />}
+              </div>
+              <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-center text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">Spine</div>
+            </div>
+            {face("front", frontUrl, frontApproved)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CoverControlCardProps {
+  side: CoverSide;
+  node: CoverSideNode | undefined;
+  loadingKey: string | null;
+  previewMode: boolean;
+  onGenerate: (side: CoverSide, opts?: { prompt?: string; previewMode?: boolean }) => void;
+  onApprove: (side: CoverSide) => void;
+}
+
+function CoverControlCard({ side, node, loadingKey, previewMode, onGenerate, onApprove }: CoverControlCardProps) {
+  const [userNotes, setUserNotes] = useState("");
+  const isGenerating = loadingKey === `cover-${side}`;
+  const isApproving = loadingKey === `cover-approve-${side}`;
+  const displayUrl = node?.current?.imageUrl || null;
+  const approved = node?.status === "approved";
+  const labels: Record<CoverSide, string> = { back: "Back Cover", spine: "Spine", front: "Front Cover" };
+  const hints: Record<CoverSide, string> = { back: "Blurb zone + decorative", spine: "Title strip + tan stock", front: "Characters + title scene" };
+
+  return (
+    <div className={cn("rounded-lg border bg-card p-3 shadow-sm", approved ? "border-emerald-300" : "border-border")}>
+      <div className="mb-2 flex items-center gap-2">
+        {approved ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BookOpen className="h-4 w-4 text-primary" />}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{labels[side]}</h3>{approved && <Badge className="h-5 border-0 bg-emerald-100 text-[10px] text-emerald-700">Approved</Badge>}</div>
+          <p className="truncate text-xs text-muted-foreground">{hints[side]}</p>
+        </div>
+      </div>
+      <Textarea value={userNotes} onChange={(e) => setUserNotes(e.target.value)} rows={1} placeholder={side === "spine" ? "Cream type on tan" : side === "front" ? "Musa and Dad, sunset mosque" : "Warm amber sky"} className="mb-2 min-h-[38px] resize-none text-xs" />
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant={displayUrl ? "outline" : "default"} disabled={isGenerating} onClick={() => onGenerate(side, { prompt: userNotes.trim() || undefined, previewMode })} className="h-8 flex-1 gap-1.5 text-xs">
+          {isGenerating ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating</> : <><RefreshCw className="h-3.5 w-3.5" />{displayUrl ? "Regen" : "Generate"}</>}
+        </Button>
+        {displayUrl && !approved && <Button size="sm" disabled={isApproving} onClick={() => onApprove(side)} className="h-8 gap-1.5 bg-emerald-700 text-xs text-white hover:bg-emerald-800">{isApproving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}Approve</Button>}
+      </div>
+    </div>
+  );
+}
+
 interface CoverStepProps {
   bb: BookBuilderHook;
   onBack: () => void;
@@ -424,8 +560,10 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
 
   const frontApproved = bb.coverReview?.front?.status === "approved";
   const backApproved  = bb.coverReview?.back?.status  === "approved";
+  const spineApproved = bb.coverReview?.spine?.status === "approved";
   const canContinue   = frontApproved && backApproved;
   const anyGenerated  = Boolean(frontUrl || spineUrl || backUrl);
+  const approvedCount = [frontApproved, spineApproved, backApproved].filter(Boolean).length;
 
   const statusDot = (side: "front" | "spine" | "back") => {
     const s = bb.coverReview?.[side]?.status ?? "draft";
@@ -444,9 +582,53 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
 
   return (
     <div className="space-y-5 w-full">
+      <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground">Book Builder</p>
+          <h2 className="text-3xl font-bold tracking-tight">Cover Design</h2>
+          <p className="text-sm text-muted-foreground">Full wrap spread: back, spine, and front laid out together for print.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {kbLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+          <Badge className="h-9 rounded-full border-0 bg-emerald-100 px-4 text-emerald-700">{approvedCount} / 3 approved</Badge>
+          {anyGenerated && <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2"><Maximize2 className="w-4 h-4" />Preview Book</Button>}
+          <Button onClick={onContinue} disabled={!canContinue} className="gap-2 bg-[#083f36] hover:bg-[#0a4d42]">
+            Continue to Editor
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {kb && <KbInstructionsPanel kb={kb} />}
+
+      <CoverSpreadPanel
+        frontUrl={frontUrl}
+        spineUrl={spineUrl}
+        backUrl={backUrl}
+        frontApproved={frontApproved}
+        backApproved={backApproved}
+        spineApproved={spineApproved}
+        spineWidth={spineWidthInches}
+        previewMode={previewMode}
+        onPreviewModeChange={setPreviewMode}
+      />
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {(["back", "spine", "front"] as const).map((side) => (
+          <CoverControlCard
+            key={side}
+            side={side}
+            node={bb.coverReview?.[side]}
+            loadingKey={bb.loadingKey}
+            previewMode={previewMode}
+            onGenerate={(s, opts) => bb.regenerateCover(s, opts)}
+            onApprove={bb.approveCover}
+          />
+        ))}
+      </div>
 
       {/* ── Header ── */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="hidden rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-6 py-5 flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
             <BookMarked className="w-5 h-5 text-primary" />
@@ -498,7 +680,7 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
       </div>
 
       {/* ── Preview mode toggle ── */}
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3.5">
+      <div className="hidden items-center gap-4 rounded-xl border border-border bg-card px-5 py-3.5">
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {previewMode
             ? <Eye className="w-4 h-4 text-primary flex-shrink-0" />
@@ -517,7 +699,7 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
       </div>
 
       {/* ── Front + Back: full-width 2-column ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="hidden grid-cols-1 md:grid-cols-2 gap-5">
         {(["front", "back"] as const).map((side) => (
           <CoverSideCard
             key={side}
@@ -532,14 +714,16 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
       </div>
 
       {/* ── Spine: full-width compact card ── */}
-      <CoverSideCard
-        side="spine"
-        node={bb.coverReview?.spine}
-        loadingKey={bb.loadingKey}
-        previewMode={previewMode}
-        onGenerate={(s, opts) => bb.regenerateCover(s, opts)}
-        onApprove={bb.approveCover}
-      />
+      <div className="hidden">
+        <CoverSideCard
+          side="spine"
+          node={bb.coverReview?.spine}
+          loadingKey={bb.loadingKey}
+          previewMode={previewMode}
+          onGenerate={(s, opts) => bb.regenerateCover(s, opts)}
+          onApprove={bb.approveCover}
+        />
+      </div>
 
       {/* ── Navigation ── */}
       <div className="flex items-center justify-between pt-1">

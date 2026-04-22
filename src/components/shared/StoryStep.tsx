@@ -16,17 +16,8 @@ import { BookBuilderHook } from "@/hooks/useBookBuilder";
 import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
 
 const AGE_RANGES = [
-  { value: "2-4",  label: "2–4 years  (Picture spreads)" },
-  { value: "4-5",  label: "4–5 years  (Picture book)"   },
-  { value: "6-8",  label: "6–8 years  (Picture book)"   },
-  { value: "8-12", label: "8–12 years (Chapter book)"   },
-];
-
-const LANGUAGES = [
-  { value: "english",   label: "English"   },
-  { value: "urdu",      label: "Urdu"       },
-  { value: "arabic",    label: "Arabic"     },
-  { value: "bilingual", label: "Bilingual"  },
+  { value: "1-6",  label: "1-6 years (Picture book)" },
+  { value: "8-14", label: "8-14 years (Chapter book)" },
 ];
 
 interface StoryStepProps {
@@ -193,23 +184,14 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
           />
         </div>
 
-        {/* Age + Language */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Age */}
+        <div className="grid gap-4">
           <div className="space-y-2">
             <Label>Age range</Label>
             <Select value={bb.ageRange} onValueChange={bb.setAgeRange} disabled={hasStory}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {AGE_RANGES.map((x) => <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Language</Label>
-            <Select value={bb.language} onValueChange={bb.setLanguage} disabled={hasStory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((x) => <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

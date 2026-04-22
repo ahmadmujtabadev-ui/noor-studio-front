@@ -123,7 +123,7 @@ export default function BookBuilderPage() {
     : bb.loadingKey?.startsWith("prose-gen")
     ? "Writing chapter…"
     : bb.loadingKey?.startsWith("prose-humanize")
-    ? "Polishing chapter text…"
+    ? "Updating chapter text…"
     : bb.loadingKey?.startsWith("prose-approve")
     ? "Approving chapter…"
     : bb.loadingKey?.startsWith("structure")
@@ -165,7 +165,7 @@ export default function BookBuilderPage() {
         isLoading={bb.confirmDialog.isRunning}
       />
 
-      <div className={bb.step === coverStep ? "w-full" : "max-w-4xl mx-auto"}>
+      <div className="w-full">
         {/* ── Step 1: Story ── */}
         {bb.step === 1 && (
           <StoryStep

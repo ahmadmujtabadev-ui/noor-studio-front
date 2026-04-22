@@ -29,7 +29,7 @@ function Panel({ imageUrl, label, isSpine = false, widthPct }: PanelProps) {
         <img
           src={imageUrl}
           alt={label}
-          className={cn("w-full h-full", isSpine ? "object-contain object-center" : "object-cover")}
+          className="w-full h-full object-cover object-center"
           draggable={false}
         />
       ) : (
@@ -77,10 +77,8 @@ export function BookPreviewFlat({
 }: BookPreviewProps) {
   const totalW = bookWidth * 2 + spineWidth;
 
-  // Real spine pct (e.g. 4% for 0.5" spine) — too narrow to render visually.
-  // Boost to a minimum of 8% for the preview so the design is visible.
   const rawSpinePct = (spineWidth / totalW) * 100;
-  const spinePct    = Math.max(rawSpinePct, 8);
+  const spinePct    = Math.max(rawSpinePct, 5.75);
   const coverPct    = (100 - spinePct) / 2;
 
   // Lock container height via aspect-ratio using REAL dimensions (not visual boost)
