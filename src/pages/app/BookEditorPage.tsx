@@ -37,7 +37,7 @@ import { ExportPdfModal } from "@/components/editor/ExportPdfModal";
 import { tokenStorage } from "@/lib/api/client";
 import { reviewApi } from "@/lib/api/review.api";
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9005";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "https://nsb-bacl.vercel.app";
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 
