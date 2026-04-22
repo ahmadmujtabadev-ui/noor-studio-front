@@ -73,8 +73,8 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'noor-auth',
-      partialize: (state) => ({ token: state.token, user: state.user }),
-    },
+      partialState: (state: AuthState) => ({ token: state.token, user: state.user }),
+    } as Parameters<typeof persist>[1],
   )
 );
 

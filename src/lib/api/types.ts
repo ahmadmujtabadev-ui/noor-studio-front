@@ -163,12 +163,6 @@ export interface KnowledgeBase {
   coverDesign?: {
     brandingRules?: string[];
     titlePlacement?: string;
-    moodTheme?: string;
-    colorStyle?: string;
-    lightingEffects?: string;
-    spineWidth?: string | number;
-    typographyTitle?: string;
-    typographyBody?: string;
     characterComposition?: string[];
     islamicMotifs?: string[];
     avoidCover?: string[];
@@ -248,8 +242,6 @@ export interface ChapterItem {
   chapterTitle?: string;
   title?: string;
   text?: string;
-  content?: string;
-  wordCount?: number;
   prompt?: string;
   chapterIllustrationHint?: string;
   spreads?: ChapterSpread[];
@@ -258,7 +250,6 @@ export interface ChapterItem {
 
 export interface IllustrationChapter {
   chapterNumber: number;
-  imageUrl?: string;
   selectedVariantIndex?: number;
   spreads?: SpreadIllustration[];
   variants?: ImageVariant[];
@@ -345,21 +336,16 @@ export interface ProjectThemePage {
 
 export interface ProjectCover {
   frontUrl?: string;
-  frontCoverUrl?: string;
   frontPrompt?: string;
   frontSeed?: number;
   frontVariants?: ImageVariant[];
   backUrl?: string;
-  backCoverUrl?: string;
   backPrompt?: string;
   backSeed?: number;
   backVariants?: ImageVariant[];
   // legacy
   imageUrl?: string;
 }
-
-export type CoverArtifact = ProjectCover;
-export type IllustrationArtifact = SpreadIllustration | IllustrationChapter;
 
 export interface LayoutSpread {
   page: number;
@@ -577,7 +563,6 @@ export interface TextGenerateResponse {
 
 export interface ImageGenerateResponse {
   imageUrl: string;
-  artifacts?: ProjectArtifacts;
   provider?: string;
   creditsCharged?: number;
   traceId?: string;
@@ -725,8 +710,6 @@ export interface CharacterVisualDNA {
   weightKg?: number;
 
   accessories?: string[];
-  glasses?: string;
-  facialHair?: string;
   paletteNotes?: string;
 
   // legacy
@@ -782,8 +765,6 @@ export interface Character {
   status: "draft" | "generated" | "approved" | "locked";
 
   imageUrl?: string;
-  poseSheetUrl?: string;
-  masterReferenceUrl?: string;
   selectedStyle?: string;
   styleApprovedAt?: string;
 
@@ -824,8 +805,6 @@ export interface Character {
     weightKg?: number;
 
     accessories?: string[];
-    glasses?: string;
-    facialHair?: string;
     paletteNotes?: string;
 
     hairOrHijab?: string;

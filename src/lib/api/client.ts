@@ -34,11 +34,10 @@ export function normalize<T>(obj: any): T {
 interface RequestOptions extends RequestInit {
   auth?: boolean;
   params?: Record<string, string | number | boolean | undefined>;
-  responseType?: "blob" | "json";
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { auth = true, params, responseType, ...init } = options;
+  const { auth = true, params, ...init } = options;
 
   let url = `${BASE_URL}${path}`;
   if (params) {
@@ -60,11 +59,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const res = await fetch(url, { ...init, headers });
-
-  if (responseType === "blob") {
-    if (!res.ok) throw new NoorApiError('Download failed', 'DOWNLOAD_ERROR', res.status);
-    return res.blob() as unknown as T;
-  }
 
   // Handle binary (PDF) responses
   const contentType = res.headers.get('content-type') || '';

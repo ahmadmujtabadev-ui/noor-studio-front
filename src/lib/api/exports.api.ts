@@ -1,10 +1,9 @@
 import { api, tokenStorage } from "./client";
-import type { Export } from "./types";
 
 export const exportsApi = {
   // Fix list: should be GET not POST
   list: async (projectId: string): Promise<Export[]> => {
-    const res = await api.get<{ exports?: Export[] }>(`/api/exports/${projectId}`);
+    const res = await api.get<any>(`/api/exports/${projectId}`);
     return res.exports ?? [];
   },
 

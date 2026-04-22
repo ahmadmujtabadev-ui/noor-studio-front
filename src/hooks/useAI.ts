@@ -180,15 +180,13 @@ export function useGenerateIllustration(projectId: string) {
   return useMutation({
     mutationFn: ({
       chapterIndex,
-      chapterNumber,
       spreadIndex = 0,
       style,
     }: {
-      chapterIndex?: number;
-      chapterNumber?: number;
+      chapterIndex: number;
       spreadIndex?: number;
       style?: string;
-    }) => aiApi.generateIllustration(projectId, chapterIndex ?? chapterNumber ?? 0, spreadIndex, style),
+    }) => aiApi.generateIllustration(projectId, chapterIndex, spreadIndex, style),
     onSuccess,
   });
 }
@@ -197,13 +195,7 @@ export function useGenerateIllustration(projectId: string) {
 export function useGenerateCover(projectId: string) {
   const onSuccess = usePostAISuccess(projectId);
   return useMutation({
-    mutationFn: (options?: string | {
-      style?: string;
-      title?: string;
-      subtitle?: string;
-      authorName?: string;
-      prompt?: string;
-    }) => aiApi.generateCover(projectId, typeof options === "string" ? options : options?.style),
+    mutationFn: (style?: string) => aiApi.generateCover(projectId, style),
     onSuccess,
   });
 }

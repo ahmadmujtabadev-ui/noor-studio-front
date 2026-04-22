@@ -60,7 +60,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   const getHumanizedNode = (ci: number): ProseReviewNode | undefined =>
-    bb.humanizedReview.find((n) => n.chapterIndex === ci) as unknown as ProseReviewNode | undefined;
+    bb.humanizedReview.find((n) => n.chapterIndex === ci) as ProseReviewNode | undefined;
 
   const getRawProseNode = (ci: number): ProseReviewNode | undefined =>
     bb.proseReview.find((n) => n.chapterIndex === ci) as ProseReviewNode | undefined;
@@ -71,7 +71,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
   const getOriginalText = (ci: number): string => {
     const raw = getRawProseNode(ci);
     if (!raw) return "";
-    const versions = raw.versions as Array<{ version: number; snapshot: ProseReviewNode["current"]; createdAt: string }>;
+    const versions = normArr(raw.versions as Array<{ version: number; snapshot: ProseReviewNode["current"]; createdAt: string }>);
     return versions.length > 0
       ? (versions[0].snapshot?.chapterText ?? raw.current.chapterText)
       : raw.current.chapterText;
@@ -555,13 +555,13 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                     )}
 
                     {/* Improvements chips */}
-                    {hasEdited && normArr((humanNode?.current as any)?.changesMade as string[]).length > 0 && (
+                    {hasPolished && normArr(humanNode?.current?.changesMade as string[]).length > 0 && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Improvements made
                         </Label>
                         <div className="flex flex-wrap gap-1.5">
-                          {normArr((humanNode!.current as any).changesMade as string[]).map((change, ci2) => (
+                          {normArr(humanNode!.current.changesMade as string[]).map((change, ci2) => (
                             <span
                               key={ci2}
                               className="px-2.5 py-0.5 rounded-full text-xs bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800"
