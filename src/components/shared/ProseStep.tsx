@@ -201,7 +201,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
           </div>
         </div>
 
-        {/* Progress row */}
+        
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-1.5">
             {chapters.map((_, i) => {
