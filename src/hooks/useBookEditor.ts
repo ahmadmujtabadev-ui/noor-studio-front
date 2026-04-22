@@ -1,28 +1,8 @@
-// hooks/useBookEditor.ts
-// Loads all book data and builds the ordered page list for the canvas editor.
-//
-// FIX CHANGELOG:
-// ── Fix 3 (style persistence): Removed the special-case that stripped fabricJson
-//    from text-page types on load. Previously, every page refresh re-built text
-//    pages from scratch (ignoring saved fabricJson), causing all style edits
-//    (font changes, colour, position etc.) to vanish. Now text pages restore
-//    their full fabricJson just like every other page type.
-//
-// ── Why this was originally stripped:
-//    The comment said "let canvas regenerate" so that font/image-placement rules
-//    would be reflected immediately. But this made it impossible to persist ANY
-//    editor change on a text page. The correct approach is to save & restore
-//    fabricJson always, and only apply the initial layout on pages that have
-//    never been edited (fabricJson is null/empty) — which FabricPageCanvas
-//    already handles correctly via the loadFromJSON → buildInitialObjects branch.
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { reviewApi } from "@/lib/api/review.api";
 import { normArr } from "@/lib/api/reviewTypes";
 import { sanitizeFabricImages } from "@/lib/api/sanitizeFabricImages";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type BookPageType =
   | "front-cover"
@@ -45,6 +25,13 @@ export type TextLayoutType =
 
 export type LayoutType = SpreadLayoutType | TextLayoutType;
 
+// NEW: identifies one of the canvas layout templates (full-bleed, text-top, etc.)
+export type LayoutKey =
+  | "full-bleed"
+  | "text-bottom"
+  | "text-top"
+  | "image-focus";
+
 export interface BookPage {
   id: string;
   label: string;
@@ -58,9 +45,12 @@ export interface BookPage {
   layoutType?: LayoutType;
   fabricJson?: object | null;
   thumbnail?: string;
+  // NEW: when set, the canvas will rebuild this layout on every page load.
+  layoutKey?: LayoutKey | null;
+  // NEW: body-text style overrides (font, size, weight, colour, per-char styles)
+  // captured from the user's edits. Applied AFTER template rebuild on reload.
+  bodyTextStyles?: Record<string, unknown> | null;
 }
-
-// ─── Layout auto-assignment ───────────────────────────────────────────────────
 
 function resolveSpreadLayout(text: string, imageUrl: string): SpreadLayoutType {
   if (!text || !text.trim()) return imageUrl ? "full_bleed" : "vignette";
@@ -73,11 +63,11 @@ function resolveSpreadLayout(text: string, imageUrl: string): SpreadLayoutType {
 
 function resolveTextLayout(text: string): TextLayoutType {
   if (!text) return "two_column";
-  if (/hadith|ayah|quran|قال|ﷺ|اللَّهُ|bismillah|sunnah/i.test(text)) return "decorative_full_text";
+  if (/hadith|ayah|quran|قال|ﷺ|اللَّهُ|bismillah|sunnah/i.test(text)) {
+    return "decorative_full_text";
+  }
   return "two_column";
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function illusUrl(illus: any): string {
   const variants = normArr(illus?.current?.variants ?? []);
@@ -94,34 +84,33 @@ function splitProse(text: string, wordsPerPage = 150): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const pages: string[] = [];
+  const chunks: string[] = [];
   let current: string[] = [];
   let wordCount = 0;
 
   for (const sentence of sentences) {
     const words = sentence.split(/\s+/).length;
     if (wordCount + words > wordsPerPage && current.length > 0) {
-      pages.push(current.join(" "));
+      chunks.push(current.join(" "));
       current = [];
       wordCount = 0;
     }
     current.push(sentence);
     wordCount += words;
   }
-  if (current.length > 0) pages.push(current.join(" "));
 
-  if (pages.length > 1) {
-    const lastWc = pages[pages.length - 1].split(/\s+/).length;
-    if (lastWc <= 100) {
-      const merged = pages.splice(pages.length - 2, 2).join(" ");
-      pages.push(merged);
+  if (current.length > 0) chunks.push(current.join(" "));
+
+  if (chunks.length > 1) {
+    const lastWordCount = chunks[chunks.length - 1].split(/\s+/).length;
+    if (lastWordCount <= 100) {
+      const merged = chunks.splice(chunks.length - 2, 2).join(" ");
+      chunks.push(merged);
     }
   }
 
-  return pages.length ? pages : [text];
+  return chunks.length ? chunks : [text];
 }
-
-// ─── Page builders ────────────────────────────────────────────────────────────
 
 function buildSpreadPages(illustrations: any[], structures: any[]): BookPage[] {
   return illustrations
@@ -129,14 +118,18 @@ function buildSpreadPages(illustrations: any[], structures: any[]): BookPage[] {
     .sort((a, b) => (a.spreadIndex ?? 0) - (b.spreadIndex ?? 0))
     .map((ill, idx) => {
       const struct = structures.find(
-        (s: any) => s.current?.spreadIndex === ill.spreadIndex,
+        (s: any) => s.current?.spreadIndex === ill.spreadIndex
       ) as any;
       const text = struct?.current?.text || ill.current?.text || "";
       const title = `Spread ${(ill.spreadIndex ?? idx) + 1}`;
       const imgUrl = illusUrl(ill);
       return {
-        id: `spread-${ill.key}`, label: title, type: "spread" as BookPageType,
-        imageUrl: imgUrl, title, text,
+        id: `spread-${ill.key}`,
+        label: title,
+        type: "spread",
+        imageUrl: imgUrl,
+        title,
+        text,
         layoutType: resolveSpreadLayout(text, imgUrl),
       };
     });
@@ -145,7 +138,7 @@ function buildSpreadPages(illustrations: any[], structures: any[]): BookPage[] {
 function buildChapterPages(
   illustrations: any[],
   humanized: any[],
-  prose: any[],
+  prose: any[]
 ): BookPage[] {
   const moments = illustrations.filter((ill) => ill.sourceType === "chapter-moment");
 
@@ -176,7 +169,6 @@ function buildChapterPages(
     const firstMoment = chMoments[0];
     const secondMoment = chMoments[1];
 
-    // 1. Chapter opener — always uses img0 (firstMoment)
     pages.push({
       id: `chapter-${chIdx}-opener`,
       label: `Ch.${chNum} — ${chapterTitle}`,
@@ -186,10 +178,9 @@ function buildChapterPages(
       title: chapterTitle,
     });
 
-    // 2. Text pages — pure text, no embedded illustrations
     if (chapterText) {
-      const chunks = splitProse(chapterText);
-      chunks.forEach((chunk, ci) => {
+      const proseChunks = splitProse(chapterText);
+      proseChunks.forEach((chunk, ci) => {
         pages.push({
           id: `chapter-${chIdx}-text-${ci}`,
           label: `Ch.${chNum} — Page ${ci + 1}`,
@@ -203,8 +194,6 @@ function buildChapterPages(
       });
     }
 
-    // 3. img1 (secondMoment) as its own dedicated full-bleed page
-    //    — always shown, never buried inside a text page
     if (secondMoment) {
       pages.push({
         id: `chapter-${chIdx}-moment-1`,
@@ -215,7 +204,6 @@ function buildChapterPages(
       });
     }
 
-    // 4. Any additional moments beyond the 2nd (img2, img3 …)
     chMoments.slice(2).forEach((moment: any, mi: number) => {
       pages.push({
         id: `chapter-${chIdx}-moment-${mi + 2}`,
@@ -240,6 +228,11 @@ export function useBookEditor() {
   const [error, setError] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState("Untitled Book");
   const [isChapterBook, setIsChapterBook] = useState(false);
+
+  const pagesRef = useRef<BookPage[]>([]);
+  useEffect(() => {
+    pagesRef.current = pages;
+  }, [pages]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -284,8 +277,11 @@ export function useBookEditor() {
       const bookPages: BookPage[] = [];
 
       bookPages.push({
-        id: "cover-front", label: "Front Cover", type: "front-cover",
-        imageUrl: frontUrl, title: bookTitle,
+        id: "cover-front",
+        label: "Front Cover",
+        type: "front-cover",
+        imageUrl: frontUrl,
+        title: bookTitle,
         text: author ? `By ${author}` : "",
       });
 
@@ -296,45 +292,52 @@ export function useBookEditor() {
       }
 
       bookPages.push({
-        id: "cover-back", label: "Back Cover", type: "back-cover",
-        imageUrl: backUrl, text: r?.story?.current?.synopsis || "",
+        id: "cover-back",
+        label: "Back Cover",
+        type: "back-cover",
+        imageUrl: backUrl,
+        text: r?.story?.current?.synopsis || "",
       });
 
-      // ── Merge saved editor state ─────────────────────────────────────────────
       const savedById = new Map<string, any>();
       (savedEditorData.pages ?? []).forEach((sp: any) => {
         if (sp?.id) savedById.set(sp.id, sp);
       });
 
-      // ── FIX 3: Restore fabricJson for ALL page types including text-page ────
-      //
-      // Previously text-page stripped fabricJson and only restored text/title.
-      // This caused every style edit (font, colour, position) to vanish on refresh
-      // because FabricPageCanvas re-built the page from scratch with hardcoded defaults.
-      //
-      // Fix: treat text-page identically to all other page types — restore the
-      // full saved state (fabricJson + thumbnail + text + title).
-      //
-      // FabricPageCanvas already handles this correctly:
-      //   • fabricJson present  → loadFromJSON (restores exact editor state)
-      //   • fabricJson absent   → buildInitialObjects (fresh layout from text)
-      // So there is no risk of "stale layout" — it only applies on brand-new pages.
+      const mergedPages = bookPages.map((page) => {
+        const saved = savedById.get(page.id);
+        if (!saved) return page;
 
-      const mergedPages = bookPages.map((p) => {
-        const saved = savedById.get(p.id);
-        if (!saved) return p;
+        const isValidFabric =
+          saved.fabricJson &&
+          typeof saved.fabricJson === "object" &&
+          (saved.fabricJson as any).objects !== undefined;
 
-        // Restore full editor state for every page type (text-page included)
+        // Read layoutKey from top-level OR from embedded _layoutKey in fabricJson
+        const savedLayoutKey =
+          saved.layoutKey ??
+          (isValidFabric ? (saved.fabricJson as any)._layoutKey : null) ??
+          null;
+
+        // Read bodyTextStyles from top-level OR from embedded _bodyTextStyles
+        const savedBodyTextStyles =
+          saved.bodyTextStyles ??
+          (isValidFabric ? (saved.fabricJson as any)._bodyTextStyles : null) ??
+          null;
+
         return {
-          ...p,
-          ...(saved.fabricJson !== undefined && { fabricJson: saved.fabricJson }),
+          ...page,
+          ...(isValidFabric && { fabricJson: saved.fabricJson }),
           ...(saved.thumbnail !== undefined && { thumbnail: saved.thumbnail }),
           ...(saved.text !== undefined && { text: saved.text }),
           ...(saved.title !== undefined && { title: saved.title }),
+          ...(savedLayoutKey && { layoutKey: savedLayoutKey }),
+          ...(savedBodyTextStyles && { bodyTextStyles: savedBodyTextStyles }),
         };
       });
 
       setPages(mergedPages);
+      pagesRef.current = mergedPages;
     } catch (err) {
       setError((err as Error).message || "Failed to load book data");
     } finally {
@@ -342,65 +345,126 @@ export function useBookEditor() {
     }
   };
 
-  const updatePage = useCallback(
-    (idx: number, updates: Partial<BookPage>) => {
-      setPages((prev) => prev.map((p, i) => (i === idx ? { ...p, ...updates } : p)));
-    },
-    [],
-  );
+  const updatePage = useCallback((idx: number, updates: Partial<BookPage>) => {
+    setPages((prev) => {
+      const next = prev.map((page, i) => (i === idx ? { ...page, ...updates } : page));
+      pagesRef.current = next;
+      return next;
+    });
+  }, []);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueuedPagesRef = useRef<BookPage[]>([]);
+  const isFlushRunningRef = useRef(false);
+  const hasQueuedSaveRef = useRef(false);
 
-  const saveAllPages = useCallback(
-    async (latestPages: BookPage[]): Promise<void> => {
-      if (!projectId) return;
+  const clearScheduledSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }, []);
 
-      // Strip base64 image blobs from fabricJson BEFORE building the payload.
-      // Process pages SEQUENTIALLY (not Promise.all) to avoid flooding the
-      // backend with 30+ concurrent Cloudinary uploads.
-      // The session cache in sanitizeFabricImages means each unique image is
-      // only uploaded once per browser session — subsequent saves are instant.
-      const sanitizedPages: BookPage[] = [];
-      for (const p of latestPages) {
-        const cleanFabric = await sanitizeFabricImages(
-          p.fabricJson ?? null,
-          projectId,
-          p.id,
-        );
-        sanitizedPages.push({ ...p, fabricJson: cleanFabric ?? null });
+  const buildPayload = useCallback(async (latestPages: BookPage[]) => {
+    if (!projectId) return [];
+
+    const sanitizedPages: BookPage[] = [];
+    for (const page of latestPages) {
+      const cleanFabric = await sanitizeFabricImages(
+        page.fabricJson ?? null,
+        projectId,
+        page.id
+      );
+      sanitizedPages.push({ ...page, fabricJson: cleanFabric ?? null });
+    }
+
+    return sanitizedPages.map((page) => {
+      const fj = page.fabricJson;
+      const validFabric =
+        fj && typeof fj === "object" && (fj as any).objects !== undefined ? fj : null;
+
+      // ── Embed layoutKey + bodyTextStyles inside fabricJson as fallback metadata.
+      // This guarantees they survive even if the backend doesn't know about
+      // the top-level fields.
+      const metaFields: Record<string, unknown> = {};
+      if (page.layoutKey) metaFields._layoutKey = page.layoutKey;
+      if (page.bodyTextStyles) metaFields._bodyTextStyles = page.bodyTextStyles;
+
+      const fabricWithMeta = validFabric
+        ? { ...validFabric, ...metaFields }
+        : (Object.keys(metaFields).length > 0
+            ? { version: "5.3.1", objects: [], ...metaFields }
+            : null);
+
+      return {
+        id: page.id,
+        fabricJson: fabricWithMeta,
+        thumbnail: page.thumbnail ?? null,
+        text: page.text ?? "",
+        title: page.title ?? "",
+        imageUrl: page.imageUrl ?? "",
+        // Also send as top-level for backends that support it
+        layoutKey: page.layoutKey ?? null,
+        bodyTextStyles: page.bodyTextStyles ?? null,
+      };
+    });
+  }, [projectId]);
+
+  const flushSaveQueue = useCallback(async (): Promise<void> => {
+    if (!projectId || isFlushRunningRef.current) return;
+
+    isFlushRunningRef.current = true;
+
+    try {
+      while (hasQueuedSaveRef.current) {
+        hasQueuedSaveRef.current = false;
+        const snapshot = latestQueuedPagesRef.current;
+        const payload = await buildPayload(snapshot);
+        await reviewApi.saveEditorPages(projectId, payload);
       }
+    } finally {
+      isFlushRunningRef.current = false;
+    }
+  }, [buildPayload, projectId]);
 
-      const payload = sanitizedPages.map((p) => ({
-        id: p.id,
-        fabricJson: p.fabricJson ?? null,
-        thumbnail: p.thumbnail ?? null,
-        text: p.text ?? "",
-        title: p.title ?? "",
-        imageUrl: p.imageUrl ?? "",
-      }));
-      await reviewApi.saveEditorPages(projectId, payload);
-    },
-    [projectId],
-  );
+  const saveAllPages = useCallback(async (latestPages: BookPage[]): Promise<void> => {
+    if (!projectId) return;
 
-  const autoSave = useCallback(
-    (latestPages: BookPage[]) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        saveAllPages(latestPages).catch(console.error);
-      }, 1500);
-    },
-    [saveAllPages],
-  );
+    clearScheduledSave();
+    latestQueuedPagesRef.current = latestPages;
+    hasQueuedSaveRef.current = true;
+    await flushSaveQueue();
+  }, [clearScheduledSave, flushSaveQueue, projectId]);
 
-  const goToPage = useCallback(
-    (idx: number) => {
-      setCurrentPageIdx(Math.max(0, Math.min(idx, pages.length - 1)));
-    },
-    [pages.length],
-  );
+  const autoSave = useCallback((latestPages: BookPage[]) => {
+    if (!projectId) return;
 
-  const goBack = useCallback(() => { navigate(-1); }, [navigate]);
+    latestQueuedPagesRef.current = latestPages;
+    hasQueuedSaveRef.current = true;
+    clearScheduledSave();
+
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      flushSaveQueue().catch(console.error);
+    }, 1500);
+  }, [clearScheduledSave, flushSaveQueue, projectId]);
+
+  useEffect(() => {
+    return () => clearScheduledSave();
+  }, [clearScheduledSave]);
+
+  const goToPage = useCallback((idx: number) => {
+    setCurrentPageIdx(Math.max(0, Math.min(idx, pagesRef.current.length - 1)));
+  }, []);
+
+  const goBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
+
+  const currentPage = pages[currentPageIdx];
+  const currentPageProps = currentPage
+    ? { id: currentPage.id, text: currentPage.text, imageUrl: currentPage.imageUrl }
+    : undefined;
 
   return {
     projectId,
@@ -408,6 +472,8 @@ export function useBookEditor() {
     isChapterBook,
     pages,
     currentPageIdx,
+    currentPage,
+    currentPageProps,
     setCurrentPageIdx: goToPage,
     loading,
     error,

@@ -1,8 +1,4 @@
 // components/editor/ElementsPanel.tsx
-// Canva-style left sidebar with Text, Shapes, Elements, Uploads tabs.
-//
-// NOTE: All interactive buttons use onMouseDown + e.preventDefault() to prevent
-// blurring a Fabric Textbox that is currently in editing mode.
 
 import React, { useRef, useState } from "react";
 import { fabric } from "fabric";
@@ -17,52 +13,51 @@ import {
   Minus,
   Star,
   MessageSquare,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   type FabricCanvasHandle,
   type EditorTool,
   type FontCombo,
+  type LayoutAppliedPayload,
   FONT_COMBOS,
   PAGE_W,
   PAGE_H,
 } from "./FabricPageCanvas";
-
-// ─── Props ────────────────────────────────────────────────────────────────────
+import { LayoutPickerPanel } from "./LayoutPickerPanel";
 
 interface ElementsPanelProps {
   canvasRef: React.RefObject<FabricCanvasHandle>;
   activeTool: EditorTool;
   onToolChange: (t: EditorTool) => void;
   onImageUpload: (url: string) => void;
+  currentPage?: any;
+  onCommitPage?: (pageId: string, payload: any) => void;
+  onLayoutPayload?: (payload: LayoutAppliedPayload & { pageId: string }) => Promise<void> | void;
 }
 
-// ─── Tab types ────────────────────────────────────────────────────────────────
-
-type Tab = "text" | "shapes" | "elements" | "uploads";
+type Tab = "layouts" | "text" | "shapes" | "elements" | "uploads";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: "text",     label: "Text",     icon: Type },
-  { id: "shapes",   label: "Shapes",   icon: Square },
+  { id: "layouts", label: "Layouts", icon: LayoutTemplate },
+  { id: "text", label: "Text", icon: Type },
+  { id: "shapes", label: "Shapes", icon: Square },
   { id: "elements", label: "Elements", icon: Layers },
-  { id: "uploads",  label: "Uploads",  icon: Upload },
+  { id: "uploads", label: "Uploads", icon: Upload },
 ];
-
-// ─── Shape buttons ────────────────────────────────────────────────────────────
 
 const SHAPE_BUTTONS: {
   label: string;
   icon: React.FC<{ className?: string }>;
   action: (h: FabricCanvasHandle) => void;
 }[] = [
-  { label: "Rectangle",     icon: Square,        action: (h) => h.addRect() },
-  { label: "Circle",        icon: Circle,        action: (h) => h.addCircle() },
-  { label: "Triangle",      icon: Triangle,      action: (h) => h.addTriangle() },
-  { label: "Line",          icon: Minus,         action: (h) => h.addLine() },
-  { label: "Star",          icon: Star,          action: (h) => h.addStar() },
-  { label: "Speech Bubble", icon: MessageSquare, action: (h) => h.addSpeechBubble() },
-];
-
-// ─── Decorative elements ──────────────────────────────────────────────────────
+    { label: "Rectangle", icon: Square, action: (h) => h.addRect() },
+    { label: "Circle", icon: Circle, action: (h) => h.addCircle() },
+    { label: "Triangle", icon: Triangle, action: (h) => h.addTriangle() },
+    { label: "Line", icon: Minus, action: (h) => h.addLine() },
+    { label: "Star", icon: Star, action: (h) => h.addStar() },
+    { label: "Speech Bubble", icon: MessageSquare, action: (h) => h.addSpeechBubble() },
+  ];
 
 type DecoElement = {
   label: string;
@@ -151,8 +146,6 @@ const DECO_ELEMENTS: DecoElement[] = [
   },
 ];
 
-// ─── Font combo card ──────────────────────────────────────────────────────────
-
 function FontComboCard({
   combo,
   onAdd,
@@ -204,13 +197,13 @@ function FontComboCard({
   );
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function ElementsPanel({
+  currentPage,
   canvasRef,
   onImageUpload,
+  onLayoutPayload,
 }: ElementsPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("text");
+  const [activeTab, setActiveTab] = useState<Tab>("layouts");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,14 +233,13 @@ export function ElementsPanel({
   return (
     <div className="w-[280px] shrink-0 bg-[#1a1d23] border-r border-white/10 flex flex-col h-full overflow-hidden">
 
-      {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="flex border-b border-white/10 shrink-0">
+      <div className="flex border-b border-white/10 shrink-0 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onMouseDown={(e) => { e.preventDefault(); setActiveTab(id); }}
             className={cn(
-              "flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-all relative",
+              "flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-all relative shrink-0",
               activeTab === id
                 ? "text-primary"
                 : "text-white/40 hover:text-white/70",
@@ -262,10 +254,19 @@ export function ElementsPanel({
         ))}
       </div>
 
-      {/* ── Tab content ─────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
 
-        {/* ── TEXT ──────────────────────────────────────────────────────────── */}
+        {activeTab === "layouts" && (
+          <LayoutPickerPanel
+            canvasRef={canvasRef}
+            currentPage={currentPage}
+            onLayoutPayload={onLayoutPayload}
+            onLayoutApplied={() => {
+              canvasRef.current?.setTool("select");
+            }}
+          />
+        )}
+
         {activeTab === "text" && (
           <div className="p-3 space-y-3">
             <button
@@ -290,7 +291,6 @@ export function ElementsPanel({
           </div>
         )}
 
-        {/* ── SHAPES ────────────────────────────────────────────────────────── */}
         {activeTab === "shapes" && (
           <div className="p-3">
             <div className="grid grid-cols-3 gap-2">
@@ -311,7 +311,6 @@ export function ElementsPanel({
           </div>
         )}
 
-        {/* ── ELEMENTS ──────────────────────────────────────────────────────── */}
         {activeTab === "elements" && (
           <div className="p-3">
             <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-2">
@@ -338,7 +337,6 @@ export function ElementsPanel({
           </div>
         )}
 
-        {/* ── UPLOADS ───────────────────────────────────────────────────────── */}
         {activeTab === "uploads" && (
           <div className="p-3">
             <div

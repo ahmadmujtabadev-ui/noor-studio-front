@@ -1,5 +1,5 @@
 // components/editor/EditorToolbar.tsx
-// Top toolbar: navigation, tool selection, add elements, zoom, save, export.
+// Top toolbar: navigation, tool selection, add elements, zoom, undo/redo, save, export.
 
 import React from "react";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,8 @@ import {
   Layers,
   Eye,
   Loader2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import type { EditorTool } from "./FabricPageCanvas";
 
@@ -37,6 +39,11 @@ interface Props {
   onPreview?: () => void;
   saving: boolean;
   exportingEpub?: boolean;
+  // NEW: undo/redo
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 // ─── Tool buttons config ──────────────────────────────────────────────────────
@@ -62,6 +69,7 @@ export function EditorToolbar({
   onSave, onExport, onExportEpub, onBack,
   onPreview,
   saving, exportingEpub,
+  onUndo, onRedo, canUndo, canRedo,
 }: Props) {
   return (
     <div className="h-12 bg-[#13151a] border-b border-white/10 flex items-center gap-1 px-3 shrink-0 z-10">
@@ -106,10 +114,44 @@ export function EditorToolbar({
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
-
       </div>
 
       <Divider />
+
+      {/* Undo / Redo */}
+      {(onUndo || onRedo) && (
+        <>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className={cn(
+                "h-8 w-8 rounded-md flex items-center justify-center transition",
+                canUndo
+                  ? "text-white/60 hover:text-white hover:bg-white/10"
+                  : "text-white/20 cursor-not-allowed",
+              )}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className={cn(
+                "h-8 w-8 rounded-md flex items-center justify-center transition",
+                canRedo
+                  ? "text-white/60 hover:text-white hover:bg-white/10"
+                  : "text-white/20 cursor-not-allowed",
+              )}
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <Divider />
+        </>
+      )}
 
       {/* Zoom controls */}
       <div className="flex items-center gap-0.5">
