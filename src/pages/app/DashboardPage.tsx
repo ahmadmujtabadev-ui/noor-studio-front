@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Plus, Users, BookOpen, FolderKanban, Clock,
   Sparkles, Loader2, ChevronLeft, ChevronRight,
-  ArrowRight, LayoutGrid, BookMarked,
+  ArrowRight, LayoutGrid, BookMarked, Globe, Library, Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/hooks/useProjects";
@@ -20,6 +20,8 @@ import type { Project, PipelineStage } from "@/lib/api/types";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 import type { GateWorkflow } from "@/components/shared/SubscriptionGateModal";
+import { useUniverses } from "@/hooks/useUniverses";
+import { toast } from "sonner";
 
 type ListResponse<T> =
   | T[]
@@ -227,6 +229,9 @@ export default function DashboardPage() {
   const [gateWorkflow, setGateWorkflow] = useState<GateWorkflow | null>(null);
   const { canCreateBook, canCreateCharacter, limits, usage } = usePlanLimits();
 
+  const { universes, loading: universesLoading } = useUniverses();
+  const hasUniverse = universes.length > 0;
+
   const { data: projectsResponse, isLoading: projectsLoading, error: projectsError } = useProjects();
   const { data: charactersResponse, isLoading: charsLoading, error: charactersError } = useCharacters();
   const { data: charTemplates = [], isLoading: charTplLoading } = useQuery({
@@ -240,11 +245,21 @@ export default function DashboardPage() {
   const sortedProjects = useMemo(() => [...projects].sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime()), [projects]);
 
   const handleNewBook = () => {
+    if (!hasUniverse) {
+      toast.info("Create a Universe first — it's your series world that keeps every book consistent.");
+      navigate("/app/universes/new");
+      return;
+    }
     if (!canCreateBook) { setGateWorkflow("book"); return; }
     navigate("/app/books/new");
   };
 
   const handleNewCharacter = () => {
+    if (!hasUniverse) {
+      toast.info("Create a Universe first — characters belong to a series world.");
+      navigate("/app/universes/new");
+      return;
+    }
     if (!canCreateCharacter) { setGateWorkflow("character"); return; }
     navigate("/app/characters/new");
   };
@@ -310,144 +325,192 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Character Templates Slider */}
-        <SliderSection
-          title="Character Templates"
-          icon={LayoutGrid}
-          href="/app/character-templates"
-          count={charTemplates.length}
-        >
-          {charTplLoading ? (
-            <div className="flex items-center justify-center w-full py-10">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        {/* ── No Universe yet — Start Here ── */}
+        {!universesLoading && !hasUniverse ? (
+          <div className="card-premium p-10 text-center">
+            <div className="mx-auto mb-5 w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Globe className="w-8 h-8 text-primary" />
             </div>
-          ) : charTemplates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center w-full py-10 text-muted-foreground gap-2">
-              <Users className="w-8 h-8 opacity-30" />
-              <p className="text-sm">No character templates yet</p>
+            <h2 className="text-xl font-bold mb-2">Start here — create your first Universe</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto mb-1">
+              A <strong>Universe</strong> is your series world — the shared setting, characters, and values that run through every book you create.
+            </p>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-8">
+              Build your Universe once, then every book you make inherits its look, values, and characters automatically.
+            </p>
+
+            {/* Creation flow steps */}
+            <div className="flex justify-center gap-3 mb-8 flex-wrap">
+              {[
+                { step: 1, icon: Globe,    label: "Create Universe", active: true  },
+                { step: 2, icon: Users,    label: "Add Characters",  active: false },
+                { step: 3, icon: Library,  label: "Set Book DNA",    active: false },
+                { step: 4, icon: Rocket,   label: "Publish Books",   active: false },
+              ].map(({ step, icon: Icon, label, active }) => (
+                <div
+                  key={step}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium",
+                    active
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-muted-foreground border border-border"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{step}. {label}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            charTemplates.map((tpl) => (
-              <CharTemplateCard
-                key={tpl._id || tpl.name}
-                tpl={tpl}
-                onClick={() => navigate("/app/character-templates")}
-              />
-            ))
-          )}
-        </SliderSection>
 
-        {/* KB Templates Slider */}
-        <SliderSection
-          title="Knowledge Base Templates"
-          icon={BookMarked}
-          href="/app/kb-templates"
-          count={DEFAULT_KB_STARTER_TEMPLATES.length}
-        >
-          {DEFAULT_KB_STARTER_TEMPLATES.map((tpl) => (
-            <KBTemplateCard
-              key={tpl.id}
-              tpl={tpl}
-              onClick={() => navigate("/app/kb-templates")}
-            />
-          ))}
-        </SliderSection>
-
-        {/* Recent Projects */}
-        <div className="card-premium p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Recent Projects</h2>
-            {sortedProjects.length > 5 && (
-              <Link to="/app/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
-                View all <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
+            <Button variant="hero" size="lg" onClick={() => navigate("/app/universes/new")}>
+              <Globe className="w-4 h-4 mr-2" />Create Your First Universe
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">
+              Takes 2 minutes · Unlocks characters, books, and publishing
+            </p>
           </div>
+        ) : (
+          <>
+            {/* Character Templates Slider */}
+            <SliderSection
+              title="Character Templates"
+              icon={LayoutGrid}
+              href="/app/character-templates"
+              count={charTemplates.length}
+            >
+              {charTplLoading ? (
+                <div className="flex items-center justify-center w-full py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : charTemplates.length === 0 ? (
+                <div className="flex flex-col items-center justify-center w-full py-10 text-muted-foreground gap-2">
+                  <Users className="w-8 h-8 opacity-30" />
+                  <p className="text-sm">No character templates yet</p>
+                </div>
+              ) : (
+                charTemplates.map((tpl) => (
+                  <CharTemplateCard
+                    key={tpl._id || tpl.name}
+                    tpl={tpl}
+                    onClick={() => navigate("/app/character-templates")}
+                  />
+                ))
+              )}
+            </SliderSection>
 
-          {projectsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : hasListError ? (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
-              <h3 className="mb-2 text-lg font-semibold text-foreground">Failed to load dashboard data</h3>
-              <p className="text-sm text-muted-foreground">Please refresh the page or verify the API responses.</p>
-            </div>
-          ) : sortedProjects.length === 0 ? (
-            <div className="py-12 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <Sparkles className="h-8 w-8 text-primary" />
+            {/* KB Templates Slider */}
+            <SliderSection
+              title="Knowledge Base Templates"
+              icon={BookMarked}
+              href="/app/kb-templates"
+              count={DEFAULT_KB_STARTER_TEMPLATES.length}
+            >
+              {DEFAULT_KB_STARTER_TEMPLATES.map((tpl) => (
+                <KBTemplateCard
+                  key={tpl.id}
+                  tpl={tpl}
+                  onClick={() => navigate("/app/kb-templates")}
+                />
+              ))}
+            </SliderSection>
+
+            {/* Recent Projects */}
+            <div className="card-premium p-6">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Recent Projects</h2>
+                {sortedProjects.length > 5 && (
+                  <Link to="/app/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
+                    View all <ArrowRight className="w-3 h-3" />
+                  </Link>
+                )}
               </div>
-              <h3 className="mb-2 text-lg font-semibold">No Projects Yet</h3>
-              <p className="mx-auto mb-6 max-w-md text-muted-foreground">
-                Create your first book project to start generating Islamic children's stories.
-              </p>
-              <Button variant="hero" onClick={handleNewBook}>
-                <Plus className="mr-2 h-4 w-4" />Create Your First Book
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sortedProjects.slice(0, 5).map((project) => {
-                const projectId = getProjectId(project);
-                const { status, progress, isCompleted, isInProgress } = getProjectInfo(project);
-                return (
-                  <div
-                    key={projectId || getProjectTitle(project)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl bg-muted/50 p-4 transition-colors hover:bg-muted"
-                    onClick={() => { if (projectId) navigate(`/app/books/${projectId}`); }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && projectId) { e.preventDefault(); navigate(`/app/books/${projectId}`); } }}
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-teal text-white">
-                        <BookOpen className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{getProjectTitle(project)}</p>
-                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3 shrink-0" />
-                          <span>{formatTimeAgo(project.updatedAt)}</span>
-                          <span className="text-muted-foreground/50">•</span>
-                          <span>{getProjectAgeRange(project)}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="ml-4 flex shrink-0 items-center gap-4">
-                      <div className="hidden items-center gap-2 sm:flex">
-                        <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-primary" : "bg-amber-500")}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className="w-8 text-xs text-muted-foreground">{progress}%</span>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs whitespace-nowrap",
-                          isCompleted  && "border-primary/30 bg-primary/10 text-primary",
-                          isInProgress && "border-amber-200 bg-amber-100 text-amber-600",
-                          !isCompleted && !isInProgress && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {status}
-                      </Badge>
-                      <Button variant="ghost" size="sm"
-                        onClick={(e) => { e.stopPropagation(); if (projectId) navigate(`/app/books/${projectId}`); }}
-                        disabled={!projectId}
-                      >
-                        Open
-                      </Button>
-                    </div>
+
+              {projectsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : hasListError ? (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">Failed to load dashboard data</h3>
+                  <p className="text-sm text-muted-foreground">Please refresh the page or verify the API responses.</p>
+                </div>
+              ) : sortedProjects.length === 0 ? (
+                <div className="py-12 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                    <Sparkles className="h-8 w-8 text-primary" />
                   </div>
-                );
-              })}
+                  <h3 className="mb-2 text-lg font-semibold">No Projects Yet</h3>
+                  <p className="mx-auto mb-6 max-w-md text-muted-foreground">
+                    Your Universe is ready — create your first book project and start generating stories.
+                  </p>
+                  <Button variant="hero" onClick={handleNewBook}>
+                    <Plus className="mr-2 h-4 w-4" />Create Your First Book
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sortedProjects.slice(0, 5).map((project) => {
+                    const projectId = getProjectId(project);
+                    const { status, progress, isCompleted, isInProgress } = getProjectInfo(project);
+                    return (
+                      <div
+                        key={projectId || getProjectTitle(project)}
+                        className="flex cursor-pointer items-center justify-between rounded-xl bg-muted/50 p-4 transition-colors hover:bg-muted"
+                        onClick={() => { if (projectId) navigate(`/app/books/${projectId}`); }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && projectId) { e.preventDefault(); navigate(`/app/books/${projectId}`); } }}
+                      >
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-teal text-white">
+                            <BookOpen className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-foreground">{getProjectTitle(project)}</p>
+                            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-3 w-3 shrink-0" />
+                              <span>{formatTimeAgo(project.updatedAt)}</span>
+                              <span className="text-muted-foreground/50">•</span>
+                              <span>{getProjectAgeRange(project)}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex shrink-0 items-center gap-4">
+                          <div className="hidden items-center gap-2 sm:flex">
+                            <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className={cn("h-full rounded-full transition-all", progress === 100 ? "bg-primary" : "bg-amber-500")}
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-xs text-muted-foreground">{progress}%</span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs whitespace-nowrap",
+                              isCompleted  && "border-primary/30 bg-primary/10 text-primary",
+                              isInProgress && "border-amber-200 bg-amber-100 text-amber-600",
+                              !isCompleted && !isInProgress && "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {status}
+                          </Badge>
+                          <Button variant="ghost" size="sm"
+                            onClick={(e) => { e.stopPropagation(); if (projectId) navigate(`/app/books/${projectId}`); }}
+                            disabled={!projectId}
+                          >
+                            Open
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
       </div>
     </AppLayout>

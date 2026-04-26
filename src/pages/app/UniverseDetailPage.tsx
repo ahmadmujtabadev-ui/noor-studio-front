@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Globe, Edit, Trash2, BookOpen, Users, Loader2, ArrowLeft, Plus,
+  Dna, ChevronRight, Sparkles, BookMarked,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -15,6 +16,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useUniverse, useDeleteUniverse } from "@/hooks/useUniverses";
 import { useCharacters } from "@/hooks/useCharacters";
 import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
+import { cn } from "@/lib/utils";
+
+function kbStrength(kb: { islamicValues: unknown[]; duas: unknown[]; vocabulary: unknown[] }) {
+  let score = 0;
+  if (kb.islamicValues.length > 0) score++;
+  if (kb.duas.length > 0) score++;
+  if (kb.vocabulary.length > 0) score++;
+  if (score === 3) return { label: "Strong", color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" };
+  if (score === 2) return { label: "Good", color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" };
+  if (score === 1) return { label: "Starter", color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20" };
+  return { label: "Empty", color: "text-muted-foreground", bg: "bg-muted/30 border-border" };
+}
 
 export default function UniverseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +39,9 @@ export default function UniverseDetailPage() {
   const deleteMutation = useDeleteUniverse();
   const { data: characters = [] } = useCharacters(id);
   const { data: kbs = [] } = useKnowledgeBases(id);
+
+  const primaryKb = kbs[0] ?? null;
+  const strength = primaryKb ? kbStrength(primaryKb) : null;
 
   const handleDelete = async () => {
     if (!id) return;
@@ -83,26 +99,119 @@ export default function UniverseDetailPage() {
         </div>
       }
     >
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="card-glow p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{characters.length}</p>
-          <p className="text-sm text-muted-foreground">Characters</p>
+      {/* Book DNA Hierarchy — T-55 */}
+      <div className="mb-8 rounded-2xl border border-border bg-card/50 overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Series Architecture</span>
+          <span className="text-xs text-muted-foreground ml-1">— how every book stays consistent</span>
         </div>
-        <div className="card-glow p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{kbs.length}</p>
-          <p className="text-sm text-muted-foreground">Knowledge Bases</p>
-        </div>
-        <div className="card-glow p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{universe.bookCount ?? 0}</p>
-          <p className="text-sm text-muted-foreground">Books</p>
+
+        <div className="flex items-stretch divide-x divide-border">
+          {/* Universe node */}
+          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Globe className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">Universe</span>
+            </div>
+            <p className="font-semibold text-sm truncate">{universe.name}</p>
+            {universe.artStyle && (
+              <p className="text-xs text-muted-foreground capitalize">{universe.artStyle.replace(/-/g, " ")}</p>
+            )}
+          </div>
+
+          {/* Arrow */}
+          <div className="flex items-center px-2">
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+          </div>
+
+          {/* Book DNA / KB node — visually highlighted */}
+          <div className={cn(
+            "flex-1 px-5 py-4 flex flex-col gap-1 border-amber-500/20",
+            "bg-amber-500/5"
+          )}>
+            <div className="flex items-center gap-2 mb-1">
+              <Dna className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Book DNA</span>
+            </div>
+            {primaryKb ? (
+              <>
+                <p className="font-semibold text-sm truncate">{primaryKb.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={cn("text-xs font-medium", strength?.color)}>{strength?.label}</span>
+                  <div className="flex gap-0.5">
+                    {[0, 1, 2].map((i) => {
+                      const filled = (primaryKb.islamicValues.length > 0 ? 1 : 0) +
+                        (primaryKb.duas.length > 0 ? 1 : 0) +
+                        (primaryKb.vocabulary.length > 0 ? 1 : 0);
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            "w-5 h-1.5 rounded-full",
+                            i < filled ? "bg-amber-500" : "bg-muted"
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">No Knowledge Base yet</p>
+                <Link to={`/app/knowledge-base?universeId=${id}`} className="text-xs text-amber-500 hover:underline mt-0.5">
+                  Add Book DNA →
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Arrow */}
+          <div className="flex items-center px-2">
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+          </div>
+
+          {/* Characters node */}
+          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="w-4 h-4 text-blue-400" />
+              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Characters</span>
+            </div>
+            <p className="text-2xl font-bold">{characters.length}</p>
+            <Link to={`/app/characters/new?universeId=${id}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              + Add character
+            </Link>
+          </div>
+
+          {/* Arrow */}
+          <div className="flex items-center px-2">
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+          </div>
+
+          {/* Books node */}
+          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2 mb-1">
+              <BookMarked className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Books</span>
+            </div>
+            <p className="text-2xl font-bold">{universe.bookCount ?? 0}</p>
+            <Link to="/app/books/new" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              + New book
+            </Link>
+          </div>
         </div>
       </div>
 
       <Tabs defaultValue="characters" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="characters">Characters</TabsTrigger>
-          <TabsTrigger value="knowledge">Knowledge Bases</TabsTrigger>
+          <TabsTrigger value="characters">Characters ({characters.length})</TabsTrigger>
+          <TabsTrigger value="knowledge">
+            Book DNA
+            {primaryKb && (
+              <span className={cn("ml-1.5 text-xs", strength?.color)}>· {strength?.label}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
         </TabsList>
 
@@ -148,29 +257,59 @@ export default function UniverseDetailPage() {
 
         <TabsContent value="knowledge" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="font-semibold">Knowledge Bases</h3>
+            <div>
+              <h3 className="font-semibold">Book DNA</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your Knowledge Base is the DNA injected into every book — values, du'as, and vocabulary that make each story consistent.
+              </p>
+            </div>
             <Link to={`/app/knowledge-base?universeId=${id}`}>
               <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" />Manage</Button>
             </Link>
           </div>
           {kbs.length === 0 ? (
-            <div className="text-center py-12 card-glow">
-              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No knowledge bases for this universe.</p>
+            <div className="text-center py-12 card-glow border-amber-500/20 bg-amber-500/5">
+              <Dna className="w-12 h-12 text-amber-500/40 mx-auto mb-4" />
+              <p className="text-muted-foreground mb-1">No Book DNA yet.</p>
+              <p className="text-xs text-muted-foreground mb-4">Add a Knowledge Base to give every book its values, du'as, and vocabulary.</p>
+              <Link to={`/app/knowledge-base?universeId=${id}`}>
+                <Button variant="outline" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                  <Dna className="w-4 h-4 mr-2" />Add Book DNA
+                </Button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {kbs.map((kb) => (
-                <div key={kb.id} className="card-glow p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{kb.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {kb.islamicValues.length} values · {kb.duas.length} duas · {kb.vocabulary.length} vocab
-                    </p>
+              {kbs.map((kb) => {
+                const s = kbStrength(kb);
+                return (
+                  <div key={kb.id} className="card-glow p-4 border-amber-500/20 bg-amber-500/5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Dna className="w-4 h-4 text-amber-500" />
+                        <p className="font-semibold">{kb.name}</p>
+                      </div>
+                      <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium", s.bg, s.color)}>
+                        {s.label}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="text-center p-2 rounded-lg bg-background/60">
+                        <p className="text-lg font-bold text-foreground">{kb.islamicValues.length}</p>
+                        <p className="text-xs text-muted-foreground">Values</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-background/60">
+                        <p className="text-lg font-bold text-foreground">{kb.duas.length}</p>
+                        <p className="text-xs text-muted-foreground">Du'as</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-background/60">
+                        <p className="text-lg font-bold text-foreground">{kb.vocabulary.length}</p>
+                        <p className="text-xs text-muted-foreground">Vocab</p>
+                      </div>
+                    </div>
                   </div>
-                  <Badge variant="outline">Active</Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>

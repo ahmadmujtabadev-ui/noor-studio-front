@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Globe, Users, BookOpen, Loader2 } from "lucide-react";
+import { Plus, Search, Globe, Users, BookOpen, Loader2, Info } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUniverses } from "@/hooks/useUniverses";
@@ -27,6 +27,16 @@ export default function UniversesPage() {
         </Button>
       }
     >
+      {/* Universe concept explainer — T-12 */}
+      {!loading && !error && universes.length === 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-sm text-foreground/80">
+            A <strong>Universe</strong> is your series world — the shared setting, tone, and values that keep every book consistent. Create one Universe per series, then add characters, a Knowledge Base (Book DNA), and generate books inside it.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

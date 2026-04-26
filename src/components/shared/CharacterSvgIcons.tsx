@@ -165,6 +165,39 @@ export function BoySvg() {
   );
 }
 
+export function AnimalSvg() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      {/* body */}
+      <ellipse cx="24" cy="34" rx="12" ry="9" fill="#F97316" />
+      {/* head */}
+      <circle cx="24" cy="19" r="10" fill="#F97316" />
+      {/* ears */}
+      <ellipse cx="15" cy="11" rx="3.5" ry="5" fill="#F97316" transform="rotate(-15 15 11)" />
+      <ellipse cx="33" cy="11" rx="3.5" ry="5" fill="#F97316" transform="rotate(15 33 11)" />
+      <ellipse cx="15" cy="11" rx="1.5" ry="3" fill="#FBBF24" transform="rotate(-15 15 11)" />
+      <ellipse cx="33" cy="11" rx="1.5" ry="3" fill="#FBBF24" transform="rotate(15 33 11)" />
+      {/* eyes */}
+      <circle cx="20" cy="19" r="2.5" fill="#1A1A1A" />
+      <circle cx="28" cy="19" r="2.5" fill="#1A1A1A" />
+      <circle cx="20.8" cy="18.2" r="0.8" fill="white" />
+      <circle cx="28.8" cy="18.2" r="0.8" fill="white" />
+      {/* nose */}
+      <ellipse cx="24" cy="23" rx="2" ry="1.5" fill="#1A1A1A" />
+      {/* whiskers */}
+      <line x1="11" y1="22" x2="21" y2="23" stroke="#78350F" strokeWidth="0.8" opacity="0.6" />
+      <line x1="11" y1="24" x2="21" y2="24" stroke="#78350F" strokeWidth="0.8" opacity="0.6" />
+      <line x1="27" y1="23" x2="37" y2="22" stroke="#78350F" strokeWidth="0.8" opacity="0.6" />
+      <line x1="27" y1="24" x2="37" y2="24" stroke="#78350F" strokeWidth="0.8" opacity="0.6" />
+      {/* tail */}
+      <path d="M36 32 Q44 28 42 20 Q40 14 36 16" stroke="#F97316" strokeWidth="3" fill="none" strokeLinecap="round" />
+      {/* paws */}
+      <ellipse cx="14" cy="42" rx="4" ry="3" fill="#FBBF24" />
+      <ellipse cx="34" cy="42" rx="4" ry="3" fill="#FBBF24" />
+    </svg>
+  );
+}
+
 export function CreatureSvg() {
   return (
     <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -196,7 +229,6 @@ export function CreatureSvg() {
 // ─── Skin Tone Swatches ───────────────────────────────────────────────────────
 
 export const SKIN_TONE_COLORS: Record<string, { hex: string; label: string }> = {
-  "porcelain":    { hex: "#FDEEE0", label: "Porcelain" },
   "fair":         { hex: "#F8C9A0", label: "Fair" },
   "light-beige":  { hex: "#F0B889", label: "Light Beige" },
   "beige":        { hex: "#E8A87B", label: "Beige" },
@@ -208,7 +240,7 @@ export const SKIN_TONE_COLORS: Record<string, { hex: string; label: string }> = 
   "medium-brown": { hex: "#7A4A28", label: "Med Brown" },
   "brown":        { hex: "#5E3620", label: "Brown" },
   "dark-brown":   { hex: "#3D2010", label: "Dark Brown" },
-  "ebony":        { hex: "#1C0A00", label: "Ebony" },
+  "deep-brown":   { hex: "#1C0A00", label: "Deep Brown" },
 };
 
 export function SkinToneSwatch({ color, size = 40 }: { color: string; size?: number }) {
@@ -229,6 +261,7 @@ export const EYE_COLOR_MAP: Record<string, string> = {
   "dark-brown": "#3D1C02",
   "brown":      "#6B3A2A",
   "hazel":      "#8B6914",
+  "amber":      "#C47A1E",
   "green":      "#2D7A3D",
   "blue":       "#1B5E9E",
   "gray":       "#6B7280",
@@ -720,8 +753,12 @@ export function BunHairSvg() {
 
 // HIJAB STYLES
 export function HijabSvg({ color }: { color: string }) {
-  const fill = color === "white" ? "#F5F5F0" : color === "black" ? "#1A1A2E" : color === "beige" ? "#D4C5A9"
-    : color === "blue" ? "#3B82F6" : color === "pink" ? "#F472B6" : color === "purple" ? "#9C27B0" : "#A0A0A0";
+  const colorMap: Record<string, string> = {
+    white: "#F5F5F0", black: "#1A1A2E", beige: "#D4C5A9",
+    blue: "#3B82F6", pink: "#F472B6", purple: "#9C27B0",
+    teal: "#0D9488", maroon: "#7F1D1D", navy: "#1E3A5F", gray: "#6B7280",
+  };
+  const fill = colorMap[color] ?? "#A0A0A0";
   return (
     <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
       {/* hijab drape */}
@@ -1209,6 +1246,28 @@ export function ThobeSvg() {
   );
 }
 
+export function JalabiyaSvg() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      {/* full-length robe with embroidery */}
+      <path d="M18 6 L14 46 L34 46 L30 6 Z" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round" />
+      {/* round neck */}
+      <ellipse cx="24" cy="8" rx="4" ry="3" fill="none" stroke="#7C3AED" strokeWidth="1.3" />
+      {/* embroidery neckline */}
+      <path d="M20 8 Q24 5 28 8" stroke="#7C3AED" strokeWidth="1.2" fill="none" />
+      {[14, 17, 20].map((y, i) => (
+        <circle key={i} cx="24" cy={y} r="0.8" fill="#7C3AED" opacity="0.5" />
+      ))}
+      {/* side embroidery */}
+      <path d="M18 16 Q16 20 15 26" stroke="#7C3AED" strokeWidth="0.8" fill="none" strokeDasharray="1.5,1.5" opacity="0.5" />
+      <path d="M30 16 Q32 20 33 26" stroke="#7C3AED" strokeWidth="0.8" fill="none" strokeDasharray="1.5,1.5" opacity="0.5" />
+      {/* long sleeves */}
+      <path d="M18 6 L6 24 L10 26 L20 12 Z" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M30 6 L42 24 L38 26 L28 12 Z" fill="#F5F3FF" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function KurtaSvg() {
   return (
     <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -1506,6 +1565,39 @@ export function OxfordShoesSvg() {
       {/* lacing */}
       <path d="M22 24 L22 34" stroke="#6B7280" strokeWidth="1.5" />
       {[26, 30].map((y, i) => <line key={i} x1="21" y1={y} x2="32" y2={y - 2} stroke="#6B7280" strokeWidth="0.8" />)}
+    </svg>
+  );
+}
+
+export function KhussaSvg() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      {/* sole */}
+      <path d="M4 38 Q24 44 44 36 L44 42 Q24 48 4 42Z" fill="#92400E" />
+      {/* upper — curved pointed toe */}
+      <path d="M4 38 Q12 28 20 26 Q30 24 38 28 Q44 32 44 36 Q30 42 4 38Z" fill="#C2713A" />
+      {/* decorative embroidery lines */}
+      <path d="M10 34 Q20 30 30 32" stroke="#D97706" strokeWidth="1.2" fill="none" />
+      <path d="M14 37 Q22 33 32 35" stroke="#D97706" strokeWidth="0.8" fill="none" />
+      {/* pointed tip embellishment */}
+      <circle cx="43" cy="34" r="2" fill="#D97706" />
+      <circle cx="43" cy="34" r="0.8" fill="#FCD34D" />
+    </svg>
+  );
+}
+
+export function BalghaSlipperSvg() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+      {/* sole */}
+      <path d="M5 38 Q24 45 43 38 L43 43 Q24 50 5 43Z" fill="#78350F" />
+      {/* upper — open-back flat slipper */}
+      <path d="M5 38 Q8 28 20 24 Q32 22 40 30 L43 38 Q32 42 5 38Z" fill="#B45309" />
+      {/* side cutout / open toe */}
+      <path d="M5 38 Q6 33 10 31" fill="none" stroke="#92400E" strokeWidth="1" />
+      {/* decorative stitch */}
+      <path d="M12 32 Q22 27 34 30" stroke="#FCD34D" strokeWidth="1" fill="none" strokeDasharray="2,2" />
+      <path d="M10 35 Q22 31 36 33" stroke="#FCD34D" strokeWidth="0.8" fill="none" strokeDasharray="2,2" />
     </svg>
   );
 }

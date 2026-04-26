@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { characterTemplatesApi } from "@/lib/api/characterTemplates.api";
@@ -24,6 +24,9 @@ import {
   ThumbsUp,
   AlertCircle,
   Loader2,
+  ChevronDown,
+  ChevronUp,
+  BookmarkPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -40,7 +43,7 @@ import type { Character } from "@/lib/api/types";
 import { VisualPicker } from "@/components/shared/VisualPicker";
 import {
   Pixar3DSvg, WatercolorSvg, FlatIllustrationSvg, StorybookSvg, GhibliSvg,
-  GirlSvg, BoySvg, CreatureSvg,
+  GirlSvg, BoySvg, AnimalSvg, CreatureSvg,
   SkinToneSwatch, SKIN_TONE_COLORS,
   EyeSwatch, EYE_COLOR_MAP,
   RoundFaceSvg, OvalFaceSvg, HeartFaceSvg, SquareFaceSvg, OvalBalancedFaceSvg, RoundYouthfulFaceSvg,
@@ -59,6 +62,8 @@ import {
   WideLegTrousersSvg, LongSkirtSvg, MaxiSkirtSvg, SchoolSkirtSvg, ShalwarSvg, PalazzoPantsSvg,
   TrousersSvg, JeansSvg, ShortsSvg,
   SneakersSvg, SchoolShoesSvg, MaryJaneFlats, SandalsSvg, LeatherSandalsSvg, BootsSvg, SlippersSvg, OxfordShoesSvg,
+  KhussaSvg, BalghaSlipperSvg,
+  JalabiyaSvg,
 } from "@/components/shared/CharacterSvgIcons";
 
 const SKIN_TONES = [
@@ -93,7 +98,7 @@ const FACE_SHAPES = [
   { value: "heart-creative", label: "Heart-shaped" },
   { value: "square-determined", label: "Square & Determined" },
   { value: "oval-balanced", label: "Oval & Balanced" },
-  { value: "round-youthful", label: "Round & Youthful" },
+  { value: "round-youthful", label: "Round & Soft" },
 ];
 
 const HAIR_STYLES_BOY = [
@@ -107,22 +112,36 @@ const HAIR_STYLES_BOY = [
 ];
 
 const HAIR_STYLES_GIRL = [
-  { value: "long-black", label: "Long Black" },
-  { value: "long-dark-brown", label: "Long Dark Brown" },
-  { value: "long-brown", label: "Long Brown" },
-  { value: "curly-long", label: "Long Curly" },
-  { value: "braided-long", label: "Long Braided" },
-  { value: "ponytail-high", label: "High Ponytail" },
-  { value: "bun-top", label: "Top Bun" },
+  { value: "long-black",        label: "Long Black" },
+  { value: "long-dark-brown",   label: "Long Dark Brown" },
+  { value: "long-brown",        label: "Long Brown" },
+  { value: "shoulder-length",   label: "Shoulder Length" },
+  { value: "short-bob",         label: "Short Bob" },
+  { value: "side-swept",        label: "Side Swept" },
+  { value: "curly-long",        label: "Long Curly" },
+  { value: "curly-short",       label: "Short Curly" },
+  { value: "wavy-loose",        label: "Loose Wavy" },
+  { value: "braided-long",      label: "Long Braided" },
+  { value: "two-braids",        label: "Two Braids" },
+  { value: "ponytail-high",     label: "High Ponytail" },
+  { value: "ponytail-low",      label: "Low Ponytail" },
+  { value: "bun-top",           label: "Top Bun" },
+  { value: "half-up-half-down", label: "Half-Up Half-Down" },
 ];
 
 const HIJAB_STYLES = [
-  { value: "simple-white", label: "Simple White Hijab" },
-  { value: "simple-black", label: "Simple Black Hijab" },
-  { value: "simple-beige", label: "Simple Beige Hijab" },
-  { value: "blue-solid", label: "Blue Hijab" },
-  { value: "pink-solid", label: "Pink Hijab" },
-  { value: "purple-solid", label: "Purple Hijab" },
+  { value: "simple-white",   label: "Simple White" },
+  { value: "simple-black",   label: "Simple Black" },
+  { value: "simple-beige",   label: "Beige Wrap" },
+  { value: "blue-solid",     label: "Blue" },
+  { value: "pink-solid",     label: "Pink" },
+  { value: "purple-solid",   label: "Purple" },
+  { value: "al-amira-white", label: "Al-Amira (White)" },
+  { value: "al-amira-black", label: "Al-Amira (Black)" },
+  { value: "shayla-drape",   label: "Shayla Drape" },
+  { value: "turban-style",   label: "Turban Style" },
+  { value: "khimar-long",    label: "Khimar (Long)" },
+  { value: "pashmina-wrap",  label: "Pashmina Wrap" },
 ];
 
 const TRAIT_OPTIONS = [
@@ -244,6 +263,7 @@ const TOP_GARMENT_PRESETS_BOY = [
   "collared shirt",
   "hoodie",
   "thobe",
+  "jalabiya",
   "kurta",
   "qamis",
   "school uniform shirt",
@@ -293,6 +313,9 @@ const SHOE_PRESETS = [
   "slippers",
   "mary jane flats",
   "oxford shoes",
+  "khussa",
+  "balgha slippers",
+  "open-toe sandals",
 ];
 
 const ACCESSORIES_PRESETS = [
@@ -300,14 +323,22 @@ const ACCESSORIES_PRESETS = [
   "small backpack",
   "wristband",
   "tasbih beads",
+  "small Quran (mushaf)",
   "small book in hand",
+  "kufi cap",
   "kite",
   "water bottle",
   "silver compass",
   "notebook",
   "smartwatch",
   "headband",
+  "prayer rug (rolled)",
+  "miswak stick",
+  "eid card / gift",
   "small badge / pin",
+  "lunchbox",
+  "telescope",
+  "calligraphy pen",
 ];
 
 // Suggested height by numeric age
@@ -331,6 +362,15 @@ function ageLabel(age: number): string {
   return "Elder";
 }
 const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Other"];
+
+const AGE_LOOK_CHIPS = [
+  { label: "Toddler (2–4)", value: "2-4 year old toddler" },
+  { label: "Young Child (5–7)", value: "5-7 year old young child" },
+  { label: "Child (8–12)", value: "8-12 year old child" },
+  { label: "Teen (13–17)", value: "13-17 year old teenager" },
+  { label: "Adult (18–40)", value: "young adult" },
+  { label: "Elder (55+)", value: "elderly person, senior" },
+];
 
 const STYLES = [
   { id: "pixar-3d", label: "Pixar 3D" },
@@ -371,6 +411,10 @@ export default function CharacterCreatePage() {
   const [createdCharacter, setCreatedCharacter] = useState<Character | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingPose, setIsGeneratingPose] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   const characterId = createdCharacter?.id || createdCharacter?._id || "";
   const generatePortrait = useGeneratePortrait(characterId);
@@ -385,7 +429,7 @@ export default function CharacterCreatePage() {
     traits: fromTemplate?.traits || [] as string[],
 
     style: tplVd.style || "pixar-3d",
-    gender: (tplVd.gender === "boy" || tplVd.gender === "male" ? "boy" : tplVd.gender === "other" || tplVd.gender === "neutral" ? "other" : "girl") as "boy" | "girl" | "other",
+    gender: (tplVd.gender === "boy" || tplVd.gender === "male" ? "boy" : tplVd.gender === "animal" ? "animal" : tplVd.gender === "other" || tplVd.gender === "neutral" ? "other" : "girl") as "boy" | "girl" | "animal" | "other",
     ageLook: tplVd.ageLook || "",
 
     wearHijab: !!(tplVd.hijabStyle || tplVd.hijabColor || tplMr.hijabAlways),
@@ -433,8 +477,18 @@ export default function CharacterCreatePage() {
     modestyNotes: tplMr.notes || "",
   });
 
-  const updateForm = (field: string, value: unknown) =>
+  // T-07: default entry via templates — redirect if no template and not scratch
+  useEffect(() => {
+    if (!fromTemplate && !searchParams.get("scratch")) {
+      navigate("/app/character-templates");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const updateForm = (field: string, value: unknown) => {
+    setValidationErrors((prev) => { const n = new Set(prev); n.delete(field); return n; });
     setForm((f) => ({ ...f, [field]: value }));
+  };
 
   const toggleTrait = (trait: string) => {
     setForm((f) => ({
@@ -443,6 +497,58 @@ export default function CharacterCreatePage() {
         ? f.traits.filter((t) => t !== trait)
         : [...f.traits, trait].slice(0, 5),
     }));
+  };
+
+  const tryAdvance = () => {
+    if (currentStep === 0) {
+      const errors = new Set<string>();
+      if (!form.selectedUniverseId) errors.add("selectedUniverseId");
+      if (!form.name.trim()) errors.add("name");
+      if (!Number(form.ageRange)) errors.add("ageRange");
+      if (errors.size > 0) { setValidationErrors(errors); return; }
+    }
+    if (currentStep === 1) {
+      const errors = new Set<string>();
+      if (!form.skinTone) errors.add("skinTone");
+      if (!form.eyeColor) errors.add("eyeColor");
+      if (!form.faceShape) errors.add("faceShape");
+      if (errors.size > 0) { setValidationErrors(errors); return; }
+    }
+    setValidationErrors(new Set());
+    setCurrentStep((s) => s + 1);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!createdCharacter) return;
+    setSavingTemplate(true);
+    try {
+      const category = (
+        form.gender === "boy"
+          ? (ageNum >= 13 ? "teen-boy" : ageNum <= 4 ? "toddler" : "boy")
+          : form.gender === "girl"
+          ? (ageNum >= 13 ? "teen-girl" : ageNum <= 4 ? "toddler" : "girl")
+          : "animal"
+      ) as "girl" | "boy" | "elder-female" | "elder-male" | "animal" | "toddler" | "teen-girl" | "teen-boy";
+      await characterTemplatesApi.save({
+        name: createdCharacter.name,
+        description: `${createdCharacter.role} · ${form.traits.slice(0, 3).join(", ")}`,
+        category,
+        characterId: createdCharacter.id || (createdCharacter as any)._id,
+        tags: form.traits,
+        isPublic: false,
+        visualDNA: createdCharacter.visualDNA,
+        modestyRules: createdCharacter.modestyRules,
+        role: createdCharacter.role,
+        ageRange: String(form.ageRange),
+        traits: form.traits,
+      });
+      setTemplateSaved(true);
+      toast({ title: "Saved as template!", description: `${createdCharacter.name} is now in your template library.` });
+    } catch (err) {
+      toast({ title: "Save failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   const progressPct = (currentStep / (steps.length - 1)) * 100;
@@ -463,7 +569,7 @@ export default function CharacterCreatePage() {
   const ageNum = Number(form.ageRange) || 0;
   const isElderAge = ageNum >= 18;
   const isElderMale = form.gender === "boy" && ageNum >= 13;
-  const isOther = form.gender === "other";
+  const isOther = form.gender === "other" || form.gender === "animal";
 
   const hairOptions = isOther
     ? HAIR_STYLES_OTHER
@@ -785,7 +891,7 @@ export default function CharacterCreatePage() {
                   value={form.selectedUniverseId}
                   onValueChange={(v) => updateForm("selectedUniverseId", v)}
                 >
-                  <SelectTrigger className={cn(!form.selectedUniverseId && "border-destructive/50")}>
+                  <SelectTrigger className={cn((!form.selectedUniverseId || validationErrors.has("selectedUniverseId")) && "border-destructive")}>
                     <SelectValue placeholder="Select a universe for this character…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -813,7 +919,11 @@ export default function CharacterCreatePage() {
                   placeholder="e.g., Almaira, Omar, Zainab"
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
+                  className={cn(validationErrors.has("name") && "border-destructive focus-visible:ring-destructive")}
                 />
+                {validationErrors.has("name") && (
+                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Name is required</p>
+                )}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -908,7 +1018,7 @@ export default function CharacterCreatePage() {
               <div className="space-y-3">
                 <Label className="text-base font-bold">👤 Gender</Label>
                 <VisualPicker
-                  columns={3}
+                  columns={4}
                   iconSize="lg"
                   value={form.gender}
                   onChange={(v) => {
@@ -920,9 +1030,10 @@ export default function CharacterCreatePage() {
                     }
                   }}
                   options={[
-                    { value: "girl",  label: "Girl",            icon: <GirlSvg /> },
-                    { value: "boy",   label: "Boy",             icon: <BoySvg /> },
-                    { value: "other", label: "Other / Creature",icon: <CreatureSvg /> },
+                    { value: "girl",   label: "Girl",           icon: <GirlSvg /> },
+                    { value: "boy",    label: "Boy",            icon: <BoySvg /> },
+                    { value: "animal", label: "Animal",         icon: <AnimalSvg /> },
+                    { value: "other",  label: "Creature/Fantasy",icon: <CreatureSvg /> },
                   ]}
                 />
                 {form.gender === "girl" && (
@@ -949,11 +1060,38 @@ export default function CharacterCreatePage() {
                 )}
                 <div className="space-y-2">
                   <Label>{isOther ? "Creature Description" : "Age Look"}</Label>
-                  <Input
-                    placeholder={isOther ? "e.g. small cartoon bird, plump and round" : "e.g. 12 year old girl"}
-                    value={form.ageLook}
-                    onChange={(e) => updateForm("ageLook", e.target.value)}
-                  />
+                  {!isOther ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {AGE_LOOK_CHIPS.map((chip) => (
+                          <button
+                            key={chip.value}
+                            type="button"
+                            onClick={() => updateForm("ageLook", chip.value)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                              form.ageLook === chip.value
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border hover:border-primary/30"
+                            )}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                      <Input
+                        placeholder="Or describe custom age look…"
+                        value={AGE_LOOK_CHIPS.some((c) => c.value === form.ageLook) ? "" : form.ageLook}
+                        onChange={(e) => updateForm("ageLook", e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      placeholder="e.g. small cartoon bird, plump and round"
+                      value={form.ageLook}
+                      onChange={(e) => updateForm("ageLook", e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -961,7 +1099,11 @@ export default function CharacterCreatePage() {
               <div className="space-y-2">
                 <Label className="text-base font-bold">
                   {isOther ? "🐾 Fur / Feather / Scale Colour *" : "🎨 Skin Tone *"}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
                 </Label>
+                {validationErrors.has("skinTone") && (
+                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a skin tone</p>
+                )}
                 {isOther ? (
                   <Input
                     placeholder="e.g. bright golden-yellow feathers, orange wingtips"
@@ -985,7 +1127,13 @@ export default function CharacterCreatePage() {
 
               {/* ── Eye Color ─────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label className="text-base font-bold">👁️ Eye Color *</Label>
+                <Label className="text-base font-bold">
+                  👁️ Eye Color *
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                </Label>
+                {validationErrors.has("eyeColor") && (
+                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select an eye colour</p>
+                )}
                 <VisualPicker
                   columns={7}
                   iconSize="md"
@@ -1001,7 +1149,13 @@ export default function CharacterCreatePage() {
 
               {/* ── Face Shape ────────────────────────────────────────────── */}
               <div className="space-y-2">
-                <Label className="text-base font-bold">😊 Face Shape *</Label>
+                <Label className="text-base font-bold">
+                  😊 Face Shape *
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                </Label>
+                {validationErrors.has("faceShape") && (
+                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a face shape</p>
+                )}
                 <VisualPicker
                   columns={6}
                   iconSize="md"
@@ -1013,70 +1167,91 @@ export default function CharacterCreatePage() {
                     { value: "heart-creative",   label: "Heart",        icon: <HeartFaceSvg /> },
                     { value: "square-determined",label: "Square",       icon: <SquareFaceSvg /> },
                     { value: "oval-balanced",    label: "Oval",         icon: <OvalBalancedFaceSvg /> },
-                    { value: "round-youthful",   label: "Round Young",  icon: <RoundYouthfulFaceSvg /> },
+                    { value: "round-youthful",   label: "Round Soft",   icon: <RoundYouthfulFaceSvg /> },
                   ]}
                 />
               </div>
 
-              {/* ── Eyebrow / Nose / Cheek ────────────────────────────────── */}
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-bold">🪮 Eyebrow Style</Label>
-                  <VisualPicker
-                    columns={3}
-                    iconSize="sm"
-                    value={form.eyebrowStyle}
-                    onChange={(v) => updateForm("eyebrowStyle", v)}
-                    allowDeselect
-                    options={[
-                      { value: "thick-arched",   label: "Thick Arch",  icon: <ThickArchedBrowSvg /> },
-                      { value: "thin-straight",  label: "Thin Straight",icon: <ThinStraightBrowSvg /> },
-                      { value: "bushy-straight", label: "Bushy",       icon: <BushyStraightBrowSvg /> },
-                      { value: "soft-rounded",   label: "Soft",        icon: <SoftRoundedBrowSvg /> },
-                      { value: "natural-full",   label: "Natural",     icon: <NaturalFullBrowSvg /> },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold">👃 Nose Style</Label>
-                  <VisualPicker
-                    columns={3}
-                    iconSize="sm"
-                    value={form.noseStyle}
-                    onChange={(v) => updateForm("noseStyle", v)}
-                    allowDeselect
-                    options={[
-                      { value: "button",          label: "Button",   icon: <ButtonNoseSvg /> },
-                      { value: "broad-flat",      label: "Broad",    icon: <BroadFlatNoseSvg /> },
-                      { value: "straight-narrow", label: "Straight", icon: <StraightNarrowNoseSvg /> },
-                      { value: "rounded-soft",    label: "Rounded",  icon: <RoundedSoftNoseSvg /> },
-                      { value: "wide-nostrils",   label: "Wide",     icon: <WideNostrilsNoseSvg /> },
-                    ]}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold">😊 Cheek Style</Label>
-                  <VisualPicker
-                    columns={3}
-                    iconSize="sm"
-                    value={form.cheekStyle}
-                    onChange={(v) => updateForm("cheekStyle", v)}
-                    allowDeselect
-                    options={[
-                      { value: "chubby-rosy",  label: "Chubby",  icon: <ChubbyRosyCheekSvg /> },
-                      { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
-                      { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
-                      { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
-                      { value: "soft-round",   label: "Soft",    icon: <SoftRoundCheekSvg /> },
-                    ]}
-                  />
-                </div>
+              {/* ── Advanced Details (collapsed) — T-08 ──────────────── */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground/80 hover:bg-muted/30 transition-colors"
+                >
+                  <span>🔬 Advanced Details <span className="font-normal text-muted-foreground">(eyebrows, nose, cheeks, facial hair)</span></span>
+                  {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {showAdvanced && (
+                  <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="font-bold">🪮 Eyebrow Style</Label>
+                        <VisualPicker columns={3} iconSize="sm" value={form.eyebrowStyle}
+                          onChange={(v) => updateForm("eyebrowStyle", v)} allowDeselect
+                          options={[
+                            { value: "thick-arched",   label: "Thick Arch",   icon: <ThickArchedBrowSvg /> },
+                            { value: "thin-straight",  label: "Thin Straight",icon: <ThinStraightBrowSvg /> },
+                            { value: "bushy-straight", label: "Bushy",        icon: <BushyStraightBrowSvg /> },
+                            { value: "soft-rounded",   label: "Soft",         icon: <SoftRoundedBrowSvg /> },
+                            { value: "natural-full",   label: "Natural",      icon: <NaturalFullBrowSvg /> },
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold">👃 Nose Style</Label>
+                        <VisualPicker columns={3} iconSize="sm" value={form.noseStyle}
+                          onChange={(v) => updateForm("noseStyle", v)} allowDeselect
+                          options={[
+                            { value: "button",          label: "Button",   icon: <ButtonNoseSvg /> },
+                            { value: "broad-flat",      label: "Broad",    icon: <BroadFlatNoseSvg /> },
+                            { value: "straight-narrow", label: "Straight", icon: <StraightNarrowNoseSvg /> },
+                            { value: "rounded-soft",    label: "Rounded",  icon: <RoundedSoftNoseSvg /> },
+                            { value: "wide-nostrils",   label: "Wide",     icon: <WideNostrilsNoseSvg /> },
+                          ]}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold">😊 Cheek Style</Label>
+                        <VisualPicker columns={3} iconSize="sm" value={form.cheekStyle}
+                          onChange={(v) => updateForm("cheekStyle", v)} allowDeselect
+                          options={[
+                            { value: "chubby-rosy",  label: "Chubby",  icon: <ChubbyRosyCheekSvg /> },
+                            { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
+                            { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
+                            { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
+                            { value: "soft-round",   label: "Soft",    icon: <SoftRoundCheekSvg /> },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                    {/* Facial Hair — boys only T-05 */}
+                    {form.gender === "boy" && (
+                      <div className="space-y-2">
+                        <Label className="font-bold">
+                          🧔 Facial Hair
+                          {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
+                        </Label>
+                        <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
+                          <SelectTrigger><SelectValue placeholder="Select facial hair…" /></SelectTrigger>
+                          <SelectContent>
+                            {FACIAL_HAIR_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Locks in every illustration</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* ── Hair / Hijab ──────────────────────────────────────────── */}
               <div className="space-y-2">
                 <Label className="text-base font-bold">
                   {isOther ? "🪺 Head Texture / Crest" : form.wearHijab ? "🧕 Hijab Style" : "💇 Hair Style"}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
                 </Label>
                 {/* GIRL — HIJAB */}
                 {!isOther && form.gender === "girl" && form.wearHijab && (
@@ -1087,12 +1262,18 @@ export default function CharacterCreatePage() {
                       value={form.hijabStyle}
                       onChange={(v) => updateForm("hijabStyle", v)}
                       options={[
-                        { value: "simple-white",  label: "White",  icon: <HijabSvg color="white" /> },
-                        { value: "simple-black",  label: "Black",  icon: <HijabSvg color="black" /> },
-                        { value: "simple-beige",  label: "Beige",  icon: <HijabSvg color="beige" /> },
-                        { value: "blue-solid",    label: "Blue",   icon: <HijabSvg color="blue" /> },
-                        { value: "pink-solid",    label: "Pink",   icon: <HijabSvg color="pink" /> },
-                        { value: "purple-solid",  label: "Purple", icon: <HijabSvg color="purple" /> },
+                        { value: "simple-white",   label: "White",       icon: <HijabSvg color="white" /> },
+                        { value: "simple-black",   label: "Black",       icon: <HijabSvg color="black" /> },
+                        { value: "simple-beige",   label: "Beige",       icon: <HijabSvg color="beige" /> },
+                        { value: "blue-solid",     label: "Blue",        icon: <HijabSvg color="blue" /> },
+                        { value: "pink-solid",     label: "Pink",        icon: <HijabSvg color="pink" /> },
+                        { value: "purple-solid",   label: "Purple",      icon: <HijabSvg color="purple" /> },
+                        { value: "al-amira-white", label: "Al-Amira",    icon: <HijabSvg color="white" /> },
+                        { value: "al-amira-black", label: "Al-Amira Blk",icon: <HijabSvg color="black" /> },
+                        { value: "shayla-drape",   label: "Shayla",      icon: <HijabSvg color="teal" /> },
+                        { value: "turban-style",   label: "Turban",      icon: <HijabSvg color="maroon" /> },
+                        { value: "khimar-long",    label: "Khimar",      icon: <HijabSvg color="navy" /> },
+                        { value: "pashmina-wrap",  label: "Pashmina",    icon: <HijabSvg color="gray" /> },
                       ]}
                     />
                     <Input placeholder="Hijab colour or custom description…" value={form.hijabColor}
@@ -1108,13 +1289,21 @@ export default function CharacterCreatePage() {
                       value={form.hairStyle}
                       onChange={(v) => updateForm("hairStyle", v)}
                       options={[
-                        { value: "long-black",      label: "Long",         icon: <LongHairGirlSvg /> },
-                        { value: "curly-long",      label: "Long Curly",   icon: <CurlyLongHairSvg /> },
-                        { value: "braided-long",    label: "Braided",      icon: <BraidedHairSvg /> },
-                        { value: "ponytail-high",   label: "Ponytail",     icon: <PonytailHairSvg /> },
-                        { value: "bun-top",         label: "Bun",          icon: <BunHairSvg /> },
-                        { value: "long-dark-brown", label: "Dark Brown",   icon: <LongHairGirlSvg /> },
-                        { value: "long-brown",      label: "Brown",        icon: <LongHairGirlSvg /> },
+                        { value: "long-black",        label: "Long",          icon: <LongHairGirlSvg /> },
+                        { value: "long-dark-brown",   label: "Dark Brown",    icon: <LongHairGirlSvg /> },
+                        { value: "long-brown",        label: "Brown",         icon: <LongHairGirlSvg /> },
+                        { value: "shoulder-length",   label: "Shoulder",      icon: <LongHairGirlSvg /> },
+                        { value: "short-bob",         label: "Short Bob",     icon: <BunHairSvg /> },
+                        { value: "side-swept",        label: "Side Swept",    icon: <LongHairGirlSvg /> },
+                        { value: "curly-long",        label: "Long Curly",    icon: <CurlyLongHairSvg /> },
+                        { value: "curly-short",       label: "Short Curly",   icon: <CurlyLongHairSvg /> },
+                        { value: "wavy-loose",        label: "Loose Wavy",    icon: <WavyHairBoySvg /> },
+                        { value: "braided-long",      label: "Braided",       icon: <BraidedHairSvg /> },
+                        { value: "two-braids",        label: "Two Braids",    icon: <BraidedHairSvg /> },
+                        { value: "ponytail-high",     label: "High Ponytail", icon: <PonytailHairSvg /> },
+                        { value: "ponytail-low",      label: "Low Ponytail",  icon: <PonytailHairSvg /> },
+                        { value: "bun-top",           label: "Top Bun",       icon: <BunHairSvg /> },
+                        { value: "half-up-half-down", label: "Half-Up",       icon: <BunHairSvg /> },
                       ]}
                     />
                     <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
@@ -1185,39 +1374,22 @@ export default function CharacterCreatePage() {
                 )}
               </div>
 
-              {/* ── Facial Hair & Glasses ─────────────────────────────────── */}
+              {/* ── Glasses — all human characters (T-05) ───────────────── */}
               {!isOther && (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="font-bold">
-                      🧔 Facial Hair
-                      {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
-                    </Label>
-                    <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select facial hair…" /></SelectTrigger>
-                      <SelectContent>
-                        {FACIAL_HAIR_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Locks in every illustration</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">
-                      👓 Glasses
-                      {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
-                    </Label>
-                    <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
-                      <SelectTrigger><SelectValue placeholder="Select glasses…" /></SelectTrigger>
-                      <SelectContent>
-                        {GLASSES_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Locks in every illustration</p>
-                  </div>
+                <div className="space-y-2">
+                  <Label className="font-bold">
+                    👓 Glasses
+                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
+                  </Label>
+                  <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select glasses…" /></SelectTrigger>
+                    <SelectContent>
+                      {GLASSES_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Locks in every illustration</p>
                 </div>
               )}
 
@@ -1235,7 +1407,12 @@ export default function CharacterCreatePage() {
                       iconSize="lg"
                       allowDeselect
                       value={form.topGarmentType}
-                      onChange={(v) => updateForm("topGarmentType", v)}
+                      onChange={(v) => {
+                        updateForm("topGarmentType", v);
+                        if (v === "salwar kameez top" && !form.bottomGarmentType) {
+                          updateForm("bottomGarmentType", "shalwar");
+                        }
+                      }}
                       options={[
                         { value: "long-sleeve tunic",      label: "Tunic",        icon: <LongSleeveTunicSvg /> },
                         { value: "abaya",                  label: "Abaya",        icon: <AbayaSvg /> },
@@ -1260,6 +1437,7 @@ export default function CharacterCreatePage() {
                         { value: "collared shirt",   label: "Collar",    icon: <CollarShirtSvg /> },
                         { value: "hoodie",           label: "Hoodie",    icon: <HoodieSvg /> },
                         { value: "thobe",            label: "Thobe",     icon: <ThobeSvg /> },
+                        { value: "jalabiya",         label: "Jalabiya",  icon: <JalabiyaSvg /> },
                         { value: "kurta",            label: "Kurta",     icon: <KurtaSvg /> },
                         { value: "jacket",           label: "Jacket",    icon: <JacketSvg /> },
                       ]}
@@ -1411,6 +1589,9 @@ export default function CharacterCreatePage() {
                       { value: "boots",           label: "Boots",        icon: <BootsSvg /> },
                       { value: "slippers",        label: "Slippers",     icon: <SlippersSvg /> },
                       { value: "oxford shoes",    label: "Oxford",       icon: <OxfordShoesSvg /> },
+                      { value: "khussa",          label: "Khussa",       icon: <KhussaSvg /> },
+                      { value: "balgha slippers", label: "Balgha",       icon: <BalghaSlipperSvg /> },
+                      { value: "open-toe sandals",label: "Open-Toe",     icon: <SandalsSvg /> },
                     ]}
                   />
                   <Input
@@ -1471,7 +1652,7 @@ export default function CharacterCreatePage() {
                     options={[
                       { value: "slim and lean",             label: "Slim",          icon: <SlimBodySvg /> },
                       { value: "average build",             label: "Average",       icon: <AverageBodySvg /> },
-                      { value: "chubby and soft",           label: "Chubby",        icon: <ChubbyBodySvg /> },
+                      { value: "chubby and soft",           label: "Soft",          icon: <ChubbyBodySvg /> },
                       { value: "athletic and fit",          label: "Athletic",      icon: <AthleticBodySvg /> },
                       { value: "stocky and strong",         label: "Stocky",        icon: <StockyBodySvg /> },
                       { value: "tall and slender",          label: "Tall Slim",     icon: <TallSlenderBodySvg /> },
@@ -1507,7 +1688,13 @@ export default function CharacterCreatePage() {
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-4">
+                {/* Exact height (T-27 — hidden under Advanced) */}
+                <details className="group">
+                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1 mt-1">
+                    <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
+                    Add exact measurements (optional)
+                  </summary>
+                  <div className="grid sm:grid-cols-2 gap-4 mt-3">
                   <div className="space-y-2">
                     <Label>Height (cm)</Label>
                     <div className="flex items-center gap-2">
@@ -1525,13 +1712,8 @@ export default function CharacterCreatePage() {
                       onChange={(e) => updateForm("heightFeet", parseFloat(e.target.value) || 0)}
                       placeholder="e.g. 4.0" step="0.1" />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Weight (kg)</Label>
-                    <Input type="number" value={form.weightKg || ""}
-                      onChange={(e) => updateForm("weightKg", parseInt(e.target.value) || 0)}
-                      placeholder="e.g. 35" />
-                  </div>
                 </div>
+                </details>
               </div>
 
               {/* ── Accessories ────────────────────────────────────────────── */}
@@ -1728,6 +1910,25 @@ export default function CharacterCreatePage() {
                             <Check className="w-4 h-4" />
                             Character approved — ready for books!
                           </div>
+                          {/* T-34: Save as template */}
+                          {!templateSaved ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                              onClick={handleSaveAsTemplate}
+                              disabled={savingTemplate}
+                            >
+                              {savingTemplate
+                                ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                : <BookmarkPlus className="w-3.5 h-3.5 mr-2" />}
+                              Save as my template
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2 text-amber-600 text-xs">
+                              <Check className="w-3 h-3" /> Saved to your template library
+                            </div>
+                          )}
                           <div className="flex flex-col gap-2 pt-1">
                             <Button
                               variant="outline"
@@ -1907,7 +2108,7 @@ export default function CharacterCreatePage() {
               ) : (
                 <Button
                   variant="hero"
-                  onClick={() => setCurrentStep((s) => s + 1)}
+                  onClick={tryAdvance}
                   disabled={!canProceed()}
                 >
                   Next

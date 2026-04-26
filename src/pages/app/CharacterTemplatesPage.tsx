@@ -66,14 +66,24 @@ export default function CharacterTemplatesPage() {
                 <p className="text-sm text-gray-500">Pick a template to get started in seconds</p>
               </div>
             </div>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                className="pl-9 bg-orange-50 border-orange-200 rounded-full"
-                placeholder="Search templates..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative w-52">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  className="pl-9 bg-orange-50 border-orange-200 rounded-full"
+                  placeholder="Search templates..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/app/characters/new?scratch=1")}
+                className="shrink-0 border-gray-300 text-gray-600 hover:bg-gray-50"
+              >
+                Start from scratch
+              </Button>
             </div>
           </div>
 

@@ -1,0 +1,2160 @@
+
+
+===== PAGE 1 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+NoorStudio 
+Alpha Review — Consolidated Dev Brief 
+Full end-to-end flow review with integrated founder feedback 
+Reviewer 
+Taoufiq (Founder), with reference to Noorstudio_Feedback_r1 (C1–C9) 
+Date 
+22 April 2026 
+Scope 
+Dashboard · Universe · Character creation · Knowledge Base (all sub-domains) · KB 
+Templates · Book Foundation · Page Structure · Spread Editor · Cover · Publishing 
+Stage 
+Alpha — tightening for public-ready release 
+ 
+Page 1 
+
+
+===== PAGE 2 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Executive summary 
+The dev team has done outstanding work pulling NoorStudio from MVP to a coherent end-to-end 
+product. The full creation journey — from Universe through Knowledge Base, Character, Story, Structure, 
+Illustrations, Cover, and Publish — is functional, the information architecture is thoughtful, and the 
+cultural sensitivity embedded in the product (Islamic values library, du'as, modesty rules, tasbih-in-hand 
+accessories) shows real care for the audience. NoorStudio is materially ahead of typical alpha-stage AI 
+tools in this category. 
+The work required now is tightening. This review consolidates founder feedback and a full-flow audit into 
+a single set of tickets. The issues fall into a handful of clear buckets: 
+•​
+Positioning — Muslim-first, universally welcoming — NoorStudio is proudly Muslim in heritage 
+and acquisition identity, universal in values and retention. Muslim families don't only want 
+Islamic content — they want the full breadth of children's stories (adventure, animals, bedtime, 
+fantasy, friendship) with values they trust. The product should serve that full breadth as a 
+first-class experience, with Islamic-Forward content as the flagship flavour and Universal 
+Wholesome content as an equal first-class option. 80/20 in stage 1: 80% Muslim-first in 
+marketing voice, 20% welcoming open door for non-Muslim values-aligned families. Evolution is 
+data-driven and deliberately undefined. 
+•​
+Three product tiers, two distinct users — Creator tier for parent-and-kid book-making (Amina 
+persona — the kid becomes a published author, viral mum-network referral engine). Studio tier 
+for entrepreneur mums monetising through KDP (Sara persona — series creation, deep KB, 
+high-LTV). Plus existing advanced tier. Kid use is welcomed within the current UX with parental 
+guidance and video training — no separate kid-mode in this release. 
+•​
+Onboarding and flow clarity — users currently cannot tell what a Universe is, what order to 
+create things in, or how far they've progressed end-to-end. A guided explainer, a fixed 
+creation-order, and a persistent master progress indicator would close this almost entirely. 
+•​
+The Knowledge Base concept is under-communicated — the KB is the single most important 
+feature in the product — it is the DNA that preserves a series across many books. But in the 
+current UI it is presented as a set of tabs with fields, not as the continuity engine it actually is. 
+Reframing it as "Book DNA" at every touchpoint, adding a KB Strength score, and making its 
+concrete impact visible on Book Foundation are the three changes that transform the product 
+from an AI story generator into a series-grade publishing platform. 
+•​
+Broken or half-working features — character pose library renders empty after generation, 
+Arabic text overlays on illustrations are mangled, and back-cover generation is unreliable. These 
+are alpha-grade but ship-blocking for a paid product. 
+•​
+Copyright and brand exposure — "Pixar 3D" and "Ghibli" as style labels, and several cover 
+templates that visually evoke copyrighted properties, create real legal risk that should be 
+resolved before any paid launch. 
+•​
+Audience-fit wording — "Chubby" as a child body type, explicit weight-in-kg field, 
+"Other/Creature" gender lumping, and a few skin-tone labels will create discomfort with the 
+Muslim family audience who are the core customer. 
+•​
+Cognitive load on long forms — Visual DNA and several KB sections ask for 20–30+ decisions on 
+a single scroll with no preview and no conditional collapsing. Templates exist but are 
+under-surfaced. 
+Page 2 
+
+
+===== PAGE 3 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Visual polish — icon and illustration quality — the configuration UI (Visual DNA, KB, 
+Background) is let down by inconsistent, low-quality icons and small illustrations that mix emoji, 
+flat-vector, and rendered styles with no coherent visual language. The generated book output is 
+genuinely good, but first-time users judge the product by the icons they see before any output. 
+This is a trust-killer for entrepreneurs evaluating the Studio tier and a magic-breaker for parents 
+showing the tool to their kids. Needs a product-wide icon/illustration system. 
+•​
+Bulk operations and polish — no bulk-approve on illustration spreads, no playful loading 
+messages on long generation steps, inconsistent microcopy, and a few mobile layout concerns. 
+Everything in this document is actionable. Priority tags (P0–P3) are included as a planning aid, but all 
+tickets are expected to land. 
+Priority legend 
+Priorities are a sequencing hint, not a filter. Every ticket in this document is in scope. 
+P0 
+Ship-blocker. Legal risk, broken feature, or audience-fit issue that damages trust. Do first. 
+P1 
+High-impact. Significantly improves conversion, onboarding, or user trust. 
+P2 
+Medium. Quality-of-life improvement. Should make the next sprint after P0/P1 land. 
+P3 
+Polish. Worth doing, not urgent. Can be batched or picked up opportunistically. 
+Source tags 
+Every ticket is tagged with its source so we can see how founder feedback and flow audit findings fit 
+together. 
+•​
+Founder (C#) — from Taoufiq's review notes (Noorstudio_Feedback_r1), rewritten in ticket 
+format with the original C# preserved. 
+•​
+Flow audit — identified during full end-to-end screen review. 
+•​
+Founder + Flow audit — both sources converged on the same issue. 
+ 
+Page 3 
+
+
+===== PAGE 4 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Suggested sequencing 
+A rough order in which tickets can be tackled. Grouped so each cluster delivers visible user-facing value 
+when shipped together. 
+Cluster 1 — Unblock and protect 
+Fix the things that are either broken or carry risk. After this cluster ships, the product is safe to demo and 
+show to design partners. 
+•​
+T-01 — Rename "Pixar 3D" and "Ghibli" styles 
+•​
+T-02 — Audit cover templates for IP risk 
+•​
+T-15 — Fix empty character pose library 
+•​
+T-16 — Fix broken Arabic text overlay on illustrations 
+•​
+T-17 — Fix back-cover generation (front-first, img-to-img for back) 
+•​
+T-06 — Remove weight field, rename "Chubby" 
+•​
+T-64 — Product-wide icon and illustration quality upgrade 
+Cluster 2 — Orient the user and widen the product's visible range 
+Make the end-to-end flow comprehensible, and make the product's actual breadth visible. After this 
+cluster ships, new users can land on the dashboard and understand both what NoorStudio does and the 
+full range of stories it can tell — Muslim-forward and universal. 
+•​
+T-10 — Guided first-run explainer (skippable overlay walking through each step) 
+•​
+T-11 — Enforce creation order: Universe → Characters → KB → Book 
+•​
+T-12 — Rename "Universe" or make its purpose obvious in-UI 
+•​
+T-13 — Master flow indicator visible at all times 
+•​
+T-14 — Add Universe templates (parity with Character and KB) 
+•​
+T-21 — Rebalance character templates — Muslim families want universal characters too 
+•​
+T-54 — Universal-first KB templates with Islamic-Forward as flagship 
+•​
+T-61 — Visual asset rebalance for universal-first breadth 
+•​
+T-62 — Tier-aware UX — Creator simplified, Studio exposes depth 
+Cluster 3 — Land the Knowledge Base concept 
+This is the cluster that separates NoorStudio from a generic AI story generator. Making the KB visible, 
+scorable, and concrete is what turns the product into a series-grade publishing platform. 
+•​
+T-20 — Reframe KB as Book DNA at every touchpoint 
+•​
+T-52 — KB Strength score with per-domain breakdown 
+•​
+T-53 — Concrete KB impact panel on Book Foundation 
+•​
+T-54 — Expand KB Templates beyond age brackets 
+•​
+T-55 — Visualise Universe → KB → Characters → Books hierarchy 
+Cluster 4 — Tighten character creation 
+Page 4 
+
+
+===== PAGE 5 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Make Visual DNA fast, forgiving, and audience-appropriate. 
+•​
+T-03 — Add master "Family Values Mode" toggle with Shariah-Compliant preset 
+•​
+T-04 — Live character preview panel 
+•​
+T-05 — Conditional logic for hijab, facial hair, creature 
+•​
+T-07 — Templates as default entry path 
+•​
+T-08 — Collapse advanced facial features 
+•​
+T-09 — Age Look structured input 
+Cluster 5 — Tighten Knowledge Base tab depth and illustrations 
+•​
+T-18 — Bulk approve and multi-select on page structure 
+•​
+T-19 — Playful loading messages on long generations 
+•​
+T-39 / T-40 / T-41 / T-42 / T-58 — Deepen content in each KB tab 
+•​
+T-57 — Fix KB counter accuracy and add per-tab completion badges 
+Cluster 6 — Polish 
+Everything remaining: microcopy, mobile layout, accessories library, palette curation, and so on. 
+ 
+Page 5 
+
+
+===== PAGE 6 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Tickets 
+Tickets are numbered T-01 onwards and grouped by the area of the product they touch. Founder 
+comments (C1–C9) appear as ticket entries with their original C# preserved in the source tag. 
+A. Legal, brand, and IP 
+T-01 
+P0 
+Art Style picker · Visual DNA · Edit Universe 
+Rename "Pixar 3D" and "Ghibli" style labels 
+Area: Copyright / Brand risk    Source: Flow audit 
+Issue: "Pixar 3D" and "Ghibli" are registered studio names. Using them as UI labels on a commercial AI 
+generation product creates direct brand-infringement exposure and takedown risk. This risk is elevated 
+for an Islamic children's platform where trust is the core value proposition. 
+Recommendation: Rename to generic descriptors: "Pixar 3D" → "3D Rendered" or "Stylized 3D". 
+"Ghibli" → "Hand-Painted Anime" or "Watercolor Anime". Audit any downstream prompt templates that 
+pass these names to the image model and replace with the same generic descriptors. 
+Acceptance criteria: 
+•​
+No UI label references "Pixar," "Ghibli," "Disney," or any other studio/brand name anywhere in 
+the product 
+•​
+Backend prompt templates contain no studio/brand names when generating images 
+•​
+Style previews updated with original thumbnails that do not evoke the renamed studios 
+ 
+T-02 
+P0 
+Knowledge Base → Cover Design 
+Audit Cover Style Template gallery for IP-adjacent designs 
+Area: Cover template gallery / IP risk    Source: Flow audit 
+Issue: Several cover templates in the gallery visually evoke specific, identifiable commercial children's 
+book series and films — the dragon-flame cover, the moon-over-city cover, and the watercolor floral 
+cover in particular sit close to recognisable IP. This creates exposure both at the platform level and for 
+users generating derivative covers. 
+Recommendation: Design or commission 10 original cover templates that cover the same stylistic range 
+(adventurous, cinematic, heritage, ornate, minimal, watercolour, cosmic, storybook, bold typographic, 
+nature) without leaning on any specific commercial reference. Regenerate template preview art cleanly. 
+Acceptance criteria: 
+•​
+Every cover template is visually original with no direct evocation of identifiable commercial 
+properties 
+•​
+Template names are generic style descriptors, not character or property names 
+•​
+Backend prompt seeds behind each template are reviewed for prompt-level IP leakage 
+ 
+Page 6 
+
+
+===== PAGE 7 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+B. Audience fit, wording, and sensitivity 
+T-03 
+P0 
+Visual DNA (Create Character) · Universe settings 
+Add master "Family Values Mode" toggle with Shariah-Compliant as named preset 
+Area: Values guardrails / trust signal    Source: Flow audit + founder positioning reframe    Related: T-61, T-62 
+Issue: Families using NoorStudio have values-driven content concerns (modesty, no alcohol, no romance 
+for young readers, no violence, faith framing preferences) and currently have to verify multiple individual 
+settings to trust the output. This cognitive load hits hardest with the core Muslim audience, but also 
+applies to every values-aligned family the product welcomes — the universal wholesome segment, 
+conservative Christian families, Jewish families, secular values-driven families. A single master control is 
+needed. Given the product's positioning (Muslim-proud, universal-welcome, 80/20), the mechanism 
+should be tradition-neutral in name but ship with Shariah-Compliant as the flagship named preset so 
+Muslim users immediately see the term they expect. 
+Recommendation: Add a prominent master toggle above the fold on Visual DNA (and in Universe 
+settings) labelled "Family Values Mode." Inside it, a preset selector offers named configurations: (1) 
+Shariah-Compliant — default for Islamic-Forward Universes, sets Long Sleeves ON, Loose Clothing ON, 
+hijab ON for girls aged 9+, no form-fitting, covers knees, no alcohol references, no romance, Arabic 
+phrases natural; (2) Wholesome Universal — default for Universal Wholesome Universes, sets no 
+alcohol, no romance for young readers, age-appropriate content, modesty off by default but 
+configurable; (3) Custom — user configures each guardrail individually. Other faith presets 
+(Christian-Conservative, Jewish-Orthodox-friendly, etc.) appear as "Coming soon" roadmap placeholders 
+per the explicit de-scope. The Shariah-Compliant preset must feel first-class and polished — it is the 
+flagship. For non-Islamic-Forward Universes, Family Values Mode still exists and is still useful; it simply 
+defaults to Wholesome Universal. Crucially: the term "Shariah-Compliant" is not hidden or softened — it 
+is moved from master-toggle-name to preset-name where it remains prominent for Muslim users. 
+Acceptance criteria: 
+•​
+Master toggle labelled "Family Values Mode" visible above the fold on Visual DNA and in 
+Universe settings 
+•​
+Preset selector offers Shariah-Compliant, Wholesome Universal, and Custom 
+•​
+Other faith presets visible as "Coming soon" roadmap placeholders, not built in v1 
+•​
+Default preset is determined by the Universe's flavour (Islamic-Forward → Shariah-Compliant, 
+Universal Wholesome → Wholesome Universal) 
+•​
+When a preset is selected, relevant fields are locked with a lock icon and tooltip e.g. "Locked by 
+Family Values Mode (Shariah-Compliant preset)" 
+•​
+Switching to Custom unlocks all fields for granular configuration 
+•​
+Switching preset or turning the mode off requires a confirmation dialog explaining what will 
+change 
+•​
+State is persisted per-Universe and per-Character 
+•​
+The term "Shariah-Compliant" remains visible and prominent for Muslim users as the flagship 
+preset name 
+ 
+Page 7 
+
+
+===== PAGE 8 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+T-04 
+P0 
+Visual DNA (Create Character) 
+Add live character preview panel on Visual DNA 
+Area: UX / feedback loop    Source: Flow audit 
+Issue: Users fill 30+ fields with zero visual feedback until the Generate step. This creates anxiety, drives 
+abandonment, and means the first rendered character is a surprise — the worst possible moment for a 
+mismatch on a paid credit. 
+Recommendation: Pin a live preview panel to the right side on desktop (sticky as the user scrolls). Even a 
+simple avatar that updates on field change is enough. On mobile, a collapsible preview drawer or 
+persistent thumbnail that expands on tap. 
+Acceptance criteria: 
+•​
+Preview updates within 500ms of any relevant field change 
+•​
+Preview is sticky on desktop viewports ≥ 1024px 
+•​
+Preview has a mobile-equivalent (drawer, thumbnail, or bottom sheet) 
+•​
+Preview reflects at minimum: skin tone, eye color, hair style/color, outfit top/bottom color, hijab 
+state 
+ 
+T-05 
+P0 
+Visual DNA (Create Character) 
+Conditional field logic — hijab, facial hair, gendered sections 
+Area: Form logic    Source: Flow audit 
+Issue: Several fields display regardless of earlier selections. Facial Hair shows when Girl is selected, Hijab 
+toggle shows for Boy and Creature, hijab-specific hair styles don't exist when hijab is toggled ON, and 
+Creature keeps all human face-shape fields. This creates noise and occasional absurdity. 
+Recommendation: Implement conditional rendering. Facial Hair only shows for Boy. Hijab toggle only 
+shows for Girl. When Hijab is ON, the Hair Style section is replaced with a Hijab Style section (Khimar, 
+Shayla, Wrapped, Turban-style, Al-Amira, Bukhnuk). Creature/Animal hides hijab, facial hair, and human 
+face-shape fields. 
+Acceptance criteria: 
+•​
+Facial Hair hidden when Gender = Girl or Creature 
+•​
+Hijab toggle hidden when Gender = Boy or Creature 
+•​
+When Hijab = ON, Hair Style section is replaced by Hijab Style options 
+•​
+Creature hides: hijab, facial hair, eyebrow/nose/cheek style 
+•​
+Hijab defaults ON when Gender = Girl AND Age Look ≥ 9 
+ 
+T-06 
+P0 
+Visual DNA (Create Character) 
+Remove weight field and rename "Chubby" body build 
+Page 8 
+
+
+===== PAGE 9 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Area: Body / Sensitivity    Source: Flow audit 
+Issue: Requiring weight in kg for a children's character creator reads as body-monitoring coded and will 
+make Muslim parents uncomfortable. "Chubby" as a selectable body type label for a child character is 
+language many parents will refuse to apply to their own child — it's a hard stop on the form. 
+Recommendation: Remove the Weight (kg) field entirely (it doesn't materially affect illustration output). 
+Replace the "Chubby" option with "Soft" or "Sturdy." Keep Height Feel as the primary input (visual slider) 
+and demote numeric height to an Advanced accordion. 
+Acceptance criteria: 
+•​
+Weight (kg) field removed from form and from data model 
+•​
+"Chubby" body build renamed to "Soft" (or "Sturdy") 
+•​
+Height Feel slider is primary; numeric height moves under "Advanced — numeric height" 
+ 
+T-22 
+P2 
+Visual DNA (Create Character) 
+Standardise skin-tone labels (remove "Porcelain," "Ebony") 
+Area: Skin tone naming    Source: Flow audit 
+Issue: Skin-tone labels mix poetic ("Porcelain," "Ebony," "Golden") and clinical ("Light Beige," "Med 
+Brown") conventions. "Porcelain" and "Ebony" carry loaded historic connotations some users find 
+uncomfortable in a children's product. 
+Recommendation: Pick one convention and apply uniformly across all 13 tones. Safest: neutral tone 
+numbers (Tone 1 through Tone 13) with a colour swatch. Alternative: consistent plain descriptors (Very 
+Light, Light, Light-Medium, Medium, and so on). 
+Acceptance criteria: 
+•​
+All 13 skin tones use a single naming convention 
+•​
+No loaded terms ("Porcelain," "Ebony") present 
+•​
+Backend prompt template uses the canonical label consistently 
+ 
+T-23 
+P2 
+Visual DNA (Create Character) 
+Separate "Other / Creature" into distinct options 
+Area: Gender / Cultural fit    Source: Flow audit 
+Issue: Lumping "Other" and "Creature" together reads as a gender-identity category, which will raise 
+eyebrows with conservative Muslim parents. The intent is clearly "non-human character," but the label 
+fails. 
+Recommendation: Split into explicit options: Girl, Boy, Animal, Creature/Fantasy. Remove "Other" as a 
+gender option. 
+Acceptance criteria: 
+•​
+Gender options are Girl, Boy, Animal, Creature/Fantasy 
+Page 9 
+
+
+===== PAGE 10 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+No "Other" label present 
+•​
+Animal and Creature/Fantasy hide human-only fields 
+ 
+T-61 
+P1 
+All screens with template/preview imagery 
+Audit and rebalance visual assets for universal-first breadth 
+Area: Visual asset rebalance    Source: Flow audit / positioning    Related: T-21, T-54 
+Issue: Almost every preview image, template thumbnail, empty-state illustration, and onboarding visual 
+in the product today is overtly Islamic — hijabis, minarets, crescents, mosque interiors, Andalusian 
+arches. This signals to every new user that NoorStudio makes Islamic books only. Muslim families who 
+want to write a butterfly story see this and assume the tool is wrong for their current need. Non-Muslim 
+values-aligned families see this and assume they're in the wrong place. The product's actual breadth is 
+invisible because the visual language doesn't show it. 
+Recommendation: Full visual asset audit. For every template preview, empty state, marketing image, 
+and illustrative asset, ensure the library reflects the product's actual breadth. Approximate target mix: 
+40% Muslim-coded imagery (hijabis, Islamic settings, Arabic calligraphy), 40% universal imagery (diverse 
+kids, animals, adventure scenes, everyday family life, nature, fantasy), 20% culturally-diverse imagery 
+(Muslim and non-Muslim kids of different ethnicities together, travel, heritage sites of various traditions). 
+Muslim imagery stays strong and high-quality — this is a rebalance, not a dilution. Current Islamic assets 
+are retained as the Islamic-Forward flavour's visual library. 
+Acceptance criteria: 
+•​
+Every template gallery (character, KB, cover) has visual breadth across Muslim, universal, and 
+diverse imagery 
+•​
+Empty-state illustrations show a mix of story types, not only Islamic scenes 
+•​
+First-run onboarding visuals reflect the product's actual breadth 
+•​
+Dashboard carousels and marketing-style preview tiles rebalanced to approximately 40/40/20 
+split 
+•​
+Muslim imagery remains best-in-class — highest-quality assets, most polished 
+ 
+T-62 
+P1 
+All screens — tier-aware UX 
+Tier-aware UX — Creator tier simplified, Studio tier exposes full depth 
+Area: Tier differentiation and progressive disclosure    Source: Flow audit / positioning    Related: T-08, T-10, T-20 
+Issue: The product today exposes full complexity (KB tabs, Universe config, 30+ Visual DNA fields) 
+regardless of what the user is trying to do. This is the right experience for Studio-tier users (Sara persona 
+— entrepreneurs monetising book series, who benefit from depth), but it's overwhelming for 
+Creator-tier users (Amina persona — parents making one or two books with their kids, who need 
+speed-to-first-published-book). Without tier-aware UX, Amina churns before she gets to her magic 
+moment and Sara can't find the depth she needs fast enough. 
+Page 10 
+
+
+===== PAGE 11 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Recommendation: Introduce tier-aware UX using progressive disclosure. Creator tier (entry-level 
+subscription): auto-populate Universe and KB from smart defaults, hide the KB sidebar item by default, 
+hide advanced Visual DNA fields (T-08 handles part of this), lead the user directly into story creation with 
+a wizard-style flow. Goal: from signup to first published book in < 90 minutes. Studio tier (higher 
+subscription, Sara persona): full KB exposed, Universe management tools, series analytics, KDP export 
+optimisation, character/KB reuse across books. Advanced tier (existing): whatever is currently gated for 
+power users. Tier is selected at signup or upgradable in-product. 
+Acceptance criteria: 
+•​
+Creator tier hides KB sidebar item and auto-populates KB from the user's first template selection 
+•​
+Creator tier Visual DNA shows only essential fields (advanced fields collapsed per T-08) 
+•​
+Creator tier has a wizard-style guided first-book flow optimised for < 90 minutes from signup to 
+published 
+•​
+Studio tier exposes full KB, Universe management, series tooling 
+•​
+Tier selection happens at signup with clear value proposition for each tier 
+•​
+In-product upgrade path from Creator to Studio with preserved work 
+ 
+T-63 
+P1 
+Studio-tier acquisition strategy 
+Formalise partnership with Naima Robert's book authoring academy as the primary 
+Studio-tier acquisition channel 
+Area: Distribution / partnerships    Source: Flow audit + founder context    Related: T-62 
+Issue: The Studio tier (Sara persona — entrepreneur mums monetising book series through KDP) is 
+harder to acquire through cold channels than the Creator tier. However, there's a warm, pre-qualified 
+audience already in existence: Naima Robert's 140K-follower book authoring academy for mothers. 
+These are Sara candidates who have already self-identified as wanting to write books. They're 
+pre-educated on the value proposition. They trust a Muslim influencer voice. They are the single best 
+launch audience for Studio tier. 
+Recommendation: Treat this as a strategic partnership workstream, not a marketing channel. Goal: 
+integrate NoorStudio into the Naima Robert academy experience. Possible structures (founder-level 
+conversation, not dev scope): (a) Academy students get NoorStudio Studio tier included in their tuition, 
+with revenue share to Naima, (b) Co-branded "NoorStudio Author Track" inside her academy, (c) Naima 
+as advisor or equity partner for the author-mum segment. Dev scope: (1) ensure the Studio tier 
+onboarding is ready for a cohort of pre-educated users arriving from external training, (2) build a simple 
+cohort/referral code system so partnership arrivals can be tracked and supported, (3) collect case studies 
+from first successful users to feed back into Naima's marketing. Note: this depends on the relationship 
+being warm enough to formalise — founder to confirm state before dev work begins. 
+Acceptance criteria: 
+•​
+Founder confirms relationship status with Naima and partnership appetite 
+•​
+Studio tier onboarding tested with at least 5 users arriving via a partnership cohort 
+•​
+Referral/cohort code infrastructure built and tested 
+•​
+Case study capture process agreed (user consent, format, publication path) 
+Page 11 
+
+
+===== PAGE 12 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+First 3 published Studio-tier success stories captured within 90 days of partnership launch 
+ 
+C. Onboarding, flow, and wayfinding 
+T-10 
+P1 
+Dashboard / first-run 
+Guided first-run explainer covering each section 
+Area: Onboarding / guided tour    Source: Founder (C3) 
+Issue: New users landing on NoorStudio have no way to understand the pipeline end-to-end. The mental 
+model (Universe → Characters → Knowledge Base → Book → Pages → Illustrations → Cover → Publish) 
+is not self-evident from the sidebar alone. 
+Recommendation: On first sign-in, open a skippable popup tour walking through each section with a 
+short explanation: "This is where you define your series world" (Universe), "This is where your recurring 
+characters live" (Characters), and so on. Follow the pattern used by tools like Notion, Figma, and Canva. 
+Allow re-entry from the Help menu. 
+Acceptance criteria: 
+•​
+Skippable popup tour on first sign-in 
+•​
+One card per major section: Universe, Character, Knowledge Base, Book Builder, Publish 
+•​
+Tour re-accessible from the Help menu 
+•​
+Tour progress remembered per user so partial completion resumes correctly 
+ 
+T-11 
+P1 
+Dashboard 
+Enforce creation order: Universe first, then Character, then KB, then Book 
+Area: Information architecture / creation order    Source: Founder (C1) 
+Issue: The dashboard currently surfaces "New Book" and "New Character" as prominent CTAs, but 
+neither can succeed without a Universe first. Users will click the most prominent CTA, fail, and either 
+re-try or leave. 
+Recommendation: Make Universe creation the first required step for any new user. If a user clicks "New 
+Book" or "New Character" with no Universe, route them through Universe creation inline, with a clear 
+explanation of why. On the empty dashboard, the primary CTA should be "Create your first Universe." 
+Acceptance criteria: 
+•​
+Empty dashboard primary CTA is "Create your first Universe" 
+•​
+Attempting to create a Book or Character with no Universe routes through Universe creation first 
+•​
+Sidebar CTAs are disabled (with tooltip) until at least one Universe exists 
+ 
+T-12 
+P1 
+Universes / Dashboard / Book Foundation 
+Page 12 
+
+
+===== PAGE 13 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Make "Universe" self-explanatory (rename or add helper copy) 
+Area: Terminology clarity    Source: Founder (C4) 
+Issue: "Universe" is not obvious to a first-time user — especially in Book Foundation where it appears as 
+a required dropdown with no explanation of what a Universe is or why they need to pick one. 
+Recommendation: Either rename to "Series" or "World" (industry-standard children's-book 
+terminology), or keep the name and add persistent helper copy everywhere the term appears: "A 
+Universe is your series world — the shared setting, rules, and look across all your books." Add an inline 
+info tooltip on every Universe dropdown. 
+Acceptance criteria: 
+•​
+Every instance of "Universe" in the UI carries a tooltip or helper line explaining the concept 
+•​
+Book Foundation Universe dropdown has a one-line descriptor beneath it 
+•​
+If renaming is preferred, the term is changed consistently across all screens, database migrations 
+included 
+ 
+T-13 
+P1 
+Global / persistent 
+Master flow indicator visible at all times with step-jumping 
+Area: Progress and navigation    Source: Founder (C4) 
+Issue: The existing per-step progress bars (Persona → Visual DNA → Generate → Pose Sheet) only 
+appear inside the character creation flow. At the overall book-production level there is no always-visible 
+progress indicator showing where the user is in the Universe → Character → KB → Book → Pages → 
+Illustrations → Cover → Publish journey. 
+Recommendation: Add a persistent top-level progress indicator visible on every in-book screen showing 
+the 7–8 stages of book production. Allow click-to-jump to any previously-completed stage. The sidebar 
+sub-items (Story, Structure, Style, Layout, Illustrations, Cover, Publish) already show this within a book; 
+elevate this pattern globally and make the steps clickable, not just visible. 
+Acceptance criteria: 
+•​
+Global top-level progress bar visible on every book-creation screen 
+•​
+Steps are clickable once unlocked; clicking jumps to that step 
+•​
+Current step is clearly highlighted 
+•​
+Completed vs locked vs current states are visually distinct 
+ 
+T-14 
+P1 
+Universes 
+Add Universe templates (parity with Character and KB) 
+Area: Template parity    Source: Founder (C5) 
+Page 13 
+
+
+===== PAGE 14 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: Characters and Knowledge Base both have starter template galleries, but Universe does not. A 
+new user creating their first Universe is asked to fill every field from scratch, which contradicts the rest of 
+the product's template-first pattern and adds friction at the very first step. 
+Recommendation: Ship a curated Universe template library (e.g., "Young Muslim Family — UK Suburbs," 
+"Andalusian Historical," "Madinah Everyday," "Hajj Journey," "Space-Age Islamic Sci-Fi," "Animal Friends 
+Village"). Each template pre-fills Name, Short Description, Age Range, Story Tone, and Art Style. User 
+lands in Edit Universe pre-populated, ready to customise. 
+Acceptance criteria: 
+•​
+At least 6 curated Universe templates available at launch 
+•​
+Templates pre-fill all basic fields and tone/art selections 
+•​
+User can still create a Universe from scratch if preferred 
+•​
+Template gallery pattern is visually consistent with Character and KB template galleries 
+ 
+D. Broken or half-working features 
+T-15 
+P0 
+Character detail → Pose Library 
+Fix empty character pose library after generation 
+Area: Broken feature    Source: Founder (C6) 
+Issue: After character generation completes and the UI confirms "poses generated," the pose thumbnails 
+do not render — only the Waving pose appears, the rest show placeholder image icons. This makes the 
+Pose Library feature unusable and leaves users staring at a near-empty grid with no clear next action. 
+Recommendation: Debug the image fetch/rendering path for pose generation. Most likely causes: async 
+race between generation completion and UI state update, signed URL expiry, or a CORS/CDN issue on 
+pose asset delivery. Add a proper loading state per-pose tile while fetching, and an explicit retry control 
+per-pose if fetch fails. 
+Acceptance criteria: 
+•​
+All generated poses render reliably immediately after generation completes 
+•​
+Each pose tile shows a loading skeleton while fetching, not a blank placeholder 
+•​
+If a pose fails to load, a retry button appears on that specific tile 
+•​
+End-to-end test covering character-create → pose-generate → pose-render passes consistently 
+ 
+T-16 
+P0 
+Illustrations / Spread generation 
+Fix broken Arabic text overlay on generated illustrations 
+Area: Broken feature / prompt engineering    Source: Founder (C7) 
+Issue: Arabic script rendered into illustration images is consistently mangled — letters disconnected, 
+characters substituted, or text rendered as visual-nonsense. The prompt enhancement path (including 
+Page 14 
+
+
+===== PAGE 15 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+explicit instructions like "maintain exact arabic wording without alteration") does not help, because 
+diffusion models cannot reliably render complex non-Latin scripts as image pixels. 
+Recommendation: Stop asking the image model to render Arabic script. Instead: (1) generate the 
+illustration with a blank area or pill/badge placeholder where the Arabic would go, (2) overlay the Arabic 
+as real text in the Spread Editor, using a vetted Arabic web font, or as an SVG/PNG pre-rendered from 
+canonical sources for common phrases (SubhanAllah, Alhamdulillah, Bismillah, and so on). For in-scene 
+Arabic (signage, calligraphy panels), use a curated library of pre-rendered calligraphy assets that can be 
+placed on the illustration, not generated. 
+Acceptance criteria: 
+•​
+Image model is not asked to render Arabic characters 
+•​
+Common du'a/dhikr phrases render as overlay text using a proper Arabic web font 
+(Scheherazade, Amiri, Noto Naskh, or similar) 
+•​
+Spread Editor supports Arabic text with correct shaping and right-to-left rendering 
+•​
+For decorative in-scene Arabic calligraphy, a curated asset library is used (not live generation) 
+•​
+Existing broken renders in user projects are flagged with a banner offering a one-click regenerate 
+using the new path 
+ 
+T-17 
+P0 
+Cover Design / generation 
+Rework cover generation — front first, back as image-to-image extrapolation 
+Area: Broken feature / cover generation    Source: Founder (C9) 
+Issue: Current cover generation is unreliable: front and back are generated independently, which leads to 
+mismatched styles, inconsistent typography, and back covers that don't feel like they belong to the same 
+book. 
+Recommendation: Rework the pipeline: (1) generate front cover first, using the chosen template and the 
+book's Visual DNA, (2) once the front is approved by the user, generate the back cover using 
+image-to-image extrapolation from the front — preserving palette, typography, and atmosphere, (3) 
+generate the spine as a thin strip derived from both, (4) allow the user to edit any of the three in the 
+Cover Editor. This mirrors how real book designers work. 
+Acceptance criteria: 
+•​
+Front cover generation completes reliably with the selected template 
+•​
+Back cover generation uses image-to-image from the approved front (not an independent 
+text-to-image call) 
+•​
+Spine is derived from front+back and matches visually 
+•​
+User can approve front before back is generated 
+•​
+User can regenerate any of the three independently after initial approval 
+ 
+E. Bulk operations and loading UX 
+Page 15 
+
+
+===== PAGE 16 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+T-18 
+P1 
+Page Structure (Book Builder) 
+Multi-select and bulk-approve on page structure list 
+Area: Bulk operations    Source: Founder (C8) 
+Issue: The 24-spread page structure list currently requires one approval click per row. For a 24-page book 
+this is 24 clicks of identical action. An Approve All button exists at the top, but there is no middle ground 
+— no way to approve a subset, and no way to quickly distinguish which rows need changes. 
+Recommendation: Add a checkbox column on each row with multi-select. Expose bulk actions in a 
+floating action bar once any row is selected: Approve Selected, Regenerate Selected, Edit Selected. Keep 
+the Approve All button. Add keyboard shortcuts (Shift-click to range-select, Cmd/Ctrl-A to select all). 
+Acceptance criteria: 
+•​
+Each row has a selection checkbox 
+•​
+Selecting rows reveals a floating action bar with Approve Selected, Regenerate Selected, Edit 
+Selected 
+•​
+Shift-click selects a range 
+•​
+Existing Approve All remains functional 
+ 
+T-19 
+P2 
+All long-running generation screens 
+Playful loading messages with dual register (neutral default, Islamic when Universe is 
+Islamic-Forward) 
+Area: Loading UX / tone    Source: Founder (C6)    Related: T-54 
+Issue: Long generation steps (character generate, pose batch, story generate, spread illustrations, cover) 
+currently show generic spinners or minimal text. Users have no sense of how long it will take, which 
+makes slow generation feel broken. Additionally, the product today leans Islamic in its tone even when a 
+user is making a universal story — which misfits the audience breadth we're building toward. 
+Recommendation: Add rotating, on-brand loading copy with a subtle progress signal. Ship two registers: 
+(a) Neutral default — "Weaving your story...", "Grab a cup of coffee — our illustrators are hard at 
+work...", "Almost there — reviewing the final spreads...", "Polishing your cover..." (b) Islamic-flavoured, 
+used when the Universe's template flavour is Islamic-Forward — "Bismillah — generating your cover...", 
+"Bi-idhnillah, your illustrations are coming together...", "Alhamdulillah — almost done...". Rotate every 
+3–5 seconds. Where possible, show a real progress indicator (% or step count) alongside the copy. Copy 
+register auto-selects based on the KB/Universe flavour; no user setting required. 
+Acceptance criteria: 
+•​
+Every generation step of > 5 seconds shows rotating loading copy 
+•​
+Two registers implemented: neutral and Islamic-flavoured 
+•​
+Register auto-selected based on the active Universe/KB flavour 
+•​
+Neutral register is the default for Universal Wholesome and other non-Islamic-Forward 
+templates 
+•​
+Where possible, a real progress signal (e.g., spread 3 of 24) shown alongside the copy 
+Page 16 
+
+
+===== PAGE 17 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Copy never repeats more than twice in one generation cycle 
+ 
+F. Character creation — Visual DNA depth 
+T-07 
+P1 
+Create Character (entry) 
+Make templates the default entry path for Character creation 
+Area: Onboarding / IA    Source: Flow audit 
+Issue: The "Start faster with a template" banner sits above a wall of 30+ fields, which implicitly 
+acknowledges the form is too much. First-time parents hit the form head-on. 
+Recommendation: Change the default entry for Create Character to a template gallery (curated by age 
+and gender). User picks a template, lands on Visual DNA pre-filled, ready to customise. "Start from 
+scratch" becomes a secondary link. 
+Acceptance criteria: 
+•​
+Clicking New Character lands on a template gallery first 
+•​
+Template cards show thumbnail, name, and short descriptor 
+•​
+Selecting a template opens Visual DNA pre-populated 
+•​
+"Start from scratch" available as a tertiary link 
+ 
+T-08 
+P1 
+Visual DNA (Create Character) 
+Collapse Eyebrow, Nose, Cheek, Facial Hair behind Advanced accordion 
+Area: Cognitive load    Source: Flow audit 
+Issue: Four icon-row sections (Eyebrow, Nose, Cheek, Facial Hair) appear prominently but 90%+ of 
+parents will not adjust them. They add clutter, cram into tiny icon rows, and extend the form 
+significantly. 
+Recommendation: Collapse these into an Advanced features accordion, closed by default. Auto-generate 
+sensible defaults from Face Shape and Age Look. 
+Acceptance criteria: 
+•​
+Eyebrow, Nose, Cheek Style, Facial Hair collapsed into an Advanced accordion 
+•​
+Accordion is closed by default 
+•​
+Defaults auto-derive from Face Shape + Age Look when not set manually 
+ 
+T-09 
+P1 
+Visual DNA (Create Character) 
+Replace Age Look free-text with structured chips 
+Area: Input quality    Source: Flow audit 
+Page 17 
+
+
+===== PAGE 18 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: Free-text "e.g. 12 year old girl" produces inconsistent prompts downstream. Users will type 
+"tween," "young adult," "preteen," and so on, which degrades generation consistency across 
+illustrations. 
+Recommendation: Replace with preset age-bracket chips (Toddler 2-3, Young Child 4-7, Child 8-11, Teen 
+12-15) plus an optional numeric age slider. Backend uses the canonical bracket label in image prompts. 
+Acceptance criteria: 
+•​
+Age Look chips render as single-select buttons 
+•​
+Optional precise age slider appears after a bracket is selected 
+•​
+Backend uses canonical bracket label in image prompts 
+ 
+T-21 
+P1 
+Dashboard → Character Templates · Create Character → Templates 
+Rebalance character template library — Muslim families want universal characters too 
+Area: Character library breadth    Source: Founder (C2), extended 
+Issue: The current character library is strong culturally but over-indexed on hijabi girls and 
+modestly-dressed Muslim boys with explicitly Islamic names. This misses the core insight that Muslim 
+families don't only want Islamic content — their kids also want to write books about John and the Magic 
+Boat, Emma and her puppy, a family of hedgehogs, or a space adventure with a robot companion. The 
+current template library forces Muslim parents to fight the tool to get non-Muslim-coded characters, 
+which is the wrong product experience. 
+Recommendation: Rebalance the library so universal characters are first-class citizens alongside Muslim 
+characters. Target split approximately 50/50 at launch: (a) Muslim characters — keep existing (Omar, 
+Aysha, Layla, Noor, Bilal, Yusuf, Hana) and add variety (non-hijabi Muslim girls, Muslim kids with diverse 
+skin tones from across the Ummah), (b) Universal human characters — John, Emma, Liam, Mia, Priya, 
+Kofi, Mei-Lin, Sofia, (c) Animal protagonists — rabbit, cat, hedgehog, owl, fox, turtle, (d) Fantasy — 
+respectful fantasy creatures, (e) Adventure archetypes — pirate kid, astronaut kid, explorer kid. Target 
+minimum 40 templates. Add filter tabs: All · Muslim · Universal · Animals · Fantasy · Adventure. Muslim 
+templates remain the most polished and detailed subset as the flagship flavour, but not the numerical 
+majority. 
+Acceptance criteria: 
+•​
+Character template library includes at least 40 templates 
+•​
+Template mix: approximately 50% Muslim-coded, 50% universal/animal/fantasy 
+•​
+Filter tabs: All · Muslim · Universal · Animals · Fantasy · Adventure 
+•​
+Universal templates use names common in UK/US/European contexts (John, Emma, Liam, Priya, 
+Kofi, Mei-Lin, Sofia) alongside the existing Muslim names (Omar, Aysha, Layla, Noor, Bilal, Yusuf, 
+Hana) 
+•​
+Quality of Muslim templates remains best-in-class — this is a rebalance, not a dilution 
+•​
+Filter state persists across sessions 
+ 
+Page 18 
+
+
+===== PAGE 19 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+T-24 
+P1 
+Visual DNA (Create Character) 
+Add hijab-specific style library when Hijab toggle is ON 
+Area: Hair / cultural coverage    Source: Flow audit 
+Issue: When Hijab is toggled ON, the Hair Style section continues to show Long, Long Curly, Braided, 
+Ponytail, Bun — none of which are visible under hijab. The hijab wardrobe itself is absent, which is a 
+major gap for the target audience. 
+Recommendation: When Hijab = ON, replace the Hair Style section entirely with a Hijab Style section: 
+Khimar, Shayla, Wrapped, Two-piece, Turban-style, Al-Amira, Bukhnuk. Add a hijab colour picker 
+matched to the outfit palette. Allow optional hair style underneath for indoor/family scenes. 
+Acceptance criteria: 
+•​
+At least 6 hijab style options 
+•​
+Hijab colour picker 
+•​
+Optional indoor hair style secondary field for scenes without hijab 
+•​
+Hijab styles locked across illustrations 
+ 
+T-25 
+P2 
+Visual DNA (Create Character) 
+Expand non-hijab hair style library 
+Area: Hair / diversity    Source: Flow audit 
+Issue: Only 5 non-hijab hair styles (Long, Long Curly, Braided, Ponytail, Bun) and 2 colours are shown. For 
+a platform needing diverse characters, this is too narrow. 
+Recommendation: Expand to at least 12 styles: Short, Wavy, Pixie, Twin Braids, Afro, Curly Bob, Side 
+Braid, and so on. Expand hair colour to match the breadth of skin-tone options. Add an optional texture 
+dimension (Straight, Wavy, Curly, Coily). 
+Acceptance criteria: 
+•​
+At least 12 non-hijab hair styles 
+•​
+Hair colour palette with at least 10 options 
+•​
+Optional texture dimension 
+ 
+T-26 
+P2 
+Visual DNA (Create Character) 
+Rename or merge "Round Young" face shape 
+Area: Face shape / naming    Source: Flow audit 
+Issue: "Round Young" mixes shape and age. Age is already captured in Age Look. 
+Recommendation: Rename to "Young," or merge into Round and derive roundness from Age Look. 
+Face-shape labels should describe shape only. 
+Page 19 
+
+
+===== PAGE 20 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Acceptance criteria: 
+•​
+"Round Young" label removed 
+•​
+Face shape options describe shape only 
+ 
+T-27 
+P2 
+Visual DNA (Create Character) 
+Pick one height input — Height Feel slider primary 
+Area: Body / simplification    Source: Flow audit 
+Issue: Height Feel, Height (cm), and Height (ft) are all visible simultaneously, which is over-specified and 
+allows conflicting values. 
+Recommendation: Height Feel is primary. Collapse numeric height into an Advanced — numeric height 
+expandable. If numeric is entered, auto-sync the Height Feel slider. 
+Acceptance criteria: 
+•​
+Only Height Feel visible by default 
+•​
+Numeric height available under Advanced 
+•​
+Two inputs stay in sync when both are used 
+ 
+T-28 
+P2 
+Visual DNA (Create Character) 
+Add Thobe/Jalabiya and visually link Kameez↔Shalwar 
+Area: Outfit / cultural coverage    Source: Flow audit 
+Issue: Thobe and Jalabiya are staple garments in the target region and are missing. Kameez and Shalwar 
+exist but aren't visually linked, making it easy to miss they pair. 
+Recommendation: Add Thobe and Jalabiya to Top Garment (Jalabiya available for both genders). When 
+Kameez is selected as top, visually highlight Shalwar as the suggested bottom. 
+Acceptance criteria: 
+•​
+Thobe and Jalabiya in Top Garment options 
+•​
+Kameez selection highlights Shalwar in Bottom Garment 
+•​
+Jalabiya available regardless of gender 
+ 
+T-29 
+P2 
+Visual DNA (Create Character) 
+Strengthen modesty defaults and add coverage toggles 
+Area: Modesty / defaults    Source: Flow audit    Related: T-03 
+Issue: Long Sleeves and Loose Clothing exist but are not clearly ON by default. There are no explicit 
+toggles for covers-knees or no-form-fitting. 
+Page 20 
+
+
+===== PAGE 21 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Recommendation: Default Long Sleeves and Loose Clothing to ON. Add "Covers knees" and "No 
+form-fitting" toggles, ON by default. If Family Values Mode (T-03) is implemented, these are managed by 
+the master toggle's Shariah-Compliant preset. 
+Acceptance criteria: 
+•​
+Long Sleeves, Loose Clothing, Covers knees, No form-fitting all present and default ON 
+ 
+T-30 
+P2 
+Visual DNA (Create Character) 
+Curate colour palettes down and add labels 
+Area: Color palettes    Source: Flow audit 
+Issue: ~40 unlabeled colour swatches per palette (top, bottom, shoe) causes decision paralysis, and the 
+unlabeled swatches are impossible to reference in the Outfit Rules / Palette Notes free-text fields. 
+Recommendation: Curate to ~20 named colours per palette (Cream, Sage, Dusty Rose, Navy, Olive, 
+Burgundy, and so on). Add labels as tooltips. Group by family (Neutrals, Warms, Cools, Earth Tones). 
+Acceptance criteria: 
+•​
+Each palette ≤ 20 swatches 
+•​
+Every swatch has a named label 
+•​
+Colours grouped by family 
+ 
+T-31 
+P3 
+Visual DNA (Create Character) 
+Expand Islamic accessories library 
+Area: Accessories / cultural coverage    Source: Flow audit 
+Issue: Good start with tasbih beads and small book in hand. Missing common items that naturally appear 
+in Muslim children's story illustrations. 
+Recommendation: Add: prayer mat, misbaha (on wrist), small Quran, kufi cap, topi, siwak, small suitcase 
+(travel scenes), umrah ihram. Distinguish permanent (locked) from scene-specific accessories. 
+Acceptance criteria: 
+•​
+At least 8 additional culturally relevant accessories 
+•​
+Distinction between permanent and scene accessories 
+ 
+T-32 
+P3 
+Visual DNA (Create Character) 
+Add culturally relevant footwear 
+Area: Shoe type / cultural coverage    Source: Flow audit 
+Issue: Current shoe types are Western-defaulted. Missing simple slip-ons, khuff, babouche-style. 
+Page 21 
+
+
+===== PAGE 22 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Recommendation: Add slip-ons, khuff/leather socks, babouche-style slippers, sports sandals. Keep 
+existing options. 
+Acceptance criteria: 
+•​
+At least 3 additional culturally relevant shoe types 
+ 
+T-33 
+P3 
+Visual DNA (Create Character) 
+Add Amber and Heterochromia eye colours 
+Area: Eye colour    Source: Flow audit 
+Issue: Common eye colours Amber and Heterochromia are missing. 
+Recommendation: Add Amber. Add Heterochromia as a toggle that reveals a second colour picker. 
+Acceptance criteria: 
+•​
+Amber added 
+•​
+Heterochromia with dual-colour picker 
+ 
+T-34 
+P2 
+Character creation → completion 
+"Save as my template" after character creation 
+Area: Retention / reuse    Source: Flow audit    Related: T-07 
+Issue: Parents who spend time crafting a character have no way to save it as a personal template for 
+future books. 
+Recommendation: After Visual DNA completion, offer "Save as my template" with a name field. User 
+templates appear in the gallery alongside curated templates. 
+Acceptance criteria: 
+•​
+"Save as my template" available after completion 
+•​
+User templates appear in the gallery 
+•​
+User can rename, duplicate, delete own templates 
+ 
+T-35 
+P2 
+Visual DNA (Create Character) 
+Inline validation for required fields 
+Area: Validation / error states    Source: Flow audit 
+Issue: Required fields are marked with * (Skin Tone, Eye Color, Face Shape) but there's no visible 
+validation. Unclear what happens on Next with unfilled fields. 
+Recommendation: Inline validation: red outline + error message beneath unfilled required fields after a 
+failed Next. Scroll to first invalid field and focus it. 
+Page 22 
+
+
+===== PAGE 23 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Acceptance criteria: 
+•​
+Unfilled required fields show inline error on Next 
+•​
+First invalid field auto-scrolled and focused 
+•​
+Required-field counter at top of form 
+ 
+T-36 
+P3 
+Visual DNA (Create Character) 
+Apply "Locks in every illustration" copy consistently 
+Area: Microcopy consistency    Source: Flow audit 
+Issue: This helper text appears under Facial Hair and Glasses but nowhere else. Every locked field should 
+indicate this, or none should. 
+Recommendation: Audit all Visual DNA fields. Apply the microcopy uniformly, or remove it and convey 
+locking once at the top of the section. 
+Acceptance criteria: 
+•​
+All locked fields carry the microcopy, or it's moved to a single section-level notice 
+•​
+No inconsistency across similar fields 
+ 
+T-37 
+P1 
+Visual DNA (Create Character) 
+Mobile layout pass for Visual DNA 
+Area: Mobile layout    Source: Flow audit 
+Issue: Most parents will hit this on phones. Colour-palette rows will require horizontal scrolling, tiny 
+icons for Eyebrow/Nose/Cheek will be unusable, and the scroll length will feel endless on a small screen. 
+Recommendation: Full mobile layout audit. Colour palettes as horizontally-scrollable rows with edge 
+fade indicators. Icon grids reflow to 3-across on mobile. Sticky Next CTA. Consider a mobile-only 
+step-by-step flow rather than one long scroll. 
+Acceptance criteria: 
+•​
+No horizontal scroll required on viewports ≥ 375px except intentional palette rows 
+•​
+All tappable targets ≥ 44px 
+•​
+Colour palettes scroll horizontally with edge-fade indicators 
+•​
+Sticky Next CTA on mobile 
+•​
+Single-scroll vs step-by-step chosen after usability testing 
+ 
+T-38 
+P3 
+Visual DNA (Create Character) 
+Consider reference photo upload with privacy guardrails 
+Area: Differentiator / privacy-sensitive    Source: Flow audit 
+Page 23 
+
+
+===== PAGE 24 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: A "Base on a photo" option (upload a child's photo, extract features, auto-populate Visual DNA) 
+would be a strong differentiator — flagged as a future bet. 
+Recommendation: Investigate with explicit privacy design: on-device extraction where possible, clear 
+deletion policy, parental consent. Not for the immediate sprint. Must not store the original photo 
+server-side without explicit opt-in. 
+Acceptance criteria: 
+•​
+Privacy/security design doc before any implementation 
+•​
+On-device extraction preferred 
+•​
+Parental consent flow 
+•​
+Data retention policy shown to user 
+ 
+T-60 
+P1 
+Visual DNA (Create Character) 
+Add sub-progress indicator within the Visual DNA step 
+Area: Wayfinding inside long form    Source: Flow audit    Related: T-13, T-37 
+Issue: The top-level progress bar shows 4 stages (Persona → Visual DNA → Generate → Pose Sheet), but 
+Visual DNA alone accounts for roughly 70% of the form work with no sub-level wayfinding. Users have no 
+sense of how far down the long scroll they are, which section they're in, or how much is left. This is a 
+distinct problem from the global flow indicator (T-13) — that one tracks the end-to-end book journey; 
+this one tracks progress within a single long form. 
+Recommendation: Add a sub-progress indicator visible within the Visual DNA step showing sub-sections: 
+Face → Hair → Outfit → Body → Accessories → Rules. The current sub-section is highlighted as the user 
+scrolls (scroll-spy pattern). Alternatively, break Visual DNA into discrete sub-steps with Next/Back 
+navigation (decide based on mobile testing from T-37). 
+Acceptance criteria: 
+•​
+Visual DNA has visible sub-section progress indicator 
+•​
+Current sub-section is highlighted as the user scrolls 
+•​
+Mobile-friendly (sticky, collapsible, or step-based depending on viewport) 
+•​
+Sub-progress is distinct from and complementary to the global flow indicator in T-13 
+ 
+T-64 
+P0 
+Visual DNA · Knowledge Base · Background · KB Templates · all icon grids 
+Product-wide icon and illustration quality upgrade 
+Area: Visual polish / icon and illustration quality    Source: Founder feedback + flow audit    Related: T-02, T-41, T-42 
+Issue: The icons and small illustrations used throughout the product — especially in Visual DNA, but also 
+across the Knowledge Base and Background tabs — are low quality and out of character with the 
+product's actual value proposition. Specific problems: (a) Visual DNA face-shape, eyebrow, nose, cheek, 
+hair-style, outfit, and body-build icons look like cheap emoji or clip-art placeholders, not like a premium 
+design system, (b) skin-tone and eye-colour swatches are flat dots with no tactile quality, (c) Islamic 
+Page 24 
+
+
+===== PAGE 25 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Values cards in the KB (Sabr, Shukr, Sadaqah, etc.) use cartoon emoji-style illustrations inconsistent with 
+each other — some look 3D-rendered, others look flat-vector, others look AI-generated-rough, (d) 
+Background tab mood/lighting/camera-view thumbnails mix rendered illustrations, flat icons, and 
+photographs with no coherent visual language, (e) Book Format tab decorative imagery (large open-book 
+and contents-page renders) dominates the screen without adding information. The cumulative effect is 
+that the configuration UI looks amateurish even though the generated book output is genuinely good. 
+First-time users judge the product by these icons before they see any output. This is an immediate 
+trust-killer for the Sara persona (entrepreneurs evaluating a professional authoring tool) and breaks the 
+magic-moment for the Amina persona (parents showing the tool to their kid). 
+Recommendation: Commission or build a coherent icon and illustration system across the entire 
+product. Specifically: (1) Visual DNA — replace all face, hair, outfit, body, and feature icons with a 
+consistent hand-illustrated or high-quality flat-vector set in a single art style that matches the product's 
+generated output aesthetic, (2) Skin tone and colour swatches — upgrade to tactile swatches with subtle 
+gradients or texture rather than flat dots, (3) KB Islamic Values and Du'a icons — single coherent art style 
+across all values, same illustrator, same stroke weight, same colour palette, (4) Background tab 
+thumbnails — consistent rendered-illustration style across Time of Day, Mood, Colour Style, Lighting, 
+Location. No mixing of photography, flat icons, and renders in the same section, (5) Book Format tab — 
+significantly reduce decorative imagery, replace with small functional icons that communicate 
+configuration state, (6) KB Template preview images — upgrade to proper editorial illustrations that 
+represent the template's tone, rather than stock-looking scene renders, (7) Cover Style Template gallery 
+— confirm that the 10 cover previews are professional-grade (some are strong, some look AI-rough). 
+Establish a visual design language document so future additions stay coherent. If commissioning an 
+illustrator is not viable immediately, use a single AI image model with a locked prompt/seed per icon 
+category to get at least internal consistency while a longer-term solution is found. 
+Acceptance criteria: 
+•​
+All Visual DNA icons use a single coherent art style — no mix of emoji, flat-vector, and rendered 
+•​
+All KB Islamic Values cards use a single illustrator/style 
+•​
+Background tab thumbnails use a consistent rendered-illustration style with no photography or 
+flat icons mixed in 
+•​
+Skin-tone and colour swatches have tactile quality (gradients or subtle texture), not flat dots 
+•​
+Book Format tab decorative imagery reduced or replaced with small functional icons 
+•​
+KB Template preview images upgraded to editorial-grade illustrations 
+•​
+A visual design language document exists and is referenced for all future icon additions 
+•​
+Side-by-side before/after review with founder before shipping 
+ 
+G. Knowledge Base — concept and framing 
+The core issue with KB today 
+The Knowledge Base is the single most important feature in NoorStudio, and also the least 
+well-explained. It is what makes the product different from a generic AI story generator. But in the 
+current UI, the KB is presented as a set of four tabs with fields to fill in. It looks like a preferences panel. It 
+is not a preferences panel. 
+The real concept: KB is Book DNA. 
+Page 25 
+
+
+===== PAGE 26 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+The KB is the library of rules, resources, tone of voice, visual style, vocabulary, values, and world-facts 
+that preserve a series' DNA across many books. A Universe is the container. The KB is the continuity 
+engine that keeps book 20 feeling like it belongs to book 1. Without a well-populated KB, stories and 
+illustrations drift — characters talk differently in each book, the world looks different each time, the 
+Islamic values feel bolted on instead of woven in. With a well-populated KB, every generated asset across 
+every book in the series pulls from the same DNA. 
+Relationship to Universe: the KB governs a Universe, and a Universe has a KB. One-to-one conceptually. 
+Whether the implementation stores KBs as children of Universes or as shareable libraries referenced by 
+multiple Universes is an implementation decision — either works. What matters is that the user 
+understands: the KB is the DNA that survives across books in the same series. 
+The following tickets address this conceptual gap first, then go into the specific content-depth 
+improvements for each KB tab. 
+T-20 
+P1 
+Knowledge Base — landing header, sidebar, and empty state 
+Reframe the Knowledge Base as "Book DNA" at every user touchpoint 
+Area: Concept / onboarding    Source: Flow audit 
+Issue: The current KB UI explains itself with a single tagline ("Define the universe rules that shape every 
+story, chapter, and illustration"). A first-time user does not understand that the KB is the thing that 
+makes every subsequent book feel like part of the same series. They treat it as optional preferences. 
+Half-populated KBs produce drift across books, and users won't know why their series feels inconsistent. 
+Recommendation: Reframe the KB at every touchpoint as the series' Book DNA. Keep the name 
+"Knowledge Base" (industry-standard, and users will grow into it), but everywhere the concept is 
+introduced, lead with the DNA metaphor. At minimum: (a) KB landing screen gets a persistent explainer 
+banner: "This is the DNA of your [Universe Name] series. Every book you generate in this universe pulls 
+from here. Spend time here once — the next 20 books will feel like they belong together." (b) First time a 
+user lands on KB, a one-time modal explains the concept with a 3-panel diagram: empty KB → generic 
+output, populated KB → consistent output, KB reused across books → series-grade DNA. (c) Tooltip on 
+every "Knowledge Base" reference in the sidebar and Book Foundation repeats a compressed version of 
+the metaphor. 
+Acceptance criteria: 
+•​
+Persistent explainer banner on the KB landing screen using the DNA metaphor 
+•​
+One-time first-use modal with a visual explanation of what KB does 
+•​
+Consistent tooltip copy on every KB reference in the product 
+•​
+Landing banner is dismissible per-Universe after first interaction 
+ 
+T-52 
+P1 
+Knowledge Base — all screens (header) 
+KB Strength score with per-domain breakdown and drift-risk messaging 
+Area: Completeness and quality signal    Source: Flow audit    Related: T-20 
+Issue: The current header shows "0 values · 0 du'as · 0 words" as a tiny counter. This is a raw count, not a 
+signal of how ready the KB is to produce consistent output. A KB can have 20 values but no character 
+Page 26 
+
+
+===== PAGE 27 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+voice and no visual rules — and the product will still happily generate books, with predictable drift. The 
+user has no way to know their KB is thin until they see inconsistent outputs. 
+Recommendation: Replace the raw counter with a KB Strength score (0–100) computed from coverage 
+across every domain (values, du'as, vocab, avoid topics, character voice, background rules, book format, 
+cover design). Break the score down per-domain with a visual bar. For each weak domain, add a short 
+cost-of-thinness line: "Your Character Voice is thin — dialogue will feel generic and may drift between 
+books." "Your Background rules are empty — each book will render scenes in a different visual 
+language." Score updates live as the user fills in fields. 
+Acceptance criteria: 
+•​
+KB Strength score (0–100) visible in the KB header on every screen 
+•​
+Per-domain bar chart showing coverage of each of the 8+ domains 
+•​
+Each weak domain shows a one-line "what this costs you" message 
+•​
+Score updates live on field changes 
+•​
+Book Foundation warns (but does not block) if KB Strength < 40 when starting a book 
+ 
+T-53 
+P1 
+Book Foundation (New Book) 
+Show concrete KB impact on Book Foundation — not just a check mark 
+Area: KB impact visibility    Source: Flow audit    Related: T-20, T-52 
+Issue: The Book Foundation screen confirms "✓ KB rules applied to all AI generations" as a tiny success 
+line. This massively under-communicates what is actually happening. The user has no visibility into which 
+KB rules will shape this book, and therefore no confidence that the KB work they did will show up in the 
+output. 
+Recommendation: Replace the single check line with a concrete impact panel: "Your [Universe Name] KB 
+will shape this book in [N] specific ways:" followed by a collapsible list: 12 Islamic values will be woven in 
+where natural · 4 du'as with context will appear when relevant · Background scenes will use your "Warm 
+& Cosy" mood and Ramadan-tent-style locations · Characters will speak in the Reflective faith tone you 
+defined · Cover will follow your "Islamic Heritage" template. The user sees the KB working before a single 
+credit is spent. 
+Acceptance criteria: 
+•​
+Book Foundation shows a KB impact panel, not a single check line 
+•​
+Panel lists specific KB inputs that will shape this book 
+•​
+Panel is collapsible (expanded by default on first visit) 
+•​
+Items in the panel are clickable — clicking jumps to the relevant KB tab to edit 
+ 
+T-54 
+P1 
+KB Templates gallery 
+KB Templates — universal-first library with Islamic-Forward as flagship flavour 
+Area: Template taxonomy and breadth    Source: Flow audit, extended    Related: T-21, T-61 
+Page 27 
+
+
+===== PAGE 28 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: KB Templates currently have two options (Under Six, Ages 8–14), both overtly 
+Islamic-visual-coded. A Muslim family wanting to write a butterflies-and-friendship story or a magic-boat 
+adventure has no template that fits — they're forced to pick an Islamic template and manually dismantle 
+the Islamic framing. This is the wrong product experience for the core Muslim audience, who want to tell 
+the full breadth of children's stories with values they trust. Age-only labelling also misses that a KB for a 
+historical series, an animal series, or an adventure series is radically different from an everyday-life series 
+at the same age. 
+Recommendation: Expand the KB template library to at least 8 templates at next milestone, with 
+universal-first framing. Core universal templates (first-class citizens): (1) Universal Wholesome — Under 
+Six (kindness, gentleness, bedtime, simple adventures, no explicit faith framing), (2) Universal 
+Wholesome — Ages 8–14 (courage, friendship, discovery, coming-of-age), (3) Adventure & Discovery 
+(travel, nature, curiosity — any setting, any characters), (4) Animals & Nature (animal protagonists, 
+nature stories). Islamic-Forward flagship templates (polished, deep, flagship quality): (5) Islamic-Forward 
+— Under Six (current Under Six, renamed honestly), (6) Islamic-Forward — Ages 8–14 (current Ages 
+8–14, renamed honestly), (7) Seerah & Heritage (optional, Islamic history and Sahabah stories), (8) Hajj & 
+Umrah Journey (optional, travel/pilgrimage). Other faith traditions (Christian-Forward, Jewish-Forward, 
+etc.) marked as roadmap placeholders with 'Coming soon' badges — not built in v1. All templates pre-fill 
+the full KB. Users can select any template regardless of their family's faith background. 
+Acceptance criteria: 
+•​
+At least 6 templates available at launch (4 universal + 2 Islamic-Forward minimum) 
+•​
+Templates fully pre-populate all KB tabs with domain-appropriate defaults 
+•​
+Template gallery filterable by age, theme, and flavour (Universal, Islamic-Forward, Roadmap) 
+•​
+Islamic-Forward templates explicitly renamed (not just labelled 'Under Six') 
+•​
+Roadmap placeholders visible for Christian-Forward, Jewish-Forward, Secular-Values-Led with 
+'Coming soon' state 
+•​
+Selecting a template opens KB landing with all fields populated and editable 
+ 
+T-55 
+P2 
+Universes · Characters · Knowledge Base · Books 
+Visualise Universe → KB → Characters → Books hierarchy consistently 
+Area: Information architecture / hierarchy visualisation    Source: Flow audit    Related: T-11, T-12, T-13 
+Issue: Currently Universes, Characters, Knowledge Base, and Projects are four sidebar items at the same 
+level. The real relationship is hierarchical: a Universe has one KB (its DNA), a set of Characters, and many 
+Books. Users cannot see this hierarchy anywhere in the UI. This is the root reason the KB concept doesn't 
+land — it appears as one of four equal siblings, not as the brain of its Universe. 
+Recommendation: Keep the top-level sidebar items as they are for power-user navigation, but add a 
+hierarchical view on the Universe detail page. When a user opens a Universe, they see: its Name and 
+Description, its KB Strength score (T-52), a list of its Characters (with count), a list of its Books (with 
+count), and a prominent Book DNA section showing the KB as the engine of the Universe. This makes the 
+relationship visible without forcing a sidebar redesign. 
+Acceptance criteria: 
+Page 28 
+
+
+===== PAGE 29 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Universe detail page shows: Name, KB (with Strength score), Characters (count + list), Books 
+(count + list) 
+•​
+KB is visually distinguished as the DNA layer, not just another item in the list 
+•​
+Clicking KB from within a Universe context shows that Universe's KB pre-selected 
+•​
+Sidebar remains unchanged for fast navigation 
+ 
+Tab structure and navigation 
+T-56 
+P2 
+Knowledge Base — tab labels 
+Consider reframing KB tab labels from component categories to user intents 
+Area: Tab naming / user intent    Source: Flow audit 
+Issue: The current tabs (Faith & Language, Character Voice, Background, Book Format, Cover Design) 
+describe what kind of field the tab contains. They are internal-schema names, not user-intent names. A 
+user filling out the KB doesn't think "I'm in the Faith & Language tab." They think "I want my characters 
+to say Alhamdulillah naturally" or "I want my books to always end with a du'a." The tab labels don't meet 
+the user where they are. 
+Recommendation: Consider renaming tabs to user-intent framings, keeping the same underlying fields. 
+Suggested mapping: Faith & Language → "What the stories believe" · Character Voice → "How the 
+characters sound" · Background (Visual & Format) → "What the world looks like" · Book Format → "How 
+the books are shaped" · Cover Design → "How the covers are branded." Under each new label, keep the 
+current label as a subtitle. This change is optional — discuss before implementing. 
+Acceptance criteria: 
+•​
+Decision made on whether to rename; if yes, tabs updated across all KB screens 
+•​
+If renamed, the old labels remain as subtitles for continuity 
+•​
+Tooltip on each tab explains what the user is actually configuring 
+•​
+Change applied consistently to sidebar sub-items as well 
+ 
+T-57 
+P2 
+Knowledge Base — all 4 sub-sections 
+Fix header counter accuracy and add per-tab completion badges 
+Area: Progress and validation    Source: Flow audit    Related: T-52 
+Issue: Separate from the KB Strength score (T-52), there's a more basic data-integrity issue: the header 
+counter shows "0 values · 0 du'as · 0 words" even when fields in other tabs have been populated. This is 
+confusing and erodes trust in the product. 
+Recommendation: Fix the counter to accurately reflect populated content across all tabs and content 
+types. Additionally, add a small populated/empty dot on each sidebar sub-item (Faith & Language, Story 
+& Style, Visual & Format, Cover Design) so users can see at a glance which tabs still need work. 
+Acceptance criteria: 
+Page 29 
+
+
+===== PAGE 30 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Header counter reflects actual content across all KB tabs 
+•​
+Sidebar sub-items show populated (green dot) vs empty (grey dot) state 
+•​
+Counter refresh is real-time when fields are edited 
+ 
+Depth per KB tab 
+T-39 
+P2 
+Knowledge Base → Faith & Language → Islamic Values 
+Expand default Islamic Values library and make custom entry richer 
+Area: Value library depth    Source: Flow audit 
+Issue: The current default values grid is well-curated (Sabr, Shukr, Sadaqah, Honesty, Kindness, Tawakkul, 
+Salah, Respect, Forgiveness, Bismillah, Taharah, Courage) but limited to 12. "Add your own value" is a 
+single text field with no guidance on how AI will weave the value into stories. 
+Recommendation: Expand the default library to 20+ (add: Ihsan, Tawba, Barakah, Rahma, Adab, 
+Birr-al-Walidayn, Hayaa, Ukhuwwah, Niyyah, Taqwa, Wara', Ikhlas). For custom values, add an optional 
+"How it should appear in stories" helper field so the AI gets a usage hint per value. 
+Acceptance criteria: 
+•​
+Default Islamic Values library ≥ 20 entries 
+•​
+Custom value entry accepts optional usage description 
+•​
+Usage description is passed to the story-generation prompt 
+ 
+T-40 
+P2 
+Knowledge Base → Character Voice 
+Strengthen Character Voice tab flow and add more voice archetypes 
+Area: Voice library depth    Source: Flow audit 
+Issue: Character Voice mixes "How they talk," "Faith tone," "Du'a style," "Good qualities," and "Example 
+lines" on one scroll. The voice archetypes shown are solid (Fast & Buzzing, Gentle & Calm, and so on) but 
+there are only 4 visible with "2 more" collapsed. Example lines sit at the bottom and feel disconnected 
+from the voice choices above. 
+Recommendation: Expose all voice archetypes by default (don't collapse). Add more faith-tone options 
+(Devout, Playful-reverent, Introspective). Move Example Lines higher and tie them contextually to the 
+selected Faith tone / Du'a style — e.g., if Faith tone = Reflective, pre-suggest example lines in that 
+register. 
+Acceptance criteria: 
+•​
+All voice archetypes visible by default (no "2 more" collapse) 
+•​
+Example lines are contextually pre-suggested based on selected tone 
+•​
+At least 8 faith-tone options 
+ 
+Page 30 
+
+
+===== PAGE 31 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+T-41 
+P2 
+Knowledge Base → Background (Visual & Format) 
+Background scene settings — curate length and expand cultural locations 
+Area: Length and locations breadth    Source: Flow audit 
+Issue: The Background tab is long — Time of Day, Camera View, Mood & Tone, Color Style, Lighting Style, 
+and Locations all stack on one scroll. Locations include good cultural anchors (Masjid, Souk) but miss 
+several common children's-book settings (madrasa/maktab, hammam courtyard, grandmother's home, 
+Ramadan tent, eid venue, farm with chickens). 
+Recommendation: Split Background into two-column responsive layout on desktop to halve scroll 
+length. Add more culturally relevant locations (madrasa, Ramadan tent, Eid venue, hammam courtyard, 
+farmyard, river, oasis, library-madrasa). For each location, allow a short note ("family's home in 
+Madinah") that passes into the scene prompt. 
+Acceptance criteria: 
+•​
+Background tab scroll length reduced by approximately 40% 
+•​
+At least 8 additional culturally relevant locations 
+•​
+Per-location optional context note passed to image prompts 
+ 
+T-42 
+P2 
+Knowledge Base → Book Format 
+Book Format — rationalise decorative imagery and surface the actual fields 
+Area: Format configuration    Source: Flow audit 
+Issue: The Book Format tab is visually dominated by large decorative renders (open books, scrolls, 
+contents page illustrations) with the actual configuration inputs (Chapter Range, Scene Length, Chapter 
+Rhythm, Front Matter, End Matter) wedged between them. This is scroll-heavy and makes the tab feel 
+more like a mood board than a configuration screen. 
+Recommendation: Shrink decorative imagery significantly (or move to a collapsed "What this looks like" 
+preview). Surface the inputs as the primary content. Group Chapter Range + Scene Length + Chapter 
+Rhythm together under "Pacing," and Front Matter + End Matter under "Book wrapping." 
+Acceptance criteria: 
+•​
+Decorative imagery scaled down or moved behind a toggle 
+•​
+Inputs are the primary content of the tab 
+•​
+Logical grouping of Pacing and Book Wrapping 
+•​
+Scroll length reduced by approximately 50% 
+ 
+T-58 
+P2 
+Knowledge Base → Faith & Language → Du'as and Vocabulary and Avoid 
+Topics 
+Flesh out Du'as, Vocabulary, and Avoid Topics sub-tabs of Faith & Language 
+Area: Under-reviewed sub-tabs    Source: Flow audit 
+Page 31 
+
+
+===== PAGE 32 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: The Islamic Values sub-tab is well-developed, but the other three sub-tabs of Faith & Language 
+(Du'as, Vocabulary, Avoid Topics) were only glimpsed at a tab-header level in this review and appear 
+under-built relative to Values. 
+Recommendation: Audit and flesh out each sub-tab: Du'as — ship a starter library of 20+ common 
+children's du'as (before eating, after eating, entering the bathroom, leaving the house, seeing something 
+amazing, before sleep, on waking, and so on) with Arabic text, transliteration, English translation, and 
+usage context. Vocabulary — ship a starter library of preferred terms (Baba, Mama, Jiddo, Jidda, Khala, 
+Ammo, In sha' Allah, Mashallah) vs terms to avoid. Avoid Topics — ship a starter checklist of common 
+topics to exclude (magic in the haram sense, romantic relationships between pre-teens, specific food 
+haram content) with age-tiered severity. 
+Acceptance criteria: 
+•​
+Du'as library with ≥ 20 curated children's du'as (Arabic + transliteration + translation + context) 
+•​
+Vocabulary sub-tab with preferred/avoid term pairs 
+•​
+Avoid Topics checklist with age-tiered severity 
+•​
+All three sub-tabs feed directly into generation prompts with visible impact on output 
+ 
+T-59 
+P3 
+Knowledge Base → export/import 
+Allow KB export and import between Universes 
+Area: Portability and reuse    Source: Flow audit 
+Issue: A user who spends significant time building a strong KB for one Universe has no way to reuse that 
+work for a sister Universe (same author, different series). They'd have to rebuild from scratch, which 
+punishes exactly the power users NoorStudio wants to retain. 
+Recommendation: Add Export KB (JSON or YAML) and Import KB on the KB landing screen. Imported KBs 
+drop in as a fully-populated starting point, which the user can then customise. Also allow cloning a KB 
+within the same account ("Duplicate Oman and Hana KB for new series"). 
+Acceptance criteria: 
+•​
+Export KB produces a portable file 
+•​
+Import KB accepts the exported format and populates a target KB 
+•​
+Duplicate KB action available in the KB list 
+•​
+Imported/duplicated KBs are editable as normal 
+ 
+H. Book builder, illustrations, and cover 
+T-43 
+P1 
+Book Foundation (New Book) 
+New Book — improve story idea input, age handling, and regenerate UX 
+Area: Inputs and AI output controls    Source: Flow audit 
+Page 32 
+
+
+===== PAGE 33 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Issue: The Story Idea free-text area is a single long strip with no guidance on what makes a good idea. 
+Age Range is a dropdown with one option visible (1–6 years Picture book), which doesn't match the 
+earlier Universe age selection. After story generation, the full story appears in one big textbox with a 
+Regenerate button — but no way to regenerate only specific paragraphs or to give targeted feedback. 
+Recommendation: Add a 2–3 line placeholder example in the Story Idea field and a link to "Examples of 
+strong story ideas." Auto-sync Age Range from the selected Universe (user can override). On the 
+generated story, allow paragraph-level regenerate and a structured feedback prompt ("Make it shorter," 
+"More dialogue," "Stronger Islamic moment") rather than a blanket Regenerate. 
+Acceptance criteria: 
+•​
+Story Idea field has a placeholder example and an accessible "Examples" link 
+•​
+Age Range auto-syncs from Universe but is editable 
+•​
+Generated story supports paragraph-level regenerate 
+•​
+Structured feedback options available on regenerate (tone, length, focus) 
+ 
+T-44 
+P1 
+Page Structure (Book Builder) 
+Page Structure — inline editing, spread merging, and clear approval state 
+Area: Spread management    Source: Flow audit    Related: T-18 
+Issue: The 24-page structure list shows one sentence per row with Edit and Approve per row. Editing 
+opens a separate flow. There's no way to merge two thin spreads, split a dense one, or reorder. Approval 
+state is a small colour change that's easy to miss. 
+Recommendation: Support inline editing of the spread sentence directly in the row. Add Merge (with 
+next/previous) and Split actions to each row's contextual menu. Support drag-reorder. Make approval 
+state visually bold — a filled green check on the row, not just a tinted button. 
+Acceptance criteria: 
+•​
+Inline-editable spread sentences 
+•​
+Merge, Split, and Reorder actions available 
+•​
+Approved rows have a bold visual state 
+•​
+Unapproved rows have a visible pending indicator 
+ 
+T-45 
+P1 
+Spread Editor (canvas view) 
+Spread Editor — Arabic text support, layers panel, undo history, and snap-to-grid 
+Area: Editor capability    Source: Flow audit    Related: T-16 
+Issue: The current Spread Editor has layout/text/shapes/elements/uploads panels and a properties 
+sidebar (font, colour, spacing, opacity, position). Several basics are missing or weak: no explicit Arabic 
+text support (see T-16), no layers panel, undo appears limited to most recent action, and no 
+snap-to-grid/guides for alignment. Dragging text in an Arabic-overlay scenario will be painful without 
+these. 
+Page 33 
+
+
+===== PAGE 34 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Recommendation: Add: (a) Arabic-first text support with a curated Arabic font list and correct shaping, 
+(b) a layers panel showing z-order of image/text/shape elements, (c) deep undo/redo history, (d) 
+snap-to-grid and snap-to-guides, (e) alignment tools (align left/centre/right, distribute). 
+Acceptance criteria: 
+•​
+Arabic text renders correctly with proper shaping and RTL handling 
+•​
+Layers panel with show/hide, lock, reorder 
+•​
+Undo/redo history of ≥ 50 steps 
+•​
+Snap-to-grid and snap-to-element guides 
+•​
+Alignment and distribute tools 
+ 
+T-46 
+P2 
+Cover Design template gallery 
+Cover templates — filtering, preview, and relationship to age group 
+Area: Template selection UX    Source: Flow audit    Related: T-02 
+Issue: 10 cover templates are shown in a single grid. There's no filter by age group, genre, or mood, and 
+no larger preview on hover. Some templates (Epic Cinematic, Legacy of the Crescent Moon, Bold 
+Typography) suit older readers; others (Classic Children's Adventure, Lily's Secret Garden) suit younger — 
+but this isn't signalled. 
+Recommendation: Add filter chips (Age group, Genre, Mood). Add a larger on-hover preview. Add a 
+recommended badge that lights up based on the book's Age Range. 
+Acceptance criteria: 
+•​
+Filter chips for Age group, Genre, Mood 
+•​
+On-hover preview shows a larger cover thumbnail 
+•​
+Recommended badge appears on templates matching the current book's Age Range 
+ 
+T-47 
+P2 
+Character detail → Poses 
+Pose library — add custom poses and pose-specific prompts 
+Area: Pose library    Source: Flow audit    Related: T-15 
+Issue: 12 pre-defined poses (Standing, Sitting, Walking, Running, Waving, Thinking, Reading Quran, 
+Praying Salah, Laughing, Sad, Surprised, Kneeling) is a solid baseline, but users may need story-specific 
+poses (making wudu, riding a camel, pointing at a sign, carrying a baby sibling, sitting cross-legged on a 
+prayer mat). 
+Recommendation: Add "+ Custom pose" with a prompt input. Allow the user to save custom poses to 
+their character's library. Add story-specific pose suggestions when the Book Builder detects a pose need 
+("This spread needs Omar making wudu — generate?"). 
+Acceptance criteria: 
+•​
++ Custom pose action with prompt input 
+Page 34 
+
+
+===== PAGE 35 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Custom poses saved to character's pose library 
+•​
+Book Builder suggests and offers to generate missing story-specific poses 
+ 
+T-48 
+P2 
+Publish (final step) 
+Publish step — clearer export formats, platform presets, and previews 
+Area: Publishing / export    Source: Flow audit 
+Issue: Publish is the final step but wasn't deeply reviewed in this audit. The Spread Editor shows Preview, 
+EPUB, and Export PDF buttons. Users need clarity on: what export formats are supported, what file specs 
+each platform requires (Kindle KDP, Apple Books, print-on-demand, Ingram Spark), and a preview of how 
+the file will look in each. 
+Recommendation: Audit and document the Publish step separately. At minimum: add platform presets 
+(KDP Kids, Apple Books, IngramSpark print), show expected file specs before export, offer a pre-flight 
+check (resolution, bleed, text safe-zones), and a visual preview on a device mockup. 
+Acceptance criteria: 
+•​
+Platform presets available for major children's book platforms 
+•​
+Pre-flight check runs before export 
+•​
+Visual preview on device mockup 
+•​
+Export formats documented in-UI 
+ 
+I. Dashboard and global chrome 
+T-49 
+P2 
+Dashboard 
+Dashboard empty state should guide to the correct first action 
+Area: Empty state / wayfinding    Source: Flow audit    Related: T-11, T-12 
+Issue: When Characters, Books, and Projects are all at 0, the dashboard still shows template carousels 
+and a "Create Your First Book" CTA at the bottom. But the correct first action (per T-11) is creating a 
+Universe, not a Book. The carousels also bury the action under scroll. 
+Recommendation: For the empty state, replace the multiple carousels with a single guided 
+call-to-action: "Start here — create your first Universe" with a short 1-line explainer. Show template 
+carousels only after the first Universe exists. 
+Acceptance criteria: 
+•​
+Empty-state dashboard shows a single primary CTA: Create first Universe 
+•​
+Template carousels appear only once the user has at least one Universe 
+•​
+Empty state has a one-line explainer of what a Universe is 
+ 
+Page 35 
+
+
+===== PAGE 36 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+T-50 
+P3 
+Global chrome 
+Credits counter — show spend history and low-credit warnings 
+Area: Credits / transparency    Source: Flow audit 
+Issue: The credits counter (38, 50, varying across screenshots) is visible but gives no breakdown of what 
+consumed credits, and no warning when credits are about to run out during a long operation. 
+Recommendation: Clicking the credits counter opens a side panel showing spend history (per book, per 
+operation). Before any operation costing > 20% of remaining credits, show a confirmation dialog with an 
+estimated cost and remaining balance. 
+Acceptance criteria: 
+•​
+Credits counter is clickable and opens a spend history panel 
+•​
+Operations ≥ 20% of remaining credits show a confirm dialog 
+•​
+Low-credit warning (< 10 credits) is a persistent banner 
+ 
+T-51 
+P3 
+Global chrome · Help 
+Help section should surface contextual help per screen 
+Area: Support / self-serve    Source: Flow audit    Related: T-10 
+Issue: The Help sidebar item is present but its content and behaviour weren't exposed in the review. 
+Each major screen (Visual DNA, KB tabs, Spread Editor) has enough complexity to warrant its own 
+contextual help card. 
+Recommendation: Per-screen help: a "?" icon on each major section that opens a contextual help 
+drawer with a 30-second video, a written walkthrough, and a link to a full guide. Global Help menu lists 
+all guides and an "Ask us" channel. 
+Acceptance criteria: 
+•​
+? icon on every major section (Visual DNA, each KB tab, Spread Editor, Cover, Publish) 
+•​
+Clicking opens a contextual help drawer 
+•​
+Global Help menu aggregates all guides 
+ 
+Appendix — Distribution opportunity: Naima Robert 
+partnership 
+This is a strategic note, not a dev ticket. Including it here so it stays visible alongside the product work. 
+Naima Robert runs a book-authoring academy for mothers with approximately 140K followers. Her 
+audience is pre-qualified Studio-tier users (Sara persona): Muslim mothers who have already 
+self-identified as wanting to author children's books, who have paid for education on the topic, and who 
+are actively looking for tools that make practical execution possible at scale. 
+Page 36 
+
+
+===== PAGE 37 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+Relative to cold acquisition, this is an enormous short-circuit. Most AI book tools have to convince users 
+that book authoring is a real opportunity. Naima's students already believe; they need the tool. A formal 
+partnership — not a sponsorship — could move NoorStudio's first 100 paying Studio-tier customers from 
+a 12-month acquisition slog to a 6-week warm rollout. 
+Potential partnership shapes worth exploring (strategic, not immediate dev work): 
+•​
+Co-created "NoorStudio Author Track" — her academy students get a NoorStudio Studio 
+account bundled with their tuition. Revenue share on the NoorStudio subscription, or a fixed 
+per-student fee paid by the academy. 
+•​
+Naima as formal advisor or ambassador — credibility transfer is instant; Muslim-mum 
+audiences trust Muslim-mum voices. Her testimonial is worth more than any paid marketing 
+channel. 
+•​
+Case-study flywheel — each student who makes her first £1,000 on KDP using NoorStudio 
+becomes a case study Naima can share, bringing in the next cohort. Flywheel compounds within 
+a defined community. 
+Implication for product prioritisation: the Studio tier needs to be genuinely ready when this partnership 
+opens. That means T-20 (KB reframing), T-44 (Page Structure), T-48 (Publish / KDP export), T-52 (KB 
+Strength score), T-53 (Book Foundation KB impact panel) and anything else that affects the Studio-tier 
+experience should be considered time-sensitive if the Naima conversation progresses. Shipping a broken 
+product into this audience would cost the relationship and the reputation; shipping a great product 
+would catalyse the business. 
+Appendix — Strategic context (future-phase, not current 
+sprint) 
+This appendix captures strategic decisions and future-phase opportunities surfaced during review. It is 
+deliberately separated from the ticket list because none of it is current-sprint dev work. It exists so the 
+thinking isn't lost, and so future decisions have context. 
+Explicit de-scope for v1 
+To keep the team focused, the following are deliberately NOT in scope for this release cycle. Capturing 
+them here so there's no ambiguity: 
+•​
+Reference Library (scholar-vetted corpora) — a RAG-backed reference layer grounding 
+generation in sourced Islamic knowledge (Seerah, Fiqh, Hadith, Muslim History, etc.). Exciting 
+and potentially the strongest moat the product could have, but over-engineered for current 
+stage. Decision: park until post-PMF. Revisit once the product has 100+ paying Studio-tier users 
+and early signal from institutional/educational buyers. 
+•​
+Non-Islamic faith-tradition packs — Christian-Forward, Jewish-Forward, Hindu-Forward, etc. 
+Architecture must not preclude them (see T-54, T-61), but building them is out of scope. 
+Roadmap placeholders with "Coming soon" badges only. 
+•​
+Dedicated kid-mode UI — a child-facing simplified experience for ages 8–13 to use NoorStudio 
+directly with parental supervision. Current UX is usable by kids with parental help and video 
+tutorials (founder confirmed). First-class kid-mode is a Stage 2 consideration once the adult 
+product is solid. 
+Page 37 
+
+
+===== PAGE 38 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+B2B / institutional tier — madrasas, Islamic schools, Muslim homeschool co-ops. Significant 
+commercial opportunity, especially tied to Reference Library, but post-PMF. Keep the data model 
+clean enough to support it later; don't build it now. 
+•​
+Multi-founder-product integration with Merris — NoorStudio and Merris are strategically 
+separate. Zero cross-pollination of features, users, or billing. Confirmed by founder. 
+Reference Library — parked concept, future phase 
+During review, the question arose whether the Knowledge Base should eventually become a real 
+reference library — a RAG-backed corpus of sourced Islamic knowledge (Seerah, Fiqh, Hadith, Muslim 
+History, Qur'anic stories, Sahabah biographies, Islamic geography and architecture, Golden Age sciences). 
+Every generation call would ground itself in vetted, scholar-reviewed sources. Every output would carry 
+provenance: "This story references the Mezquita of Cordoba [source], the life of Ibn Rushd [source], and 
+the du'a upon entering a masjid [Sunan Abu Dawud, sahih]." 
+This is directionally exciting for three reasons. First, it is the only feature that would make NoorStudio 
+categorically different from every other AI children's book tool — competitors can copy UX and 
+templates, but not scholarly-vetted corpora. Second, it unlocks the institutional tier (Islamic schools, 
+madrasas) where willingness-to-pay is 5–10x the consumer tier. Third, the same architecture could 
+eventually support non-religious reference libraries (Scouts, child development psychology, STEM, 
+Christian homeschool, etc.) — a much broader moat. 
+It is parked for v1 because: (a) the current audience (Amina and Sara personas) does not yet need it — 
+most children's books they'll make are fiction and don't require historical grounding, (b) the build cost is 
+significant (3–6 months engineering plus ongoing scholarly review and content curation), (c) it distracts 
+from shipping Creator and Studio tiers to PMF, (d) the strongest signal for when to build it will come from 
+Studio-tier users asking for it, not from our internal excitement. 
+Design principle for v1: ensure the KB data model can accommodate "linked reference corpora" as a field 
+later, even though no corpora exist. Zero current cost, high option value. When the time comes to build 
+it, the data model doesn't need refactoring. 
+Trigger for revisiting: (i) 100+ paying Studio-tier users, (ii) at least 3 inbound inquiries from Islamic 
+schools or madrasas, (iii) Creator and Studio tiers are at PMF with stable retention. 
+Naima Robert distribution strategy 
+The Studio tier (Sara persona) has a named, warm distribution channel: Naima Robert's book authoring 
+academy for mothers (140K followers, established Muslim-mum author community, paid-course 
+audience already primed on the book-writing-as-business value proposition). This is captured as T-63 in 
+the ticket list but the strategic context is worth capturing here: 
+•​
+Naima's academy is pre-qualified Sara — her students have already self-identified as wanting to 
+write books and pay for education about it. They understand the value proposition before they 
+arrive. This short-circuits 18 months of cold acquisition for the Studio tier. 
+•​
+Muslim-mum audiences trust Muslim-mum voices — Naima's endorsement is worth multiples 
+of paid marketing in this niche. Her testimonial is game-over-level credibility. 
+•​
+Partnership structures to consider (founder-level, not dev) — (a) revenue share with Naima for 
+students who subscribe to Studio tier, (b) co-branded NoorStudio Author Track inside her 
+academy, (c) Naima as formal advisor or equity partner for the author-mum segment. 
+Page 38 
+
+
+===== PAGE 39 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+•​
+Risk to manage — Naima's brand protects her reputation. If NoorStudio ships something broken 
+when her audience arrives, it reflects on her. The partnership only works if quality is high on day 
+one of the partnership activation — which raises the shipping bar but is an excellent forcing 
+function. 
+•​
+Case studies become the flywheel — every Sara who makes her first £1,000 with NoorStudio is 
+a case study Naima can share with her next cohort. Compounds within a defined community 
+rather than depending on broad marketing. 
+Three-tier architecture vision 
+The product serves two distinct users through three tiers. Captured here as product vision for reference 
+when making feature decisions: 
+•​
+Creator tier — Amina persona — parent-and-kid book-making. Low price point (impulse-level — 
+user tested ~£12/month range). Wizard-style first-book flow. KB hidden behind smart defaults. 
+Emotional hook: the kid becomes a published author. The Layla-gets-her-book-on-KDP moment. 
+Viral referral engine — mums share in WhatsApp and Islamic-school groups. Top of funnel for the 
+entire product. 
+•​
+Author tier — existing mid-tier — whatever the current mid-subscription is. Bridges Creator and 
+Studio. Users who make more than a handful of books but aren't yet running a business. 
+•​
+Studio tier — Sara persona — entrepreneur mums monetising book series through KDP. Higher 
+price point (business-investment-level — user tested ~£39–59/month range). Full KB and 
+Universe management exposed. Series consistency tooling, KDP export optimisation, cover A/B 
+testing, analytics. Reached primarily through Naima Robert channel (T-63). Revenue engine — 
+higher LTV, lower churn, business-driven retention. 
+Positioning per tier matters: Creator is emotional ("give your child the pride of being a published 
+author"), Studio is commercial ("turn your storytelling into a real income stream"). The two messages 
+should not be mixed in the same marketing funnel. 
+Evolution criteria — when to revisit major decisions 
+Several decisions in this brief are stage-appropriate but will need revisiting. Capturing the triggers here: 
+•​
+Non-Muslim faith packs — revisit when non-Muslim sign-ups exceed 15% of new users or when 
+a specific community (e.g. Christian homeschool) reaches out as a cohort. 
+•​
+Reference Library — revisit at 100+ Studio-tier paying users, or 3+ inbound inquiries from Islamic 
+schools/madrasas. 
+•​
+Kid-mode dedicated UI — revisit when user research shows kids aged 8–13 are active primary 
+users (not just supervised co-creators). 
+•​
+B2B / institutional tier — revisit post Reference Library decision — they are tied together 
+commercially. 
+•​
+80/20 audience balance — revisit quarterly based on actual user mix and retention signals. 
+Appendix — Reconciliation with earlier Visual DNA review 
+The first review of NoorStudio focused on the Visual DNA screen and produced 26 tickets (C-01 through 
+C-26). Every one of those tickets is carried into this consolidated document — nothing has been 
+Page 39 
+
+
+===== PAGE 40 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+dropped. The table below maps each original Visual DNA ticket to its equivalent in this document so the 
+dev team has a single source of truth and a clear trace back to the earlier review. 
+Original ID 
+Topic 
+Consolidated 
+ID 
+C-01 
+Rename Pixar / Ghibli — copyright risk 
+T-01 
+C-02 
+Family Values Mode master toggle (Shariah-Compliant preset) 
+T-03 
+C-03 
+Live character preview panel 
+T-04 
+C-04 
+Conditional field logic (hijab, facial hair) 
+T-05 
+C-05 
+Remove weight field, rename Chubby 
+T-06 
+C-06 
+Templates as default entry path 
+T-07 
+C-07 
+Hide Eyebrow / Nose / Cheek behind Advanced 
+T-08 
+C-08 
+Age Look structured input 
+T-09 
+C-09 
+Hijab-specific style library 
+T-24 
+C-10 
+Expand non-hijab hair styles 
+T-25 
+C-11 
+Sub-progress indicator within Visual DNA 
+T-60 
+C-12 
+Standardise skin-tone labels 
+T-22 
+C-13 
+Separate Other / Creature 
+T-23 
+C-14 
+Curate colour palettes and add labels 
+T-30 
+C-15 
+Rename Round Young face shape 
+T-26 
+C-16 
+Pick one height input 
+T-27 
+C-17 
+Thobe / Jalabiya and Kameez↔Shalwar 
+T-28 
+C-18 
+Modesty defaults ON, add coverage toggles 
+T-29 
+C-19 
+Expand Islamic accessories library 
+T-31 
+C-20 
+Culturally relevant footwear 
+T-32 
+C-21 
+Amber and Heterochromia eye colours 
+T-33 
+C-22 
+Save as my template 
+T-34 
+C-23 
+Inline validation for required fields 
+T-35 
+C-24 
+Consistent "Locks in every illustration" copy 
+T-36 
+Page 40 
+
+
+===== PAGE 41 =====
+
+NoorStudio — Alpha Review — Consolidated Dev Brief 
+C-25 
+Mobile layout pass for Visual DNA 
+T-37 
+C-26 
+Reference photo upload (future) 
+T-38 
+ 
+Nine founder comments (C1–C9) from Noorstudio_Feedback_r1 are incorporated separately, carrying 
+their original numbering in the Source tag of each ticket. See Group C (Onboarding) and Group D (Broken 
+features) for these. 
+Closing notes 
+Total tickets: 64. Founder comments C1–C9 from Noorstudio_Feedback_r1 are incorporated as T-10, 
+T-11, T-12, T-13, T-14, T-15, T-16, T-17, T-18, T-19, and T-21 (with several C-comments consolidated where 
+they shared a theme). All 26 original Visual DNA tickets (C-01 through C-26) are also incorporated — see 
+the Visual DNA reconciliation appendix for the full mapping. The remaining tickets come from the 
+full-flow audit and from the positioning reframe discussed with the founder (T-21 rescoped, T-54 
+rescoped, T-19 rescoped, T-61 visual rebalance, T-62 tier-aware UX, T-63 Naima partnership, T-64 
+icon/illustration quality upgrade). Group G (Knowledge Base) includes both conceptual reframing tickets 
+(T-20, T-52, T-53, T-54, T-55) and tab-level depth tickets (T-39, T-40, T-41, T-42, T-56, T-57, T-58, T-59). See 
+the Strategic context appendix for explicit v1 de-scope, parked concepts (Reference Library), partnership 
+strategy (Naima Robert), and three-tier architecture vision. 
+The product is much closer to public-ready than its alpha status suggests. Clusters 1, 2, and 3 in the 
+Suggested Sequencing section are the ones that unlock a confident invite-only or waitlist launch. Cluster 
+4 onwards is about converting and retaining those users once they're in. 
+This document is the single source of truth for the dev team. Each ticket ID is stable and can be 
+referenced in code review, commits, and status updates. When tickets close, keep them in-document 
+with a resolved tag rather than deleting — the running history is useful for future contributors. 
+ 
+— End of consolidated dev brief — 
+Page 41 

@@ -19,11 +19,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/useAuth";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
-import { ExportPdfModal } from "@/components/editor/ExportPdfModal";
 import { tokenStorage } from "@/lib/api/client";
 import { reviewApi } from "@/lib/api/review.api";
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9001";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9002";
 
 const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   v: "select", V: "select", t: "text", T: "text",
@@ -53,7 +52,7 @@ export default function BookEditorPage() {
   const [selectedObj, setSelectedObj] = useState<fabric.Object | null>(null);
   const [scale, setScale] = useState(0.7);
   const [saving, setSaving] = useState(false);
-  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingEpub, setExportingEpub] = useState(false);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [pageReloadNonceById, setPageReloadNonceById] = useState<Record<string, number>>({});
@@ -280,13 +279,41 @@ export default function BookEditorPage() {
     } finally { setSaving(false); }
   }, [requestSaveCurrentPage, toast]);
 
-  const handleExport = useCallback(() => {
-    saveCurrentPageState(); setExportModalOpen(true);
-  }, [saveCurrentPageState]);
+  const handleExport = useCallback(async () => {
+    if (!projectId) return;
+    setExportingPdf(true);
+    toast({ title: "Generating PDF…", description: "Saving pages and preparing your download" });
+    try {
+      saveCurrentPageState();
+      await requestSaveCurrentPage();
 
-  const handleSaveFirst = useCallback(async () => {
-    await requestSaveCurrentPage();
-  }, [requestSaveCurrentPage]);
+      const res = await fetch(
+        `${API_BASE}/api/projects/${projectId}/export/pdf?template=classic`,
+        { method: "GET", headers: tokenStorage.get() ? { Authorization: `Bearer ${tokenStorage.get()}` } : {} }
+      );
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "Unknown error");
+        throw new Error(body || `HTTP ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${projectTitle || "book"}-classic.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "PDF exported ✓" });
+    } catch (err) {
+      toast({ title: "PDF export failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [projectId, projectTitle, requestSaveCurrentPage, saveCurrentPageState, toast]);
 
   const handleExportEpub = useCallback(async () => {
     saveCurrentPageState(); setExportingEpub(true);
@@ -496,7 +523,6 @@ export default function BookEditorPage() {
   return (
     <>
       <SubscriptionGateModal open={editorGateOpen} onOpenChange={setEditorGateOpen} workflow="editor" reason="expired" />
-      <ExportPdfModal open={exportModalOpen} onOpenChange={setExportModalOpen} projectTitle={projectTitle} projectId={projectId ?? ""} apiBase={API_BASE} token={tokenStorage.get()} onSaveFirst={handleSaveFirst} />
 
       <div className="flex flex-col h-screen bg-[#0f1117] overflow-hidden select-none">
         <EditorToolbar
@@ -504,7 +530,7 @@ export default function BookEditorPage() {
           scale={scale} onZoomIn={() => setScale((s) => Math.min(s + 0.1, 2))} onZoomOut={() => setScale((s) => Math.max(s - 0.1, 0.25))}
           onSave={handleSave} onExport={handleExport} onExportEpub={handleExportEpub}
           exportingEpub={exportingEpub} onBack={goBack}
-          onPreview={() => navigate(`/app/projects/${projectId}/preview`)} saving={saving}
+          onPreview={() => navigate(`/app/projects/${projectId}/preview`)} saving={saving || exportingPdf}
           onUndo={handleUndo} onRedo={handleRedo}
           canUndo={canUndo} canRedo={canRedo}
         />
