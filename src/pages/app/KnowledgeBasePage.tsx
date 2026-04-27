@@ -631,6 +631,15 @@ export default function KnowledgeBasePage() {
               Tap the illustrated tiles to add Islamic values. They're woven into every story and illustration prompt.
             </p>
 
+            {items.length === 0 && (
+              <div className="rounded-xl border border-violet-200 bg-violet-50 dark:bg-violet-950/30 px-4 py-3">
+                <p className="text-sm font-semibold text-violet-700 dark:text-violet-300 mb-0.5">Start here — pick your core values</p>
+                <p className="text-xs text-violet-600 dark:text-violet-400">
+                  These Islamic themes shape every chapter, illustration prompt, and du'a placement. Select at least 2–3 for best AI results.
+                </p>
+              </div>
+            )}
+
             {/* Visual preset tiles */}
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {ISLAMIC_VALUE_PRESETS.map(preset => {

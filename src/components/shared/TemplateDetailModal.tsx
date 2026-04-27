@@ -54,11 +54,11 @@ function resolveHairColor(vd: CharacterTemplate["visualDNA"]) {
 // ─── Art style config ─────────────────────────────────────────────────────────
 
 const ART_STYLES: Record<string, { label: string; emoji: string; bg: string; border: string; desc: string }> = {
-  "pixar-3d":          { label: "Pixar 3D",          emoji: "🎬", bg: "#EFF6FF", border: "#3B82F6", desc: "Round soft shapes, plush textures, cinematic lighting" },
+  "pixar-3d":          { label: "3D Rendered",        emoji: "🎬", bg: "#EFF6FF", border: "#3B82F6", desc: "Round soft shapes, plush textures, cinematic lighting" },
   "watercolor":        { label: "Watercolor",         emoji: "🎨", bg: "#FDF4FF", border: "#A855F7", desc: "Soft washes, gentle edges, dreamy brush strokes" },
   "flat-illustration": { label: "Flat Illustration",  emoji: "🟦", bg: "#F0FDF4", border: "#22C55E", desc: "Bold shapes, clean lines, minimal shadows" },
   "storybook":         { label: "Storybook",          emoji: "📖", bg: "#FFF7ED", border: "#F97316", desc: "Hand-painted textures, warm tones, classic feel" },
-  "ghibli":            { label: "Ghibli",             emoji: "🌿", bg: "#FEFCE8", border: "#EAB308", desc: "Lush backgrounds, expressive characters, painterly detail" },
+  "ghibli":            { label: "Hand-Painted Anime", emoji: "🌿", bg: "#FEFCE8", border: "#EAB308", desc: "Lush backgrounds, expressive characters, painterly detail" },
 };
 
 // ─── Constraint chip ──────────────────────────────────────────────────────────

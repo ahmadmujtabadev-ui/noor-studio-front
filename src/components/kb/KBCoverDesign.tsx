@@ -524,7 +524,7 @@ const FRONT_TO_MATCHED_COVER_MAP: Record<
   { spine: string; back: string }
 > = {
   ct_classic_children: {
-    spine: "sp_classic_children",
+    spine: "sp_cozy_storybook",
     back: "bc_classic_children",
   },
   ct_epic_cinematic: {

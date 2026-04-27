@@ -1,7 +1,7 @@
 // ProseStep.tsx — Kids-friendly book-type layout
 // Chapters displayed as open book pages with story-like feel
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   PenLine, ArrowLeft, ArrowRight, RefreshCw, Sparkles,
   Loader2, Check, GitCompare, Save, BookOpen, ChevronDown,
@@ -158,6 +158,14 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
   };
 
   const approvedCount = chapters.filter((_, i) => getActiveProseNode(i)?.status === "approved").length;
+
+  // Auto-expand the first unapproved chapter on mount
+  useEffect(() => {
+    if (chapters.length === 0) return;
+    const idx = chapters.findIndex((_, i) => getActiveProseNode(i)?.status !== "approved");
+    if (idx >= 0) setExpanded((p) => ({ ...p, [idx]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapters.length]);
 
   return (
     <div className="space-y-6">
@@ -519,6 +527,9 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                           placeholder="Islamic reflection or dua in this chapter…"
                           className="text-sm resize-none"
                         />
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          A du'a, Quranic reference, or Islamic lesson woven into this chapter
+                        </p>
                       </div>
                     )}
 

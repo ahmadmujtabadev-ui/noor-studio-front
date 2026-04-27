@@ -488,28 +488,35 @@ interface CoverControlCardProps {
   node: CoverSideNode | undefined;
   loadingKey: string | null;
   previewMode: boolean;
+  frontApproved?: boolean;
   onGenerate: (side: CoverSide, opts?: { prompt?: string; previewMode?: boolean }) => void;
   onApprove: (side: CoverSide) => void;
 }
 
-function CoverControlCard({ side, node, loadingKey, previewMode, onGenerate, onApprove }: CoverControlCardProps) {
+function CoverControlCard({ side, node, loadingKey, previewMode, frontApproved, onGenerate, onApprove }: CoverControlCardProps) {
   const [userNotes, setUserNotes] = useState("");
   const isGenerating = loadingKey === `cover-${side}`;
   const isApproving = loadingKey === `cover-approve-${side}`;
   const displayUrl = node?.current?.imageUrl || null;
   const approved = node?.status === "approved";
   const labels: Record<CoverSide, string> = { back: "Back Cover", spine: "Spine", front: "Front Cover" };
-  const hints: Record<CoverSide, string> = { back: "Blurb zone + decorative", spine: "Title strip + tan stock", front: "Characters + title scene" };
+  const hints: Record<CoverSide, string> = { back: "Blurb zone + decorative", spine: "Title strip (optional)", front: "Characters + title scene" };
+  const needsFrontFirst = side === "back" && !frontApproved;
 
   return (
     <div className={cn("rounded-lg border bg-card p-3 shadow-sm", approved ? "border-emerald-300" : "border-border")}>
       <div className="mb-2 flex items-center gap-2">
         {approved ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BookOpen className="h-4 w-4 text-primary" />}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{labels[side]}</h3>{approved && <Badge className="h-5 border-0 bg-emerald-100 text-[10px] text-emerald-700">Approved</Badge>}</div>
+          <div className="flex items-center gap-2"><h3 className="truncate text-sm font-semibold">{labels[side]}</h3>{approved && <Badge className="h-5 border-0 bg-emerald-100 text-[10px] text-emerald-700">Approved</Badge>}{side === "spine" && !approved && <Badge variant="outline" className="h-5 text-[10px]">Optional</Badge>}</div>
           <p className="truncate text-xs text-muted-foreground">{hints[side]}</p>
         </div>
       </div>
+      {needsFrontFirst && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+          <Info className="w-3 h-3 shrink-0" />Approve front cover first for best consistency
+        </p>
+      )}
       <Textarea value={userNotes} onChange={(e) => setUserNotes(e.target.value)} rows={1} placeholder={side === "spine" ? "Cream type on tan" : side === "front" ? "Musa and Dad, sunset mosque" : "Warm amber sky"} className="mb-2 min-h-[38px] resize-none text-xs" />
       <div className="flex items-center gap-2">
         <Button size="sm" variant={displayUrl ? "outline" : "default"} disabled={isGenerating} onClick={() => onGenerate(side, { prompt: userNotes.trim() || undefined, previewMode })} className="h-8 flex-1 gap-1.5 text-xs">
@@ -613,14 +620,28 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
         onPreviewModeChange={setPreviewMode}
       />
 
+      {/* T-17: Sequential workflow guidance */}
+      <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+        <p className="font-semibold text-foreground mb-1">Recommended order</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={cn("px-2 py-0.5 rounded-full font-medium", frontApproved ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>1. Front Cover</span>
+          <span className="text-muted-foreground/40">→</span>
+          <span className={cn("px-2 py-0.5 rounded-full font-medium", backApproved ? "bg-emerald-100 text-emerald-700" : frontApproved ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/60")}>2. Back Cover</span>
+          <span className="text-muted-foreground/40">→</span>
+          <span className={cn("px-2 py-0.5 rounded-full font-medium", spineApproved ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground/60")}>3. Spine (optional)</span>
+          {!frontApproved && <span className="ml-1 opacity-60">— approve front first for best back cover consistency</span>}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {(["back", "spine", "front"] as const).map((side) => (
+        {(["front", "back", "spine"] as const).map((side) => (
           <CoverControlCard
             key={side}
             side={side}
             node={bb.coverReview?.[side]}
             loadingKey={bb.loadingKey}
             previewMode={previewMode}
+            frontApproved={frontApproved}
             onGenerate={(s, opts) => bb.regenerateCover(s, opts)}
             onApprove={bb.approveCover}
           />

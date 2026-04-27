@@ -56,17 +56,29 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
           <div className="flex items-center gap-2 shrink-0">
             {total > 0 && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(total, 10) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-2 h-2 rounded-full",
-                        i < approved ? "bg-emerald-500" : "bg-muted",
-                      )}
-                    />
-                  ))}
-                </div>
+                {total <= 10 ? (
+                  <div className="flex gap-1">
+                    {Array.from({ length: total }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-2 h-2 rounded-full",
+                          i < approved ? "bg-emerald-500" : "bg-muted",
+                        )}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-28 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${Math.round((approved / total) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">{Math.round((approved / total) * 100)}%</span>
+                  </div>
+                )}
                 <span className="text-muted-foreground font-medium">
                   <span className="text-foreground font-bold">{approved}</span>/{total}
                 </span>
@@ -155,10 +167,16 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
           <p className="text-sm text-muted-foreground mt-1">
             Make sure structure and prose steps are complete, then click refresh.
           </p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={load}>
-            <RefreshCw className="w-3 h-3 mr-1.5" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2 justify-center mt-4">
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              <ArrowLeft className="w-3 h-3 mr-1.5" />
+              Back to Structure
+            </Button>
+            <Button variant="outline" size="sm" onClick={load}>
+              <RefreshCw className="w-3 h-3 mr-1.5" />
+              Refresh
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">

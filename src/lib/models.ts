@@ -8,7 +8,7 @@ export type ProjectStage = 'outline' | 'chapters' | 'humanize' | 'illustrations'
 export const AGE_RANGES = ['2-4', '4-7', '5-8', '6-9', '8-12'];
 
 export const CHARACTER_STYLES = [
-  { id: 'pixar-3d', label: 'Pixar 3D' },
+  { id: 'pixar-3d', label: '3D Rendered' },
   { id: 'watercolor', label: 'Watercolor' },
   { id: 'flat-illustration', label: 'Flat Illustration' },
   { id: 'manga', label: 'Manga' },

@@ -47,7 +47,7 @@ export default function ExamplesPage() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-foreground">Character Gallery</h2>
-              <p className="text-muted-foreground">Pixar-style characters with consistent visual DNA</p>
+              <p className="text-muted-foreground">Beautifully-rendered characters with consistent visual DNA</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">

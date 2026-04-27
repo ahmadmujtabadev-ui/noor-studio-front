@@ -18,7 +18,7 @@ import { useAuthStore } from "@/hooks/useAuth";
 import type { IllustrationArtifact } from "@/lib/api/types";
 
 const ILLUSTRATION_STYLES = [
-  { value: "pixar-3d", label: "Pixar 3D" },
+  { value: "pixar-3d", label: "3D Rendered" },
   { value: "watercolor", label: "Watercolor" },
   { value: "flat-illustration", label: "Flat Illustration" },
   { value: "manga", label: "Manga" },

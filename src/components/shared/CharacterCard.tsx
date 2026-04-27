@@ -25,7 +25,7 @@ export function CharacterCard({
 }: CharacterCardProps) {
   return (
     <div className={cn("card-glow overflow-hidden group", className)}>
-      {/* Image placeholder - Pixar-style character */}
+      {/* Character image */}
       <div className="aspect-square bg-gradient-subtle relative overflow-hidden">
         {imageUrl ? (
           <img

@@ -92,7 +92,7 @@ const underSix: KBStarterTemplate = {
     "Perfect for picture books and parent-read-aloud stories. Simple faith values, gentle du'as, warm safe scenes, and large-text formatting designed for the very young.",
   previewImage: "/kb-templates/under-six.png",
   previewPrompt:
-    "Children's book illustration, warm cosy Islamic home interior, bright morning light streaming through curtained window, young Muslim girl aged 4 wearing soft green dress and cream hijab sitting cross-legged reading a colourful picture book, surrounded by a crescent moon mobile, soft star-shaped cushions, simple Islamic geometric wall art in pastel blue and gold, Pixar 3D render style, warm golden hour light, safe and inviting, high saturation, rounded shapes, friendly atmosphere",
+    "Children's book illustration, warm cosy Islamic home interior, bright morning light streaming through curtained window, young Muslim girl aged 4 wearing soft green dress and cream hijab sitting cross-legged reading a colourful picture book, surrounded by a crescent moon mobile, soft star-shaped cushions, simple Islamic geometric wall art in pastel blue and gold, stylized 3D render style, warm golden hour light, safe and inviting, high saturation, rounded shapes, friendly atmosphere",
   palette: ["#FFD93D", "#4FC3F7", "#81C784", "#F5A623"],
   highlightBadges: [
     "Ages 3–6 picture book",
@@ -239,7 +239,7 @@ const middleGrade: KBStarterTemplate = {
     "For chapter books and middle-grade adventures with complex characters, moral dilemmas, and faith tested through action. Cinematic storytelling with layered Islamic themes woven naturally.",
   previewImage: "/kb-templates/middle-grade.png",
   previewPrompt:
-    "Cinematic children's book cover illustration, young Muslim boy aged 11 wearing a white thobe standing on a rocky cliff edge at golden hour, looking out over an ancient Islamic city with tall minarets and a crescent moon in the dramatic twilight sky, warm amber and deep purple atmosphere, volumetric clouds, epic scale, Pixar 3D render quality, rim lighting on character, sense of adventure discovery and courage, rich deep colours #1A2456 and #C9A84C",
+    "Cinematic children's book cover illustration, young Muslim boy aged 11 wearing a white thobe standing on a rocky cliff edge at golden hour, looking out over an ancient Islamic city with tall minarets and a crescent moon in the dramatic twilight sky, warm amber and deep purple atmosphere, volumetric clouds, epic scale, stylized 3D render quality, rim lighting on character, sense of adventure discovery and courage, rich deep colours #1A2456 and #C9A84C",
   palette: ["#1A2456", "#C9A84C", "#2D6A4F", "#E94560"],
   highlightBadges: [
     "Ages 8–14 chapter book",

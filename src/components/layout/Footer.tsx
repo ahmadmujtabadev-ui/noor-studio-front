@@ -52,7 +52,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-white/70 text-sm leading-relaxed mb-6 max-w-xs">
-              Create beautiful Islamic children's books with consistent, Pixar-style characters. 
+              Create beautiful Islamic children's books with consistent, beautifully-rendered characters.
               From character studio to print-ready exports.
             </p>
             <div className="flex gap-3">

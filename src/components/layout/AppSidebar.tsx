@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useUser, useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useBookBuilderNavStore } from "@/lib/store/bookBuilderNavStore";
 import { useKbNavStore } from "@/lib/store/kbNavStore";
+import { useUniverses } from "@/hooks/useUniverses";
 
 const KB_WORKFLOWS = [
   { id: "faith",  label: "Faith & Language", icon: Moon,    firstSection: "islamicValues"      },
@@ -48,6 +49,8 @@ export function AppSidebar() {
   const user = useUser();
   const credits = useCredits();
   const logout = useAuthStore((s) => s.logout);
+  const { universes } = useUniverses();
+  const hasUniverse = universes.length > 0;
   const bookNav = useBookBuilderNavStore();
   const isOnBookBuilder = location.pathname.startsWith('/app/books');
 
@@ -203,9 +206,29 @@ export function AppSidebar() {
             </p>
           )}
           <nav className="space-y-1">
-            {createNavItems.map((item) => (
-              <NavLink key={item.href} item={item} highlight />
-            ))}
+            {createNavItems.map((item) =>
+              item.href === "/app/books/new" && !hasUniverse ? (
+                <div
+                  key={item.href}
+                  title="Create a Universe first to unlock book creation"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl opacity-40 cursor-not-allowed",
+                    "bg-sidebar-accent/50 text-sidebar-foreground/60",
+                    isRTL && "flex-row-reverse"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5 shrink-0", collapsed && "mx-auto")} />
+                  {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                </div>
+              ) : (
+                <NavLink key={item.href} item={item} highlight />
+              )
+            )}
+            {!collapsed && !hasUniverse && (
+              <p className="px-3 mt-1 text-[10px] text-amber-400/70 leading-snug">
+                Create a Universe first
+              </p>
+            )}
           </nav>
 
           {/* Book builder phase sub-nav */}

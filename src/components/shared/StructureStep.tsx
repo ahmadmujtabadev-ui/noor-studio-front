@@ -1,6 +1,6 @@
 // steps/StructureStep.tsx
-import React, { useState } from "react";
-import { Sparkles, ArrowLeft, ArrowRight, Check, CheckCheck, Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Sparkles, ArrowLeft, ArrowRight, Check, CheckCheck, Loader2, FileText, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,9 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
   const [modalKey, setModalKey] = useState<string | null>(null);
   const [localItems, setLocalItems] = useState<Record<string, Partial<StructureItem["current"]>>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [lastClickedIdx, setLastClickedIdx] = useState<number | null>(null);
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const items    = normArr<StructureItem>(bb.structureReview?.items);
   const isChBook = bb.isChapterBook;
@@ -46,6 +49,55 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
     await bb.approveStructureItem(key, current);
     setModalKey(null);
   };
+
+  // ─── Bulk selection helpers ──────────────────────────────────────────────
+  const handleCheckboxClick = (e: React.MouseEvent, key: string, idx: number) => {
+    e.stopPropagation();
+    if (e.shiftKey && lastClickedIdx !== null) {
+      const [start, end] = [Math.min(lastClickedIdx, idx), Math.max(lastClickedIdx, idx)];
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        items.slice(start, end + 1).forEach((i) => next.add(i.key));
+        return next;
+      });
+    } else {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key); else next.add(key);
+        return next;
+      });
+      setLastClickedIdx(idx);
+    }
+  };
+
+  const handleApproveSelected = async () => {
+    setBulkApproving(true);
+    const toApprove = items.filter((i) => selectedKeys.has(i.key) && i.status !== "approved");
+    for (const item of toApprove) {
+      await bb.approveStructureItem(item.key, getLocal(item.key, item));
+    }
+    setSelectedKeys(new Set());
+    setBulkApproving(false);
+  };
+
+  const handleEditSelected = () => {
+    const first = items.find((i) => selectedKeys.has(i.key));
+    if (first) setModalKey(first.key);
+  };
+
+  // Cmd/Ctrl+A selects all; Escape clears selection
+  useEffect(() => {
+    if (!hasItems) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "a") {
+        e.preventDefault();
+        setSelectedKeys(new Set(items.map((i) => i.key)));
+      }
+      if (e.key === "Escape") setSelectedKeys(new Set());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [items, hasItems]);
 
   const activeItem = modalKey ? items.find((i) => i.key === modalKey) : null;
 
@@ -162,18 +214,71 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
             </div>
           </div>
 
+          {/* ── Floating bulk-action bar ── */}
+          {selectedKeys.size > 0 && (
+            <div className="px-4 py-2 bg-primary/10 border-b border-primary/20 flex items-center gap-3">
+              <span className="text-xs font-semibold text-primary">
+                {selectedKeys.size} selected
+              </span>
+              <span className="text-xs text-muted-foreground">
+                (Shift-click to range-select · ⌘A to select all · Esc to clear)
+              </span>
+              <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={handleEditSelected}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={bulkApproving || items.filter((i) => selectedKeys.has(i.key) && i.status !== "approved").length === 0}
+                  onClick={handleApproveSelected}
+                >
+                  {bulkApproving
+                    ? <><Loader2 className="w-3 h-3 animate-spin" />Approving…</>
+                    : <><CheckCheck className="w-3 h-3" />Approve Selected</>
+                  }
+                </Button>
+                <button
+                  onClick={() => setSelectedKeys(new Set())}
+                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="divide-y divide-border">
-            {items.map((item) => {
+            {items.map((item, idx) => {
               const isOpen    = expanded[item.key] ?? false;
               const approved  = item.status === "approved";
               const c         = item.current as any;
+              const isSelected = selectedKeys.has(item.key);
 
               return (
-                <div key={item.key} className="group">
+                <div key={item.key} className={cn("group", isSelected && "bg-primary/5")}>
                   <div
                     className="px-6 py-4 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => setExpanded((p) => ({ ...p, [item.key]: !p[item.key] }))}
                   >
+                    {/* Checkbox */}
+                    <div
+                      onClick={(e) => handleCheckboxClick(e, item.key, idx)}
+                      className={cn(
+                        "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer",
+                        isSelected
+                          ? "bg-primary border-primary"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    </div>
+
                     <div className={cn(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold",
                       approved ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground",

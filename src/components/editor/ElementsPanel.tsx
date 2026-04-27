@@ -36,14 +36,26 @@ interface ElementsPanelProps {
   onLayoutPayload?: (payload: LayoutAppliedPayload & { pageId: string }) => Promise<void> | void;
 }
 
-type Tab = "layouts" | "text" | "shapes" | "elements" | "uploads";
+type Tab = "layouts" | "text" | "shapes" | "elements" | "arabic" | "uploads";
 
 const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: "layouts", label: "Layouts", icon: LayoutTemplate },
   { id: "text", label: "Text", icon: Type },
   { id: "shapes", label: "Shapes", icon: Square },
   { id: "elements", label: "Elements", icon: Layers },
+  { id: "arabic", label: "Arabic", icon: MessageSquare },
   { id: "uploads", label: "Uploads", icon: Upload },
+];
+
+const ARABIC_PHRASES = [
+  { label: "Bismillah", arabic: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ", transliteration: "Bismillāh ir-Rahmān ir-Rahīm", fontSize: 22 },
+  { label: "SubhanAllah", arabic: "سُبْحَانَ اللَّهِ", transliteration: "SubhānAllāh", fontSize: 28 },
+  { label: "Alhamdulillah", arabic: "الْحَمْدُ لِلَّهِ", transliteration: "Alhamdulillāh", fontSize: 28 },
+  { label: "Allahu Akbar", arabic: "اللَّهُ أَكْبَرُ", transliteration: "Allāhu Akbar", fontSize: 28 },
+  { label: "MashaAllah", arabic: "مَا شَاءَ اللَّهُ", transliteration: "MāshāAllāh", fontSize: 28 },
+  { label: "InshaAllah", arabic: "إِنْ شَاءَ اللَّهُ", transliteration: "In shāʾ Allāh", fontSize: 26 },
+  { label: "Astaghfirullah", arabic: "أَسْتَغْفِرُ اللَّهَ", transliteration: "Astaghfirullāh", fontSize: 24 },
+  { label: "JazakAllah", arabic: "جَزَاكَ اللَّهُ خَيْرًا", transliteration: "JazākAllāhu Khayran", fontSize: 22 },
 ];
 
 const SHAPE_BUTTONS: {
@@ -333,6 +345,68 @@ export function ElementsPanel({
                   <span className="text-[10px] text-white/40">{label}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "arabic" && (
+          <div className="p-3 space-y-3">
+            <div>
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">Islamic Phrases</p>
+              <p className="text-[10px] text-white/30 mb-3">Real Arabic text — rendered with Amiri font, not by the AI image model.</p>
+              <div className="space-y-1.5">
+                {ARABIC_PHRASES.map(({ label, arabic, transliteration, fontSize }) => (
+                  <div
+                    key={label}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const c = canvasRef.current?.getCanvas();
+                      if (!c) return;
+                      const t = new fabric.IText(arabic, {
+                        left: PAGE_W / 2,
+                        top: PAGE_H / 2,
+                        originX: "center",
+                        originY: "center",
+                        fontSize,
+                        fontFamily: "Amiri",
+                        fill: "#1a1a1a",
+                        direction: "rtl",
+                        textAlign: "center",
+                      } as any);
+                      c.add(t);
+                      c.setActiveObject(t);
+                      c.renderAll();
+                    }}
+                    className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 p-3 cursor-pointer transition select-none"
+                  >
+                    <p className="text-right text-white/90 leading-snug" style={{ fontFamily: "Amiri", fontSize: 18, direction: "rtl" }}>
+                      {arabic}
+                    </p>
+                    <p className="text-[10px] text-white/40 mt-1">{label} · {transliteration}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-3">
+              <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-2">Custom Arabic</p>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const c = canvasRef.current?.getCanvas();
+                  if (!c) return;
+                  const t = new fabric.IText("اكتب هنا", {
+                    left: PAGE_W / 2, top: PAGE_H / 2,
+                    originX: "center", originY: "center",
+                    fontSize: 28, fontFamily: "Amiri", fill: "#1a1a1a",
+                    direction: "rtl", textAlign: "center",
+                  } as any);
+                  c.add(t); c.setActiveObject(t); c.renderAll();
+                }}
+                className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/15 text-white/80 text-sm font-medium rounded-lg transition"
+              >
+                + Add custom Arabic text
+              </button>
             </div>
           </div>
         )}

@@ -1565,7 +1565,7 @@ export function IllustPixarSvg() {
       <path d="M19 24 Q24 28 29 24" stroke="#1D4ED8" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
       {/* Shadow */}
       <ellipse cx="24" cy="36" rx="10" ry="3" fill="#3B82F6" opacity="0.2"/>
-      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#1D4ED8" fontFamily="sans-serif" fontWeight="bold">Pixar 3D</text>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#1D4ED8" fontFamily="sans-serif" fontWeight="bold">3D Rendered</text>
     </svg>
   );
 }
@@ -1653,7 +1653,7 @@ export function IllustSketchSvg() {
 }
 
 export const ILLUSTRATION_STYLE_OPTIONS = [
-  { value: "Pixar-style 3D, round shapes, subsurface scattering, soft shadows",           label: "Pixar 3D",       icon: <IllustPixarSvg /> },
+  { value: "stylized 3D render, round shapes, subsurface scattering, soft shadows",        label: "3D Rendered",    icon: <IllustPixarSvg /> },
   { value: "Flat illustrative, bold geometric shapes, no gradients",                       label: "Flat",           icon: <IllustFlatSvg /> },
   { value: "Soft watercolour washes, translucent overlapping tones",                       label: "Watercolour",    icon: <IllustWatercolorSvg /> },
   { value: "Bold cartoon, thick black outlines, vivid fill colours",                       label: "Bold Cartoon",   icon: <IllustBoldCartoonSvg /> },

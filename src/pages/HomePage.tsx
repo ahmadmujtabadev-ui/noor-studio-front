@@ -413,7 +413,7 @@ export default function HomePage() {
         <div className="ns-hero-in">
           <div className="ns-sec-label ns-rv">✨ AI-Powered Islamic Book Creator</div>
           <h1 className="ns-rv ns-d1">Beautiful Islamic books, <span>consistent</span> characters — built by AI.</h1>
-          <p className="ns-hero-sub ns-rv ns-d2">Design Pixar-quality characters, generate age-appropriate Islamic stories, and publish KDP-ready books — all with AI. Every character stays consistent across every single page.</p>
+          <p className="ns-hero-sub ns-rv ns-d2">Design cinema-quality characters, generate age-appropriate Islamic stories, and publish KDP-ready books — all with AI. Every character stays consistent across every single page.</p>
           <div className="ns-hero-actions ns-rv ns-d3">
             <a href="/auth" className="ns-bp ns-bplg" onClick={(e) => { e.preventDefault(); navigate("/auth"); }}>Start Creating</a>
             <a href="#showcase" className="ns-bs" onClick={(e) => { e.preventDefault(); scrollTo("showcase"); }}>View Examples</a>
@@ -487,7 +487,7 @@ export default function HomePage() {
           </div>
           <div className="ns-steps-grid">
             {[
-              { icon: "🎨", title: "Create Characters", desc: "Design unique, Pixar-quality characters with consistent features. Define their look, age, personality, and cultural details — they'll stay the same on every page.", delay: "ns-d1" },
+              { icon: "🎨", title: "Create Characters", desc: "Design unique, beautifully-rendered characters with consistent features. Define their look, age, personality, and cultural details — they'll stay the same on every page.", delay: "ns-d1" },
               { icon: "📖", title: "Build Your Book", desc: "Choose from proven Islamic story structures or write your own. AI generates age-appropriate text with Quranic references, hadith, and moral lessons.", delay: "ns-d2" },
               { icon: "🚀", title: "Export & Publish", desc: "Download KDP-ready PDFs with proper bleed, margins, and CMYK profiles. Publish on Amazon, order hardcovers, or share digitally.", delay: "ns-d3" },
             ].map((s) => (

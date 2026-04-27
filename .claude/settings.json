@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/const DEFAULT_TEMPLATES  = \\\\[/,/^]/ { print NR\": \"$0 }' /c/Users/Paklogics/Desktop/example_code/Fair/backend05/backend/server/routes/characterTemplates.js)"
+    ]
+  }
+}

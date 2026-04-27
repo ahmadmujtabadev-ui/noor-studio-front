@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 
 const ART_STYLES = [
-  { id: "pixar-3d",      name: "Pixar 3D"       },
-  { id: "watercolor",    name: "Watercolor"      },
-  { id: "flat-cartoon",  name: "Flat Cartoon"    },
-  { id: "storybook",     name: "Storybook"       },
-  { id: "ghibli",        name: "Ghibli-inspired" },
+  { id: "pixar-3d",      name: "3D Rendered"       },
+  { id: "watercolor",    name: "Watercolor"         },
+  { id: "flat-cartoon",  name: "Flat Cartoon"       },
+  { id: "storybook",     name: "Storybook"          },
+  { id: "ghibli",        name: "Hand-Painted Anime" },
 ];
 
 interface StyleStepProps {

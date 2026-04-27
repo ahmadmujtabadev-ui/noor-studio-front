@@ -27,6 +27,8 @@ import {
   ChevronDown,
   ChevronUp,
   BookmarkPlus,
+  Lock,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -180,7 +182,7 @@ const NOSE_STYLES = [
 ];
 
 const CHEEK_STYLES = [
-  { value: "chubby-rosy",     label: "Chubby & Rosy" },
+  { value: "chubby-rosy",     label: "Rosy & Soft" },
   { value: "flat-smooth",     label: "Flat & Smooth" },
   { value: "high-defined",    label: "High Cheekbones" },
   { value: "dimpled",         label: "Dimpled" },
@@ -242,7 +244,7 @@ const BODY_BUILDS = [
   "petite and light",
   "tall and slender",
   "broad-shouldered",
-  "chubby and soft",
+  "soft and round",
   "round and full",
 ];
 
@@ -373,15 +375,40 @@ const AGE_LOOK_CHIPS = [
 ];
 
 const STYLES = [
-  { id: "pixar-3d", label: "Pixar 3D" },
+  { id: "pixar-3d", label: "3D Rendered" },
   { id: "watercolor", label: "Watercolor" },
   { id: "flat-illustration", label: "Flat Illustration" },
   { id: "storybook", label: "Storybook" },
-  { id: "ghibli", label: "Ghibli" },
+  { id: "ghibli", label: "Hand-Painted Anime" },
 ];
 
 const GENERATION_COST = 4;
 const POSE_SHEET_COST = 6;
+
+const VALUES_PRESETS = [
+  {
+    id: "shariah-compliant" as const,
+    label: "Shariah-Compliant",
+    emoji: "🕌",
+    desc: "Long sleeves ON, loose clothing ON, hijab ON for girls 9+",
+    color: "emerald",
+  },
+  {
+    id: "wholesome" as const,
+    label: "Wholesome Universal",
+    emoji: "🌟",
+    desc: "Modest clothing, family-friendly",
+    color: "violet",
+  },
+  {
+    id: "custom" as const,
+    label: "Custom",
+    emoji: "✏️",
+    desc: "Set every rule manually",
+    color: "slate",
+  },
+] as const;
+type ValuesMode = typeof VALUES_PRESETS[number]["id"];
 
 const steps = [
   { id: 0, title: "Persona", icon: User },
@@ -389,6 +416,32 @@ const steps = [
   { id: 2, title: "Generate", icon: Sparkles },
   { id: 3, title: "Pose Sheet", icon: Image },
 ];
+
+function PoseTile({ pose }: { pose: any }) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <div className="space-y-1">
+      <div className="aspect-square rounded-xl overflow-hidden bg-muted border border-border relative">
+        {pose.imageUrl && !imgError ? (
+          <img
+            src={pose.imageUrl}
+            alt={pose.label || pose.poseKey}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : pose.imageUrl && imgError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted-foreground/60 text-[11px]">
+            <AlertCircle className="w-4 h-4" />
+            <span>Load failed</span>
+          </div>
+        ) : (
+          <div className="w-full h-full animate-pulse bg-muted-foreground/10" />
+        )}
+      </div>
+      <p className="text-xs text-center text-muted-foreground capitalize truncate">{pose.label || pose.poseKey}</p>
+    </div>
+  );
+}
 
 export default function CharacterCreatePage() {
   const navigate = useNavigate();
@@ -462,7 +515,6 @@ export default function CharacterCreatePage() {
     heightFeel: tplVd.heightFeel || "",
     heightCm: tplVd.heightCm || 0,
     heightFeet: 0,
-    weightKg: tplVd.weightKg || 0,
 
     facialHair: tplVd.facialHair || "none",
     glasses: tplVd.glasses || "none",
@@ -475,6 +527,8 @@ export default function CharacterCreatePage() {
     longSleeves: tplMr.longSleeves ?? true,
     looseClothing: tplMr.looseClothing ?? true,
     modestyNotes: tplMr.notes || "",
+
+    valuesMode: "shariah-compliant" as ValuesMode,
   });
 
   // T-07: default entry via templates — redirect if no template and not scratch
@@ -484,6 +538,25 @@ export default function CharacterCreatePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const applyValuesMode = (mode: ValuesMode) => {
+    setForm((f) => {
+      const isGirl = f.gender === "girl";
+      if (mode === "shariah-compliant") {
+        return {
+          ...f,
+          valuesMode: mode,
+          longSleeves: true,
+          looseClothing: true,
+          wearHijab: isGirl ? true : f.wearHijab,
+        };
+      }
+      if (mode === "wholesome") {
+        return { ...f, valuesMode: mode, longSleeves: true, looseClothing: true };
+      }
+      return { ...f, valuesMode: mode };
+    });
+  };
 
   const updateForm = (field: string, value: unknown) => {
     setValidationErrors((prev) => { const n = new Set(prev); n.delete(field); return n; });
@@ -571,6 +644,12 @@ export default function CharacterCreatePage() {
   const isElderMale = form.gender === "boy" && ageNum >= 13;
   const isOther = form.gender === "other" || form.gender === "animal";
 
+  const ageLookImpliesHijabAge = (ageLook: string) => {
+    const m = ageLook.match(/(\d+)/);
+    const n = m ? parseInt(m[1]) : 0;
+    return n >= 9 || /teenager|adult|elderly|senior/.test(ageLook);
+  };
+
   const hairOptions = isOther
     ? HAIR_STYLES_OTHER
     : form.gender === "boy"
@@ -647,7 +726,6 @@ export default function CharacterCreatePage() {
           heightFeel: form.heightFeel,
           heightCm: form.heightCm || undefined,
           heightFeet: form.heightFeet || undefined,
-          weightKg: form.weightKg || undefined,
 
           facialHair: form.facialHair === "none" ? "" : (form.facialHair || ""),
           glasses: form.glasses === "none" ? "" : (form.glasses || ""),
@@ -993,8 +1071,35 @@ export default function CharacterCreatePage() {
           )}
 
           {currentStep === 1 && (
+            <div className="grid lg:grid-cols-[1fr_256px] gap-6 items-start">
             <div className="space-y-6">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
+
+              {/* ── Family Values Mode (T-03) ─────────────────────────────── */}
+              <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Family Values Mode</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {VALUES_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => applyValuesMode(p.id)}
+                      className={cn(
+                        "rounded-lg border-2 p-2.5 text-left text-xs transition-all",
+                        form.valuesMode === p.id
+                          ? "border-emerald-500 bg-white dark:bg-emerald-900/40 shadow-sm"
+                          : "border-transparent bg-white/60 dark:bg-white/5 hover:border-emerald-300"
+                      )}
+                    >
+                      <div className="font-bold mb-0.5">{p.emoji} {p.label}</div>
+                      <div className="text-muted-foreground leading-tight">{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* ── Art Style ─────────────────────────────────────────────── */}
               <div className="space-y-2">
@@ -1005,11 +1110,11 @@ export default function CharacterCreatePage() {
                   value={form.style}
                   onChange={(v) => updateForm("style", v)}
                   options={[
-                    { value: "pixar-3d",          label: "Pixar 3D",       icon: <Pixar3DSvg /> },
-                    { value: "watercolor",         label: "Watercolor",     icon: <WatercolorSvg /> },
-                    { value: "flat-illustration",  label: "Flat Illus.",    icon: <FlatIllustrationSvg /> },
-                    { value: "storybook",          label: "Storybook",      icon: <StorybookSvg /> },
-                    { value: "ghibli",             label: "Ghibli",         icon: <GhibliSvg /> },
+                    { value: "pixar-3d",          label: "3D Rendered",        icon: <Pixar3DSvg /> },
+                    { value: "watercolor",         label: "Watercolor",         icon: <WatercolorSvg /> },
+                    { value: "flat-illustration",  label: "Flat Illus.",        icon: <FlatIllustrationSvg /> },
+                    { value: "storybook",          label: "Storybook",          icon: <StorybookSvg /> },
+                    { value: "ghibli",             label: "Hand-Painted Anime", icon: <GhibliSvg /> },
                   ]}
                 />
               </div>
@@ -1027,6 +1132,8 @@ export default function CharacterCreatePage() {
                       updateForm("wearHijab", false);
                       updateForm("hijabStyle", "");
                       updateForm("hijabColor", "");
+                    } else {
+                      if (ageLookImpliesHijabAge(form.ageLook)) updateForm("wearHijab", true);
                     }
                   }}
                   options={[
@@ -1040,12 +1147,19 @@ export default function CharacterCreatePage() {
                   <div className="flex items-center gap-3 pt-1">
                     <Switch
                       checked={form.wearHijab}
+                      disabled={form.valuesMode === "shariah-compliant"}
                       onCheckedChange={(v) => {
                         updateForm("wearHijab", v);
                         if (!v) { updateForm("hijabStyle", ""); updateForm("hijabColor", ""); }
                       }}
                     />
-                    <Label>Wears Hijab 🧕</Label>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Label>Wears Hijab 🧕</Label>
+                        {form.valuesMode === "shariah-compliant" && <Lock className="w-3 h-3 text-emerald-600" />}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">Defaults ON for girls aged 9+</p>
+                    </div>
                   </div>
                 )}
                 {isOther && (
@@ -1067,7 +1181,12 @@ export default function CharacterCreatePage() {
                           <button
                             key={chip.value}
                             type="button"
-                            onClick={() => updateForm("ageLook", chip.value)}
+                            onClick={() => {
+                              updateForm("ageLook", chip.value);
+                              if (form.gender === "girl" && ageLookImpliesHijabAge(chip.value)) {
+                                updateForm("wearHijab", true);
+                              }
+                            }}
                             className={cn(
                               "px-3 py-1.5 rounded-full text-sm border-2 transition-all",
                               form.ageLook === chip.value
@@ -1184,7 +1303,7 @@ export default function CharacterCreatePage() {
                 </button>
                 {showAdvanced && (
                   <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
-                    <div className="grid sm:grid-cols-3 gap-4">
+                    {!isOther && <div className="grid sm:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label className="font-bold">🪮 Eyebrow Style</Label>
                         <VisualPicker columns={3} iconSize="sm" value={form.eyebrowStyle}
@@ -1216,7 +1335,7 @@ export default function CharacterCreatePage() {
                         <VisualPicker columns={3} iconSize="sm" value={form.cheekStyle}
                           onChange={(v) => updateForm("cheekStyle", v)} allowDeselect
                           options={[
-                            { value: "chubby-rosy",  label: "Chubby",  icon: <ChubbyRosyCheekSvg /> },
+                            { value: "chubby-rosy",  label: "Rosy",    icon: <ChubbyRosyCheekSvg /> },
                             { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
                             { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
                             { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
@@ -1224,7 +1343,7 @@ export default function CharacterCreatePage() {
                           ]}
                         />
                       </div>
-                    </div>
+                    </div>}
                     {/* Facial Hair — boys only T-05 */}
                     {form.gender === "boy" && (
                       <div className="space-y-2">
@@ -1652,7 +1771,7 @@ export default function CharacterCreatePage() {
                     options={[
                       { value: "slim and lean",             label: "Slim",          icon: <SlimBodySvg /> },
                       { value: "average build",             label: "Average",       icon: <AverageBodySvg /> },
-                      { value: "chubby and soft",           label: "Soft",          icon: <ChubbyBodySvg /> },
+                      { value: "soft and round",            label: "Soft",          icon: <ChubbyBodySvg /> },
                       { value: "athletic and fit",          label: "Athletic",      icon: <AthleticBodySvg /> },
                       { value: "stocky and strong",         label: "Stocky",        icon: <StockyBodySvg /> },
                       { value: "tall and slender",          label: "Tall Slim",     icon: <TallSlenderBodySvg /> },
@@ -1768,15 +1887,32 @@ export default function CharacterCreatePage() {
               </div>
 
               <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border">
-                <Label>Modesty Rules</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Modesty Rules</Label>
+                  {form.valuesMode !== "custom" && (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      <Lock className="w-3 h-3" /> Locked by {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
+                    </span>
+                  )}
+                </div>
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div className="flex items-center gap-2">
-                    <Switch checked={form.longSleeves} onCheckedChange={(v) => updateForm("longSleeves", v)} />
+                    <Switch
+                      checked={form.longSleeves}
+                      disabled={form.valuesMode !== "custom"}
+                      onCheckedChange={(v) => updateForm("longSleeves", v)}
+                    />
                     <span className="text-sm">Long Sleeves</span>
+                    {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch checked={form.looseClothing} onCheckedChange={(v) => updateForm("looseClothing", v)} />
+                    <Switch
+                      checked={form.looseClothing}
+                      disabled={form.valuesMode !== "custom"}
+                      onCheckedChange={(v) => updateForm("looseClothing", v)}
+                    />
                     <span className="text-sm">Loose Clothing</span>
+                    {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
                   </div>
                 </div>
 
@@ -1789,6 +1925,65 @@ export default function CharacterCreatePage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* ── Live Preview Panel (T-04) — sticky right column ─────── */}
+            <div className="lg:sticky lg:top-4 space-y-3 hidden lg:block">
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Live Preview</p>
+
+                {/* Values mode badge */}
+                <div className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-xs font-semibold flex items-center gap-1.5",
+                  form.valuesMode === "shariah-compliant"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                    : form.valuesMode === "wholesome"
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+                      : "bg-muted text-muted-foreground"
+                )}>
+                  <Shield className="w-3 h-3" />
+                  {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
+                </div>
+
+                {/* Character summary rows */}
+                <div className="space-y-2 text-xs">
+                  {[
+                    { label: "Gender", value: form.gender ? form.gender.charAt(0).toUpperCase() + form.gender.slice(1) : "—" },
+                    { label: "Age", value: form.ageLook || "—" },
+                    { label: "Style", value: STYLES.find(s => s.id === form.style)?.label || "—" },
+                    { label: "Skin", value: form.skinTone || "—" },
+                    { label: "Eyes", value: form.eyeColor || "—" },
+                    {
+                      label: form.wearHijab ? "Hijab" : "Hair",
+                      value: form.wearHijab
+                        ? (form.hijabStyle || "—")
+                        : (form.hairStyle ? `${form.hairStyle}${form.hairColor ? ` · ${form.hairColor}` : ""}` : "—"),
+                    },
+                    { label: "Top", value: form.topGarmentType ? `${form.topGarmentType}${form.topGarmentColor ? ` · ${form.topGarmentColor}` : ""}` : "—" },
+                    { label: "Build", value: form.bodyBuild || "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between gap-2">
+                      <span className="text-muted-foreground shrink-0">{label}</span>
+                      <span className="font-medium text-right truncate max-w-[140px]">{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Modesty indicators */}
+                <div className="border-t border-border pt-2 flex flex-wrap gap-1.5">
+                  {form.longSleeves && (
+                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Long sleeves</span>
+                  )}
+                  {form.looseClothing && (
+                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Loose fit</span>
+                  )}
+                  {form.wearHijab && (
+                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Hijab</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
             </div>
           )}
 
@@ -1968,7 +2163,6 @@ export default function CharacterCreatePage() {
                                   heightFeel: "",
                                   heightCm: 0,
                                   heightFeet: 0,
-                                  weightKg: 0,
                                   facialHair: "none",
                                   glasses: "none",
                                   accessoriesText: "",
@@ -2020,28 +2214,40 @@ export default function CharacterCreatePage() {
 
               {(() => {
                 const poses = createdCharacter?.poseLibrary || [];
-                const posesGenerated = poses.length > 0 && poses.some((p: any) => p.imageUrl);
-                return posesGenerated ? (
+                const hasPoses = poses.length > 0;
+                const allLoaded = hasPoses && poses.every((p: any) => p.imageUrl);
+
+                const handleRefreshPoses = async () => {
+                  if (!createdCharacter) return;
+                  try {
+                    const id = (createdCharacter as any).id || (createdCharacter as any)._id;
+                    const fresh = await charactersApi.get(id);
+                    setCreatedCharacter(fresh as any);
+                  } catch { /* silently ignore */ }
+                };
+
+                return hasPoses ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                       {poses.map((pose: any) => (
-                        <div key={pose.poseKey} className="space-y-1">
-                          <div className="aspect-square rounded-xl overflow-hidden bg-muted border border-border">
-                            {pose.imageUrl ? (
-                              <img src={pose.imageUrl} alt={pose.label} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/40 text-xs">
-                                No image
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-xs text-center text-muted-foreground capitalize truncate">{pose.label || pose.poseKey}</p>
-                        </div>
+                        <PoseTile key={pose.poseKey} pose={pose} />
                       ))}
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
-                      <Check className="w-4 h-4" />
-                      {poses.length} poses generated — ready for books!
+                    <div className="flex items-center gap-3">
+                      {allLoaded ? (
+                        <div className="flex items-center gap-2 text-emerald-600 text-sm font-semibold">
+                          <Check className="w-4 h-4" />
+                          {poses.length} poses ready!
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-amber-600 text-sm">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Some images still loading…
+                        </div>
+                      )}
+                      <Button variant="outline" size="sm" onClick={handleRefreshPoses}>
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Refresh
+                      </Button>
                     </div>
                     <Button
                       variant="hero"
@@ -2066,15 +2272,9 @@ export default function CharacterCreatePage() {
                         disabled={isGeneratingPose || credits < POSE_SHEET_COST}
                       >
                         {isGeneratingPose ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Generating all poses...
-                          </>
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating all poses…</>
                         ) : (
-                          <>
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            Generate All Poses ({POSE_SHEET_COST} cr)
-                          </>
+                          <><Sparkles className="w-4 h-4 mr-2" />Generate All Poses ({POSE_SHEET_COST} cr)</>
                         )}
                       </Button>
                       <Button

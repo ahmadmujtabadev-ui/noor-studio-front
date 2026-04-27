@@ -17,7 +17,7 @@ import type { CoverArtifact } from "@/lib/api/types";
 import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
 
 const COVER_STYLES = [
-  { value: "pixar-3d", label: "Pixar 3D" },
+  { value: "pixar-3d", label: "3D Rendered" },
   { value: "watercolor", label: "Watercolor" },
   { value: "flat-illustration", label: "Flat Illustration" },
   { value: "ornate", label: "Ornate / Decorative" },

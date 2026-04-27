@@ -119,6 +119,12 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             {bb.universeId && (
               <p className="text-xs text-emerald-600 font-medium">✓ Universe selected</p>
             )}
+            {!bb.universeId && !(showValidation && missingUniverse) && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                <Globe className="w-3 h-3 shrink-0" />
+                Your series world — shared setting, look &amp; values across all your books
+              </p>
+            )}
           </div>
 
           {/* Knowledge Base — REQUIRED */}
@@ -162,6 +168,13 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             {bb.knowledgeBaseId && (
               <p className="text-xs text-emerald-600 font-medium">✓ KB rules applied to all AI generations</p>
             )}
+            {bb.universeId && kbsForUniverse.length === 0 && !bb.knowledgeBaseId && (
+              <p className="text-[11px] text-amber-600 flex items-center gap-1 mt-0.5">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                No Knowledge Base for this Universe.{" "}
+                <a href="/app/knowledge-base" className="underline font-medium">Create one →</a>
+              </p>
+            )}
           </div>
         </div>
 
@@ -182,6 +195,19 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             disabled={hasStory}
             className={cn(hasStory && "opacity-60")}
           />
+          {!hasStory && (
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-muted-foreground">
+                {bb.storyIdea.trim()
+                  ? `${bb.storyIdea.trim().split(/\s+/).filter(Boolean).length} words`
+                  : "2–4 sentences is plenty to get a great story"}
+              </p>
+              {bb.storyIdea.trim().split(/\s+/).filter(Boolean).length > 0 &&
+               bb.storyIdea.trim().split(/\s+/).filter(Boolean).length < 8 && (
+                <p className="text-[11px] text-amber-500">Add a bit more detail for better results</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Age */}
@@ -194,6 +220,11 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 {AGE_RANGES.map((x) => <SelectItem key={x.value} value={x.value}>{x.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            <p className="text-[11px] text-muted-foreground">
+              {bb.ageRange === "1-6"
+                ? "Short sentences, simple words, ~24 pages — picture-book style"
+                : "Richer prose, subplots, 3–6 chapters — chapter-book style"}
+            </p>
           </div>
         </div>
 

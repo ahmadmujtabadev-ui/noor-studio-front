@@ -198,11 +198,11 @@ function ConstraintRow({ tpl }: { tpl: CharacterTemplate }) {
 
 // ─── Art style pill ───────────────────────────────────────────────────────────
 const ART_STYLE_META: Record<string, { emoji: string; label: string; color: string }> = {
-  "pixar-3d":          { emoji: "🎬", label: "Pixar 3D",         color: "#3B82F6" },
+  "pixar-3d":          { emoji: "🎬", label: "3D Rendered",      color: "#3B82F6" },
   "watercolor":        { emoji: "🎨", label: "Watercolor",        color: "#A855F7" },
   "flat-illustration": { emoji: "🟦", label: "Flat",              color: "#22C55E" },
   "storybook":         { emoji: "📖", label: "Storybook",         color: "#F97316" },
-  "ghibli":            { emoji: "🌿", label: "Ghibli",            color: "#EAB308" },
+  "ghibli":            { emoji: "🌿", label: "Hand-Painted Anime", color: "#EAB308" },
 };
 
 function ArtStylePill({ style }: { style: string }) {
