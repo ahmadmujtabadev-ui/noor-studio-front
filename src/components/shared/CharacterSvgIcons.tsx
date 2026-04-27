@@ -98,14 +98,27 @@ export function GhibliSvg() {
       <ellipse cx="14" cy="14" rx="7" ry="4" fill="white" opacity="0.9" />
       <ellipse cx="20" cy="12" rx="6" ry="4" fill="white" opacity="0.9" />
       <ellipse cx="34" cy="16" rx="8" ry="4.5" fill="white" opacity="0.85" />
-      {/* floating spirit orbs */}
+      {/* floating light orbs */}
       <circle cx="10" cy="26" r="3" fill="white" opacity="0.7" />
       <circle cx="38" cy="22" r="2.5" fill="white" opacity="0.7" />
       <circle cx="24" cy="20" r="2" fill="white" opacity="0.6" />
-      {/* Totoro silhouette hint */}
-      <ellipse cx="24" cy="36" rx="5" ry="6" fill="#6B7280" opacity="0.35" />
-      <circle cx="22.5" cy="33" r="1" fill="#6B7280" opacity="0.5" />
-      <circle cx="25.5" cy="33" r="1" fill="#6B7280" opacity="0.5" />
+      {/* small anime-style girl silhouette — ponytail, dress, looking at sky */}
+      <ellipse cx="24" cy="42" rx="4" ry="1.5" fill="#059669" opacity="0.4" />
+      {/* dress */}
+      <path d="M21 38 Q24 41 27 38 L26 33 Q24 35 22 33Z" fill="#F472B6" opacity="0.9" />
+      {/* body */}
+      <rect x="22.5" y="30" width="3" height="4" rx="1" fill="#FBBF24" />
+      {/* head */}
+      <circle cx="24" cy="29" r="3" fill="#FBBF24" />
+      {/* ponytail */}
+      <ellipse cx="27" cy="27.5" rx="2" ry="1.2" fill="#92400E" transform="rotate(-20 27 27.5)" />
+      {/* hair top */}
+      <ellipse cx="24" cy="26.5" rx="3" ry="2" fill="#92400E" />
+      {/* big anime eyes */}
+      <circle cx="22.5" cy="28.8" r="1" fill="#1C1917" />
+      <circle cx="25.5" cy="28.8" r="1" fill="#1C1917" />
+      <circle cx="22.9" cy="28.5" r="0.35" fill="white" />
+      <circle cx="25.9" cy="28.5" r="0.35" fill="white" />
     </svg>
   );
 }
@@ -229,6 +242,7 @@ export function CreatureSvg() {
 // ─── Skin Tone Swatches ───────────────────────────────────────────────────────
 
 export const SKIN_TONE_COLORS: Record<string, { hex: string; label: string }> = {
+  "porcelain":    { hex: "#FDEBD0", label: "Porcelain" },
   "fair":         { hex: "#F8C9A0", label: "Fair" },
   "light-beige":  { hex: "#F0B889", label: "Light Beige" },
   "beige":        { hex: "#E8A87B", label: "Beige" },
@@ -245,12 +259,25 @@ export const SKIN_TONE_COLORS: Record<string, { hex: string; label: string }> = 
 
 export function SkinToneSwatch({ color, size = 40 }: { color: string; size?: number }) {
   const info = SKIN_TONE_COLORS[color] || { hex: "#FDDCB5", label: color };
+  const isVeryDark = ["dark-brown", "deep-brown"].includes(color);
+  const shadowColor = isVeryDark ? "#ffffff20" : "#00000020";
   return (
     <svg viewBox="0 0 48 48" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      {/* face shape with skin color */}
-      <ellipse cx="24" cy="26" rx="15" ry="17" fill={info.hex} stroke="#00000015" strokeWidth="1" />
-      {/* subtle highlight */}
-      <ellipse cx="18" cy="18" rx="5" ry="4" fill="white" opacity="0.2" />
+      {/* background chip */}
+      <rect width="48" height="48" rx="10" fill={info.hex} />
+      {/* neck */}
+      <rect x="18" y="34" width="12" height="8" rx="3" fill={info.hex} />
+      {/* face oval */}
+      <ellipse cx="24" cy="27" rx="13" ry="15" fill={info.hex} stroke={shadowColor} strokeWidth="1.5" />
+      {/* top highlight */}
+      <ellipse cx="19" cy="19" rx="5" ry="3.5" fill="white" opacity="0.18" transform="rotate(-25 19 19)" />
+      {/* eyes */}
+      <circle cx="19.5" cy="25" r="2" fill={isVeryDark ? "#6B4226" : "#1C1917"} opacity="0.85" />
+      <circle cx="28.5" cy="25" r="2" fill={isVeryDark ? "#6B4226" : "#1C1917"} opacity="0.85" />
+      <circle cx="20.2" cy="24.3" r="0.7" fill="white" opacity="0.6" />
+      <circle cx="29.2" cy="24.3" r="0.7" fill="white" opacity="0.6" />
+      {/* mouth */}
+      <path d="M19.5 32 Q24 35 28.5 32" stroke={isVeryDark ? "#8B5E3C" : "#C87860"} strokeWidth="1.4" fill="none" strokeLinecap="round" />
     </svg>
   );
 }

@@ -43,6 +43,7 @@ import { useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useUniverses } from "@/hooks/useUniverses";
 import type { Character } from "@/lib/api/types";
 import { VisualPicker } from "@/components/shared/VisualPicker";
+import { GeneratingOverlay } from "@/components/shared/GeneratingOverlay";
 import {
   Pixar3DSvg, WatercolorSvg, FlatIllustrationSvg, StorybookSvg, GhibliSvg,
   GirlSvg, BoySvg, AnimalSvg, CreatureSvg,
@@ -417,6 +418,76 @@ const steps = [
   { id: 3, title: "Pose Sheet", icon: Image },
 ];
 
+// ─── Visual DNA sub-progress ──────────────────────────────────────────────────
+
+const DNA_SECTIONS = [
+  { id: "dna-face",        label: "Face",    emoji: "😊" },
+  { id: "dna-hair",        label: "Hair",    emoji: "💇" },
+  { id: "dna-outfit",      label: "Outfit",  emoji: "👕" },
+  { id: "dna-body",        label: "Body",    emoji: "📏" },
+  { id: "dna-accessories", label: "Extras",  emoji: "✨" },
+] as const;
+
+function DNASubProgress({ activeId }: { activeId: string }) {
+  const activeIndex = DNA_SECTIONS.findIndex(s => s.id === activeId);
+
+  return (
+    <div className="sticky top-16 z-10 -mx-1 bg-background/95 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm px-2 py-1.5">
+      <div className="flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-0.5">
+        {DNA_SECTIONS.map((section, i) => {
+          const isActive = section.id === activeId;
+          const isDone   = i < activeIndex;
+          return (
+            <div key={section.id} className="flex items-center flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-200",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm scale-105"
+                    : isDone
+                    ? "text-primary/70 hover:text-primary hover:bg-primary/8"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                )}
+              >
+                <span className={cn(
+                  "w-4 h-4 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 font-bold",
+                  isActive ? "bg-white/25 text-white" : isDone ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                )}>
+                  {isDone ? "✓" : (i + 1)}
+                </span>
+                <span>{section.label}</span>
+              </button>
+              {i < DNA_SECTIONS.length - 1 && (
+                <div className={cn(
+                  "w-5 h-px flex-shrink-0 mx-0.5 rounded-full transition-colors duration-300",
+                  isDone ? "bg-primary/40" : "bg-border"
+                )} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Horizontally scrollable colour palette row for mobile — wraps normally on sm+
+function ColorScrollRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <div className="flex flex-nowrap sm:flex-wrap gap-2.5 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch]">
+        {children}
+      </div>
+      {/* Edge-fade indicator — mobile only */}
+      <div className="sm:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent rounded-r" />
+    </div>
+  );
+}
+
 function PoseTile({ pose }: { pose: any }) {
   const [imgError, setImgError] = useState(false);
   return (
@@ -468,6 +539,7 @@ export default function CharacterCreatePage() {
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [dnaActiveSection, setDnaActiveSection] = useState<string>(DNA_SECTIONS[0].id);
 
   const characterId = createdCharacter?.id || createdCharacter?._id || "";
   const generatePortrait = useGeneratePortrait(characterId);
@@ -538,6 +610,26 @@ export default function CharacterCreatePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // T-60: scroll-spy — track active DNA sub-section while on step 1
+  useEffect(() => {
+    if (currentStep !== 1) return;
+    const update = () => {
+      // threshold: 30% down the viewport — the section whose top is closest to but ≤ threshold
+      const threshold = window.innerHeight * 0.3;
+      for (let i = DNA_SECTIONS.length - 1; i >= 0; i--) {
+        const el = document.getElementById(DNA_SECTIONS[i].id);
+        if (el && el.getBoundingClientRect().top <= threshold) {
+          setDnaActiveSection(DNA_SECTIONS[i].id);
+          return;
+        }
+      }
+      setDnaActiveSection(DNA_SECTIONS[0].id);
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => window.removeEventListener("scroll", update);
+  }, [currentStep]);
 
   const applyValuesMode = (mode: ValuesMode) => {
     setForm((f) => {
@@ -873,6 +965,14 @@ export default function CharacterCreatePage() {
         </div>
       }
     >
+      {/* Generation overlay — shows for character portrait and pose sheet generation */}
+      {isGenerating && (
+        <GeneratingOverlay register="neutral" label="Generating character portrait" />
+      )}
+      {isGeneratingPose && (
+        <GeneratingOverlay register="neutral" label="Generating pose sheet" />
+      )}
+
       <div className="max-w-4xl mx-auto">
         {/* Colorful step indicator */}
         <div className="mb-8">
@@ -1075,6 +1175,9 @@ export default function CharacterCreatePage() {
             <div className="space-y-6">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
 
+              {/* ── Sub-progress indicator (T-60) ─────────────────────────── */}
+              <DNASubProgress activeId={dnaActiveSection} />
+
               {/* ── Family Values Mode (T-03) ─────────────────────────────── */}
               <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
                 <div className="flex items-center gap-2">
@@ -1102,7 +1205,7 @@ export default function CharacterCreatePage() {
               </div>
 
               {/* ── Art Style ─────────────────────────────────────────────── */}
-              <div className="space-y-2">
+              <div id="dna-face" className="space-y-2 scroll-mt-24">
                 <Label className="text-base font-bold">🎬 Art Style</Label>
                 <VisualPicker
                   columns={5}
@@ -1367,7 +1470,7 @@ export default function CharacterCreatePage() {
               </div>
 
               {/* ── Hair / Hijab ──────────────────────────────────────────── */}
-              <div className="space-y-2">
+              <div id="dna-hair" className="space-y-2 scroll-mt-24">
                 <Label className="text-base font-bold">
                   {isOther ? "🪺 Head Texture / Crest" : form.wearHijab ? "🧕 Hijab Style" : "💇 Hair Style"}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
@@ -1513,7 +1616,7 @@ export default function CharacterCreatePage() {
               )}
 
               {/* ── Outfit ─────────────────────────────────────────────────── */}
-              <div className="space-y-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+              <div id="dna-outfit" className="space-y-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 scroll-mt-24">
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">👕 Outfit</p>
 
                 {/* Top Garment */}
@@ -1577,7 +1680,7 @@ export default function CharacterCreatePage() {
                 {/* Top Color */}
                 <div className="space-y-2">
                   <Label>Top Color</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <ColorScrollRow>
                     {OUTFIT_COLORS.map((c) => {
                       const isSelected = form.topGarmentColor === c.name;
                       return (
@@ -1587,14 +1690,14 @@ export default function CharacterCreatePage() {
                           title={c.name}
                           onClick={() => updateForm("topGarmentColor", isSelected ? "" : c.name)}
                           className={cn(
-                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
                             isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
                           )}
                           style={{ backgroundColor: c.hex }}
                         />
                       );
                     })}
-                  </div>
+                  </ColorScrollRow>
                   <Input
                     placeholder="Or type a custom color…"
                     value={OUTFIT_COLORS.some((c) => c.name === form.topGarmentColor) ? "" : form.topGarmentColor}
@@ -1663,7 +1766,7 @@ export default function CharacterCreatePage() {
                 {/* Bottom Color */}
                 <div className="space-y-2">
                   <Label>Bottom Color</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <ColorScrollRow>
                     {OUTFIT_COLORS.map((c) => {
                       const isSelected = form.bottomGarmentColor === c.name;
                       return (
@@ -1673,14 +1776,14 @@ export default function CharacterCreatePage() {
                           title={c.name}
                           onClick={() => updateForm("bottomGarmentColor", isSelected ? "" : c.name)}
                           className={cn(
-                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
                             isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
                           )}
                           style={{ backgroundColor: c.hex }}
                         />
                       );
                     })}
-                  </div>
+                  </ColorScrollRow>
                   <Input
                     placeholder="Or type a custom color…"
                     value={OUTFIT_COLORS.some((c) => c.name === form.bottomGarmentColor) ? "" : form.bottomGarmentColor}
@@ -1724,7 +1827,7 @@ export default function CharacterCreatePage() {
                 {/* Shoe Color */}
                 <div className="space-y-2">
                   <Label>Shoe Color</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <ColorScrollRow>
                     {OUTFIT_COLORS.map((c) => {
                       const isSelected = form.shoeColor === c.name;
                       return (
@@ -1734,14 +1837,14 @@ export default function CharacterCreatePage() {
                           title={c.name}
                           onClick={() => updateForm("shoeColor", isSelected ? "" : c.name)}
                           className={cn(
-                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
                             isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
                           )}
                           style={{ backgroundColor: c.hex }}
                         />
                       );
                     })}
-                  </div>
+                  </ColorScrollRow>
                   <Input
                     placeholder="Or type a custom color…"
                     value={OUTFIT_COLORS.some((c) => c.name === form.shoeColor) ? "" : form.shoeColor}
@@ -1752,7 +1855,7 @@ export default function CharacterCreatePage() {
               </div>
 
               {/* ── Body Proportions ───────────────────────────────────────── */}
-              <div className="space-y-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+              <div id="dna-body" className="space-y-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 scroll-mt-24">
                 <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
                   📏 Body Proportions
                   <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks size across all illustrations)</span>
@@ -1836,7 +1939,7 @@ export default function CharacterCreatePage() {
               </div>
 
               {/* ── Accessories ────────────────────────────────────────────── */}
-              <div className="space-y-2">
+              <div id="dna-accessories" className="space-y-2 scroll-mt-24">
                 <Label>Accessories</Label>
                 <div className="flex flex-wrap gap-2">
                   {ACCESSORIES_PRESETS.map((opt) => (
@@ -2290,7 +2393,7 @@ export default function CharacterCreatePage() {
             </div>
           )}
 
-          <div className="flex justify-between pt-4 border-t border-border">
+          <div className="flex justify-between items-center pt-3 pb-3 mt-4 border-t border-border sticky bottom-0 bg-background/95 backdrop-blur-sm z-10">
             <Button
               variant="outline"
               onClick={() => {

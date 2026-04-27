@@ -16,10 +16,11 @@ import { useKbNavStore } from "@/lib/store/kbNavStore";
 import { useUniverses } from "@/hooks/useUniverses";
 
 const KB_WORKFLOWS = [
-  { id: "faith",  label: "Faith & Language", icon: Moon,    firstSection: "islamicValues"      },
-  { id: "story",  label: "Story & Style",    icon: Feather, firstSection: "themes"             },
-  { id: "visual", label: "Visual & Format",  icon: Brush,   firstSection: "backgroundSettings" },
-  { id: "cover",  label: "Cover Design",     icon: Frame,   firstSection: "coverDesign"        },
+  { id: "faith",      label: "Faith & Language", icon: Moon,       firstSection: "islamicValues"      },
+  { id: "story",      label: "Character Voice",  icon: Feather,    firstSection: "characterGuides"    },
+  { id: "visual",     label: "Background",       icon: Brush,      firstSection: "backgroundSettings" },
+  { id: "bookFormat", label: "Book Format",      icon: LayoutGrid, firstSection: "bookFormatting"     },
+  { id: "cover",      label: "Cover Design",     icon: Frame,      firstSection: "coverDesign"        },
 ] as const;
 
 const mainNavItems = [
@@ -170,6 +171,7 @@ export function AppSidebar() {
                 <div className="mt-1.5 ml-4 space-y-0.5 pb-1">
                   {KB_WORKFLOWS.map((wf) => {
                     const isActive = kbNav.activeWorkflow === wf.id;
+                    const isDone = kbNav.completedWorkflows.has(wf.id);
                     const Icon = wf.icon;
                     return (
                       <button
@@ -187,9 +189,10 @@ export function AppSidebar() {
                           isActive ? "text-[#F5A623]" : "text-white/35"
                         )} />
                         <span className="truncate tracking-wide">{wf.label}</span>
-                        {isActive && (
-                          <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#F5A623] shrink-0 animate-pulse" />
-                        )}
+                        <span className={cn(
+                          "ml-auto w-2 h-2 rounded-full shrink-0 transition-colors",
+                          isActive ? "bg-[#F5A623] animate-pulse" : isDone ? "bg-emerald-400/80" : "bg-white/15"
+                        )} />
                       </button>
                     );
                   })}

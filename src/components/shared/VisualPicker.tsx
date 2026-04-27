@@ -1,6 +1,20 @@
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
 
 export interface VisualOption {
   value: string;
@@ -55,11 +69,13 @@ export function VisualPicker({
   className,
   allowDeselect = false,
 }: VisualPickerProps) {
+  const isMobile = useIsMobile();
+  const effectiveCols = isMobile ? Math.min(columns, 3) : columns;
   const ac = ACCENT[accent];
   return (
     <div
       className={cn("grid gap-2", className)}
-      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${effectiveCols}, minmax(0, 1fr))` }}
     >
       {options.map((opt) => {
         const isSelected = value === opt.value;

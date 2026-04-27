@@ -898,6 +898,149 @@ export function ValueCourageSvg() { // Courage — lion / shield
   );
 }
 
+export function ValueIhsanSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FDF4FF" rx="8"/>
+      <circle cx="24" cy="22" r="12" fill="#E9D5FF" stroke="#A855F7" strokeWidth="1.5"/>
+      <path d="M24 12 L25.8 17.5 L31.5 17.5 L27 21 L28.8 26.5 L24 23 L19.2 26.5 L21 21 L16.5 17.5 L22.2 17.5Z" fill="#A855F7"/>
+      <circle cx="24" cy="22" r="3" fill="#F5D0FE"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#7E22CE" fontFamily="sans-serif" fontWeight="bold">Ihsan</text>
+    </svg>
+  );
+}
+
+export function ValueTawbaSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F0FDF4" rx="8"/>
+      <path d="M24 36 Q12 28 12 20 A12 12 0 0 1 36 20 Q36 28 24 36Z" fill="#BBF7D0" stroke="#16A34A" strokeWidth="1.5"/>
+      <path d="M20 20 Q24 16 28 20" stroke="#16A34A" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M24 20 L24 28" stroke="#16A34A" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M21 25 L24 28 L27 25" stroke="#16A34A" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#15803D" fontFamily="sans-serif" fontWeight="bold">Tawba</text>
+    </svg>
+  );
+}
+
+export function ValueBarakahSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFFBEB" rx="8"/>
+      <path d="M24 8 L26 14 L32 14 L27 18 L29 24 L24 20 L19 24 L21 18 L16 14 L22 14Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1"/>
+      <path d="M16 28 Q20 32 24 30 Q28 32 32 28" stroke="#F59E0B" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M12 34 Q18 38 24 36 Q30 38 36 34" stroke="#FCD34D" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#92400E" fontFamily="sans-serif" fontWeight="bold">Barakah</text>
+    </svg>
+  );
+}
+
+export function ValueAdabSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F0F9FF" rx="8"/>
+      <circle cx="17" cy="14" r="5" fill="#BAE6FD" stroke="#0284C7" strokeWidth="1.2"/>
+      <circle cx="31" cy="14" r="5" fill="#BAE6FD" stroke="#0284C7" strokeWidth="1.2"/>
+      <path d="M12 26 Q12 22 17 22 L24 22 L31 22 Q36 22 36 26 L36 34 L12 34Z" fill="#E0F2FE" stroke="#0284C7" strokeWidth="1.2"/>
+      <line x1="24" y1="22" x2="24" y2="34" stroke="#0284C7" strokeWidth="1" strokeDasharray="2 2"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#0369A1" fontFamily="sans-serif" fontWeight="bold">Adab</text>
+    </svg>
+  );
+}
+
+export function ValueBirrSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFF7ED" rx="8"/>
+      <circle cx="14" cy="12" r="4.5" fill="#FED7AA" stroke="#EA580C" strokeWidth="1.2"/>
+      <circle cx="34" cy="12" r="4.5" fill="#FED7AA" stroke="#EA580C" strokeWidth="1.2"/>
+      <circle cx="24" cy="28" r="5" fill="#FDBA74" stroke="#EA580C" strokeWidth="1.2"/>
+      <path d="M9 24 Q9 20 14 20 L17 20 L24 20 L31 20 L34 20 Q39 20 39 24 L39 30 L9 30Z" fill="#FFEDD5" stroke="#EA580C" strokeWidth="1"/>
+      <path d="M19 28 Q24 32 29 28" stroke="#EA580C" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="3.8" fill="#9A3412" fontFamily="sans-serif" fontWeight="bold">Birr al-Walidayn</text>
+    </svg>
+  );
+}
+
+export function ValueHayaaSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFF1F2" rx="8"/>
+      <circle cx="24" cy="20" r="11" fill="#FFE4E6" stroke="#FB7185" strokeWidth="1.5"/>
+      <circle cx="20" cy="18" r="2" fill="#FDA4AF"/>
+      <circle cx="28" cy="18" r="2" fill="#FDA4AF"/>
+      <path d="M19 24 Q24 22 29 24" stroke="#F43F5E" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <path d="M16 14 Q12 8 18 8" stroke="#FCA5A5" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <path d="M32 14 Q36 8 30 8" stroke="#FCA5A5" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#BE123C" fontFamily="sans-serif" fontWeight="bold">Hayaa</text>
+    </svg>
+  );
+}
+
+export function ValueUkhuwwahSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F0FDF4" rx="8"/>
+      <circle cx="16" cy="14" r="5" fill="#86EFAC" stroke="#16A34A" strokeWidth="1.2"/>
+      <circle cx="32" cy="14" r="5" fill="#86EFAC" stroke="#16A34A" strokeWidth="1.2"/>
+      <path d="M11 34 L11 26 Q11 22 16 22 Q20 22 22 26 Q24 28 26 26 Q28 22 32 22 Q37 22 37 26 L37 34Z" fill="#DCFCE7" stroke="#16A34A" strokeWidth="1.2"/>
+      <path d="M22 26 Q24 29 26 26" stroke="#16A34A" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="3.8" fill="#15803D" fontFamily="sans-serif" fontWeight="bold">Ukhuwwah</text>
+    </svg>
+  );
+}
+
+export function ValueNiyyahSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#EEF2FF" rx="8"/>
+      <path d="M24 12 Q16 16 16 24 Q16 32 24 36 Q32 32 32 24 Q32 16 24 12Z" fill="#C7D2FE" stroke="#4F46E5" strokeWidth="1.5"/>
+      <path d="M24 18 L24 24 L28 28" stroke="#4F46E5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="24" cy="24" r="2" fill="#4F46E5"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#3730A3" fontFamily="sans-serif" fontWeight="bold">Niyyah</text>
+    </svg>
+  );
+}
+
+export function ValueTaqwaSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F5F3FF" rx="8"/>
+      <path d="M24 8 L37 14 L37 26 Q37 35 24 42 Q11 35 11 26 L11 14Z" fill="#DDD6FE" stroke="#7C3AED" strokeWidth="1.5"/>
+      <path d="M18 24 Q22 18 24 20 Q26 18 30 24" stroke="#7C3AED" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M20 28 Q24 32 28 28" stroke="#7C3AED" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#5B21B6" fontFamily="sans-serif" fontWeight="bold">Taqwa</text>
+    </svg>
+  );
+}
+
+export function ValueWaraSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FEFCE8" rx="8"/>
+      <line x1="24" y1="8" x2="24" y2="14" stroke="#CA8A04" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M14 14 L34 14" stroke="#CA8A04" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M14 14 L10 26 L18 26Z" fill="#FDE68A" stroke="#CA8A04" strokeWidth="1.2"/>
+      <path d="M34 14 L38 26 L30 26Z" fill="#FEF3C7" stroke="#CA8A04" strokeWidth="1.2"/>
+      <path d="M10 26 Q12 30 14 26" stroke="#CA8A04" strokeWidth="1" fill="none"/>
+      <path d="M30 26 Q32 30 38 26" stroke="#CA8A04" strokeWidth="1" fill="none"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#92400E" fontFamily="sans-serif" fontWeight="bold">Wara'</text>
+    </svg>
+  );
+}
+
+export function ValueIkhlasSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFF7F0" rx="8"/>
+      <path d="M24 34 Q14 26 14 20 A7 7 0 0 1 24 14 A7 7 0 0 1 34 20 Q34 26 24 34Z" fill="#FED7AA" stroke="#EA580C" strokeWidth="1.5"/>
+      <circle cx="24" cy="22" r="4" fill="#FDBA74" opacity="0.8"/>
+      <path d="M20 18 L22 22 L24 16 L26 22 L28 18" stroke="#EA580C" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#9A3412" fontFamily="sans-serif" fontWeight="bold">Ikhlas</text>
+    </svg>
+  );
+}
+
 // Exported preset list for the Islamic Values visual picker
 export const ISLAMIC_VALUE_PRESETS = [
   { value: "Sabr — patience in hardship and difficulty",                              label: "Sabr",        icon: <ValueSabrSvg /> },
@@ -912,6 +1055,17 @@ export const ISLAMIC_VALUE_PRESETS = [
   { value: "Saying Bismillah before every action",                                     label: "Bismillah",   icon: <ValueBismillahSvg /> },
   { value: "Taharah — cleanliness of body, clothes, and space",                        label: "Cleanliness", icon: <ValueCleanlinesssvg /> },
   { value: "Courage to do right even when it is difficult",                             label: "Courage",     icon: <ValueCourageSvg /> },
+  { value: "Ihsan — excellence; doing everything beautifully for Allah's sake",          label: "Ihsan",       icon: <ValueIhsanSvg /> },
+  { value: "Tawba — sincere repentance and turning back to Allah",                        label: "Tawba",       icon: <ValueTawbaSvg /> },
+  { value: "Barakah — divine blessing that increases goodness in all things",             label: "Barakah",     icon: <ValueBarakahSvg /> },
+  { value: "Adab — excellent manners and respectful etiquette in every interaction",      label: "Adab",        icon: <ValueAdabSvg /> },
+  { value: "Birr al-Walidayn — dutifulness and deep respect for one's parents",          label: "Birr",        icon: <ValueBirrSvg /> },
+  { value: "Hayaa — modesty and dignified shyness as a quality of faith",                 label: "Hayaa",       icon: <ValueHayaaSvg /> },
+  { value: "Ukhuwwah — brotherhood and sisterhood; unity among believers",                label: "Ukhuwwah",    icon: <ValueUkhuwwahSvg /> },
+  { value: "Niyyah — sincerity of intention; every action begins with a pure purpose",   label: "Niyyah",      icon: <ValueNiyyahSvg /> },
+  { value: "Taqwa — God-consciousness; being aware of Allah in every moment",             label: "Taqwa",       icon: <ValueTaqwaSvg /> },
+  { value: "Wara' — God-fearing caution; avoiding anything doubtful",                     label: "Wara'",       icon: <ValueWaraSvg /> },
+  { value: "Ikhlas — purity of intention; doing deeds solely for Allah's pleasure",      label: "Ikhlas",      icon: <ValueIkhlasSvg /> },
 ];
 
 // ══════════════════════════════════════════════════════════════════

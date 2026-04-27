@@ -21,6 +21,7 @@ import {
   Users,
   X,
   ChevronDown,
+  Dna, ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -129,31 +130,36 @@ type SectionId = typeof SECTIONS[number]["id"];
 const WORKFLOWS = [
   {
     id: "faith",
-    label: "Faith & Language",
+    label: "What the stories believe",
+    sublabel: "Faith & Language",
     description: "Islamic values, du'as, vocabulary & topics to avoid",
     sections: ["islamicValues", "duas", "vocabulary", "avoidTopics"],
   },
   {
     id: "story",
-    label: "Character Voice",
+    label: "How the characters sound",
+    sublabel: "Character Voice",
     description: "Per-character speaking style, background lore & faith integration",
     sections: ["characterGuides"],
   },
   {
     id: "visual",
-    label: "Background",
+    label: "What the world looks like",
+    sublabel: "Background",
     description: "Scene backgrounds, lighting, locations & visual style",
     sections: ["backgroundSettings"],
   },
   {
     id: "bookFormat",
-    label: "Book Format",
+    label: "How the books are shaped",
+    sublabel: "Book Format",
     description: "Book pacing, word count & layout rules per age group",
     sections: ["bookFormatting"],
   },
   {
     id: "cover",
-    label: "Cover Design",
+    label: "How the covers are branded",
+    sublabel: "Cover Design",
     description: "Front & back cover composition, atmosphere & typography",
     sections: ["coverDesign"],
   },
@@ -472,6 +478,14 @@ export default function KnowledgeBasePage() {
 
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
   const [newItem, setNewItem] = useState("");
+  const [newValueHow, setNewValueHow] = useState("");
+  const [showDNAModal, setShowDNAModal] = useState(false);
+  const [dnaModalPanel, setDnaModalPanel] = useState(0);
+  useEffect(() => {
+    if (!localStorage.getItem("ns_kb_dna_intro_seen")) {
+      setShowDNAModal(true);
+    }
+  }, []);
 
   // Sync active workflow/section from the sidebar store
   const kbNav = useKbNavStore();
@@ -483,10 +497,24 @@ export default function KnowledgeBasePage() {
     kbNav.setKbNav(id, wf ? (wf.sections[0] as SectionId) : activeSection);
   };
 
-  // When a KB is selected, reset to first section
+  // When a KB is selected, reset to first section + sync completion dots to sidebar
   useEffect(() => {
-    if (selectedKB) kbNav.setKbNav("faith", "islamicValues");
-  }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!selectedKB) return;
+    kbNav.setKbNav("faith", "islamicValues");
+    const kb = selectedKB as any;
+    const hasFaith = (kb.islamicValues?.length || 0) + (kb.duas?.length || 0) + (kb.vocabulary?.length || 0) + (kb.avoidTopics?.length || 0) > 0;
+    const hasStory = (kb.characterGuides?.length || 0) > 0;
+    const hasVisual = !!(kb.backgroundSettings?.junior?.tone || kb.backgroundSettings?.middleGrade?.tone || kb.backgroundSettings?.saeeda?.tone);
+    const hasBookFormat = !!(kb.bookFormatting?.middleGrade?.wordCount || kb.bookFormatting?.junior?.wordCount);
+    const hasCover = !!(kb.coverDesign?.brandingRules?.length || kb.coverDesign?.selectedCoverTemplate);
+    const done: string[] = [];
+    if (hasFaith) done.push("faith");
+    if (hasStory) done.push("story");
+    if (hasVisual) done.push("visual");
+    if (hasBookFormat) done.push("bookFormat");
+    if (hasCover) done.push("cover");
+    kbNav.setCompletedWorkflows(done);
+  }, [selectedKB?._id ?? selectedKB?.id, selectedKB?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showCreate, setShowCreate] = useState(false);
   const [showDelete, setShowDelete] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -690,10 +718,39 @@ export default function KnowledgeBasePage() {
               </div>
             )}
 
-            {/* Custom input */}
-            <AddRow placeholder="Add a custom value e.g. Gratitude toward nature..." value={newItem} onChange={setNewItem}
-              onAdd={() => { if (!newItem.trim()) return; save({ islamicValues: [...items, newItem.trim()] }); setNewItem(""); }}
-              loading={updateMutation.isPending} />
+            {/* Custom value input */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Add Custom Value</p>
+              <Input
+                placeholder="e.g. Gratitude toward nature"
+                value={newItem}
+                onChange={e => setNewItem(e.target.value)}
+                className="text-sm"
+              />
+              <Input
+                placeholder="How it should appear in stories (optional) — e.g. Characters pause to thank Allah for trees"
+                value={newValueHow}
+                onChange={e => setNewValueHow(e.target.value)}
+                className="text-sm"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!newItem.trim() || updateMutation.isPending}
+                onClick={() => {
+                  if (!newItem.trim()) return;
+                  const combined = newValueHow.trim()
+                    ? `${newItem.trim()} — ${newValueHow.trim()}`
+                    : newItem.trim();
+                  save({ islamicValues: [...items, combined] });
+                  setNewItem("");
+                  setNewValueHow("");
+                }}
+              >
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                Add Value
+              </Button>
+            </div>
           </div>
         );
       }
@@ -1111,9 +1168,89 @@ export default function KnowledgeBasePage() {
       reason="limit"
       usageInfo={{ used: usage.knowledgeBases, limit: limits.knowledgeBases, label: "knowledge bases" }}
     />
+    {/* ── Book DNA first-use intro modal ─────────────────────────────────── */}
+    <Dialog open={showDNAModal} onOpenChange={(open) => { if (!open) { localStorage.setItem("ns_kb_dna_intro_seen", "1"); setShowDNAModal(false); setDnaModalPanel(0); } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Dna className="w-5 h-5 text-primary" />
+            {dnaModalPanel === 0 ? "Meet your Book DNA" : dnaModalPanel === 1 ? "Fill it once, use it forever" : "Your continuity engine"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="py-2 space-y-4">
+          {dnaModalPanel === 0 && (
+            <>
+              <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/20 p-5 text-center">
+                <div className="text-4xl mb-3">🧬</div>
+                <p className="text-sm font-semibold text-foreground mb-1">This is not a preferences panel.</p>
+                <p className="text-sm text-muted-foreground">
+                  Your Knowledge Base is the <strong>continuity engine</strong> for your entire Universe — the DNA that makes every book feel like it belongs to the same world.
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">Every Islamic value, du'a, character voice, and cover rule you add here gets woven into every book you create automatically.</p>
+            </>
+          )}
+          {dnaModalPanel === 1 && (
+            <>
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 p-5 text-center">
+                <div className="text-4xl mb-3">✨</div>
+                <p className="text-sm font-semibold text-foreground mb-1">One setup. Infinite books.</p>
+                <p className="text-sm text-muted-foreground">
+                  Invest 10 minutes completing your Book DNA today — and every book you publish will carry the same Islamic values, vocabulary, and visual style without you having to repeat yourself.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[{ emoji: "🕌", text: "Values & Du'as" }, { emoji: "🗣️", text: "Character Voices" }, { emoji: "🎨", text: "Cover Style" }].map(i => (
+                  <div key={i.text} className="rounded-xl border border-border bg-muted/30 p-3">
+                    <div className="text-2xl mb-1">{i.emoji}</div>
+                    <p className="text-[11px] font-medium text-muted-foreground">{i.text}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {dnaModalPanel === 2 && (
+            <>
+              <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 p-5 text-center">
+                <div className="text-4xl mb-3">🔗</div>
+                <p className="text-sm font-semibold text-foreground mb-1">Every book inherits from DNA.</p>
+                <p className="text-sm text-muted-foreground">
+                  When you generate a book, NoorStudio automatically pulls from your DNA: the values to weave in, the du'as to place naturally, the voice each character speaks with, and the cover style to apply.
+                </p>
+              </div>
+              <p className="text-xs text-center text-muted-foreground">Your DNA lives at the Universe level — shared across every book in that series.</p>
+            </>
+          )}
+        </div>
+
+        {/* Dot indicators */}
+        <div className="flex justify-center gap-1.5">
+          {[0, 1, 2].map(i => (
+            <span key={i} className={cn("w-1.5 h-1.5 rounded-full transition-colors", i === dnaModalPanel ? "bg-primary" : "bg-muted-foreground/30")} />
+          ))}
+        </div>
+
+        <DialogFooter>
+          {dnaModalPanel > 0 && (
+            <Button variant="ghost" onClick={() => setDnaModalPanel(p => p - 1)}>Back</Button>
+          )}
+          {dnaModalPanel < 2 ? (
+            <Button variant="hero" onClick={() => setDnaModalPanel(p => p + 1)}>
+              Next <ChevronRightIcon className="w-4 h-4 ml-1" />
+            </Button>
+          ) : (
+            <Button variant="hero" onClick={() => { localStorage.setItem("ns_kb_dna_intro_seen", "1"); setShowDNAModal(false); setDnaModalPanel(0); }}>
+              Let's build it →
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <AppLayout
-      title="Knowledge Base"
-      subtitle="Define the universe rules that shape every story, chapter, and illustration"
+      title="Book DNA"
+      subtitle="The continuity engine — fills every book with the right values, voices, and visual style"
       actions={
         <Button variant="hero" onClick={handleOpenCreate}>
           <Plus className="w-4 h-4 mr-2" />New Knowledge Base
@@ -1168,6 +1305,20 @@ export default function KnowledgeBasePage() {
         )}
       </div>
 
+      {/* ── Book DNA persistent banner ──────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-violet-50 to-pink-50/60 dark:from-violet-950/30 dark:to-pink-950/20 border border-violet-200/60 dark:border-violet-800/40">
+        <Dna className="w-4 h-4 text-violet-500 shrink-0" />
+        <p className="text-xs text-violet-700 dark:text-violet-300 flex-1">
+          <strong>Book DNA</strong> — fill this once and every book in your Universe inherits the right values, voices, and style automatically.
+        </p>
+        <button
+          onClick={() => { setDnaModalPanel(0); setShowDNAModal(true); }}
+          className="shrink-0 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 underline underline-offset-2"
+        >
+          Learn more
+        </button>
+      </div>
+
       {/* ── No KB empty state ───────────────────────────────────────────────── */}
       {!selectedKB && !isLoading && (
         <div className="relative overflow-hidden rounded-3xl border-2 border-dashed border-muted-foreground/20 p-16 text-center flex flex-col items-center justify-center min-h-[480px] bg-gradient-to-br from-violet-50/50 via-background to-pink-50/30">
@@ -1201,10 +1352,21 @@ export default function KnowledgeBasePage() {
               <h2 className="text-base font-bold leading-tight truncate">{selectedKB.name}</h2>
               <p className="text-xs text-muted-foreground">Updated {new Date(selectedKB.updatedAt).toLocaleDateString()}</p>
             </div>
-            <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-              <span className="font-semibold text-violet-600">{selectedKB.islamicValues.length}</span> values ·{" "}
-              <span className="font-semibold text-blue-600">{selectedKB.duas.length}</span> du'as ·{" "}
-              <span className="font-semibold text-orange-600">{selectedKB.vocabulary.length}</span> words
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+              <span className="font-semibold text-violet-600">{selectedKB.islamicValues.length}</span> values
+              <span className="text-muted-foreground/40">·</span>
+              <span className="font-semibold text-blue-600">{selectedKB.duas.length}</span> du'as
+              <span className="text-muted-foreground/40">·</span>
+              <span className="font-semibold text-orange-600">{selectedKB.vocabulary.length}</span> vocab
+              <span className="text-muted-foreground/40">·</span>
+              <span className="font-semibold text-emerald-600">{(selectedKB as any).characterGuides?.length || 0}</span> voices
+              <span className="text-muted-foreground/40">·</span>
+              <span className={cn(
+                "font-semibold",
+                kbNav.completedWorkflows.size >= 3 ? "text-primary" : "text-muted-foreground"
+              )}>
+                {kbNav.completedWorkflows.size}/5 tabs
+              </span>
             </div>
             <Button
               variant="outline"
@@ -1218,19 +1380,21 @@ export default function KnowledgeBasePage() {
           </div>
 
           {/* Workflow tabs */}
-          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 w-fit flex-wrap">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 flex-wrap">
             {WORKFLOWS.map(wf => (
               <button
                 key={wf.id}
+                title={wf.description}
                 onClick={() => setActiveWorkflow(wf.id as WorkflowId)}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "px-3 py-2 rounded-lg transition-all text-left",
                   activeWorkflow === wf.id
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {wf.label}
+                <span className="block text-xs font-semibold leading-tight">{wf.label}</span>
+                <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">{wf.sublabel}</span>
               </button>
             ))}
           </div>

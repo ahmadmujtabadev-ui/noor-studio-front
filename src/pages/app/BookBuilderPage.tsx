@@ -3,9 +3,9 @@
 
 "use client";
 
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useBookBuilderNavStore } from "@/lib/store/bookBuilderNavStore";
@@ -20,66 +20,7 @@ import { IllustrationsStep } from "@/components/shared/IllustrationStep";
 import { CoverStep } from "@/components/shared/CoverStep";
 import { EditorStep } from "@/components/shared/EditorStep";
 import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
-
-// ─── Loading overlay ────────────────────────────────────────────────────────
-
-const NEUTRAL_MESSAGES = [
-  "Weaving your story together…",
-  "Grab a cup of coffee — our illustrators are hard at work…",
-  "Almost there — reviewing the final spreads…",
-  "Polishing your cover…",
-  "Every great book takes a moment to breathe…",
-  "Crafting each page with care…",
-  "Your characters are coming to life…",
-];
-
-const ISLAMIC_MESSAGES = [
-  "Bismillah — generating your cover…",
-  "Bi-idhnillah, your illustrations are coming together…",
-  "Alhamdulillah — almost done…",
-  "May every page carry barakah…",
-  "Your story is in good hands, bi-idhnillah…",
-  "Composing with care and intention…",
-  "Every word a step — trust the process…",
-];
-
-function LoadingOverlay({ register = "neutral", progress }: { register?: "neutral" | "islamic"; progress?: string }) {
-  const messages = register === "islamic" ? ISLAMIC_MESSAGES : NEUTRAL_MESSAGES;
-  const [msgIdx, setMsgIdx] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setMsgIdx((i) => (i + 1) % messages.length), 4000);
-    return () => clearInterval(id);
-  }, [messages.length]);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-card border-4 border-primary/30 rounded-3xl p-10 flex flex-col items-center gap-6 shadow-2xl max-w-sm w-full mx-4">
-        <div className="relative flex items-center justify-center">
-          <div className="w-20 h-24 rounded-2xl bg-gradient-to-br from-primary/30 to-purple-400/20 border-4 border-primary/40 flex items-center justify-center shadow-lg">
-            <BookOpen className="w-9 h-9 text-primary" />
-          </div>
-          <div className="absolute -top-3 -right-3 text-2xl animate-bounce">✨</div>
-          <div className="absolute -bottom-2 -left-3 text-xl animate-bounce" style={{ animationDelay: "0.3s" }}>⭐</div>
-          <div className="absolute -top-2 -left-4 text-lg animate-bounce" style={{ animationDelay: "0.6s" }}>🌟</div>
-        </div>
-        <div className="text-center space-y-1.5">
-          <p className="text-xl font-extrabold text-primary">
-            {register === "islamic" ? "Bismillah…" : "Magic happening…"}
-          </p>
-          <p className="text-sm text-muted-foreground font-medium">{messages[msgIdx]}</p>
-          {progress && (
-            <p className="text-xs text-primary/70 font-semibold">{progress}</p>
-          )}
-        </div>
-        <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-pink-400 via-primary to-purple-500 rounded-full animate-pulse" style={{ width: "70%" }} />
-        </div>
-        <p className="text-xs text-muted-foreground">This may take a minute or two 🕐</p>
-      </div>
-    </div>
-  );
-}
+import { GeneratingOverlay } from "@/components/shared/GeneratingOverlay";
 
 // ─── Phase definitions ───────────────────────────────────────────────────────
 
@@ -162,15 +103,21 @@ export default function BookBuilderPage() {
       })()
     : undefined;
 
-  // Show overlay for global loads OR per-chapter AI operations
+  // Show overlay for global loads, AI operations, and cover generation (all >5 s)
   const showOverlay = bb.globalLoading
     || (!!bb.loadingKey && (
       bb.loadingKey.startsWith("prose-gen") ||
       bb.loadingKey.startsWith("prose-humanize") ||
       bb.loadingKey.startsWith("prose-approve") ||
       bb.loadingKey.startsWith("structure") ||
-      bb.loadingKey.startsWith("generate-all")
+      bb.loadingKey.startsWith("generate-all") ||
+      bb.loadingKey.startsWith("cover-")
     ));
+
+  const overlayLabel = bb.loadingKey?.startsWith("cover-front") ? "Generating front cover"
+    : bb.loadingKey?.startsWith("cover-back") ? "Generating back cover"
+    : bb.loadingKey?.startsWith("cover-spine") ? "Generating spine"
+    : undefined;
 
   return (
     <AppLayout
@@ -184,7 +131,13 @@ export default function BookBuilderPage() {
       }
     >
       {/* ── Global loading overlay ── */}
-      {showOverlay && <LoadingOverlay register={loadingRegister} progress={loadingProgress} />}
+      {showOverlay && (
+        <GeneratingOverlay
+          register={loadingRegister}
+          progress={loadingProgress}
+          label={overlayLabel}
+        />
+      )}
 
       {/* ── Credit confirmation dialog ── */}
       <CreditConfirmModal

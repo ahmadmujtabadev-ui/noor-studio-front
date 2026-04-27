@@ -936,6 +936,23 @@ function LiveTextarea({
   );
 }
 
+// ─── Template metadata for filtering ─────────────────────────────────────────
+const TEMPLATE_META: Record<string, { mood: string; ageGroup: string; recommended?: boolean }> = {
+  ct_classic_children:  { mood: "Joyful",      ageGroup: "Under 6",  recommended: true  },
+  ct_epic_cinematic:    { mood: "Adventure",    ageGroup: "Ages 8-14"                    },
+  ct_islamic_heritage:  { mood: "Islamic",      ageGroup: "Ages 8-14", recommended: true },
+  ct_vintage_ornate:    { mood: "Mysterious",   ageGroup: "Ages 8-14"                    },
+  ct_modern_minimal:    { mood: "Modern",       ageGroup: "Ages 8-14"                    },
+  ct_watercolor_dream:  { mood: "Calm",         ageGroup: "Ages 6-8",  recommended: true },
+  ct_night_sky:         { mood: "Islamic",      ageGroup: "Ages 6-8",  recommended: true },
+  ct_storybook_warm:    { mood: "Warm",         ageGroup: "Under 6"                      },
+  ct_bold_typography:   { mood: "Modern",       ageGroup: "Ages 8-14"                    },
+  ct_nature_adventure:  { mood: "Adventure",    ageGroup: "Ages 6-8"                     },
+};
+
+const MOOD_FILTERS = ["All", "Islamic", "Joyful", "Adventure", "Calm", "Warm", "Mysterious", "Modern"] as const;
+const AGE_FILTERS  = ["All", "Under 6", "Ages 6-8", "Ages 8-14"] as const;
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   cd: any;
@@ -945,6 +962,9 @@ interface Props {
 
 export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
   const { data: templates = [] } = useCoverTemplates();
+  const [moodFilter, setMoodFilter] = useState<string>("All");
+  const [ageFilter, setAgeFilter] = useState<string>("All");
+  const [hoveredTpl, setHoveredTpl] = useState<string | null>(null);
 
   const selectedTplId = cd.selectedCoverTemplate || null;
   const selectedTpl = templates.find((t: any) => t._id === selectedTplId);
@@ -1049,16 +1069,52 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
           matching spine + back cover style will be applied automatically.
         </p>
 
+        {/* Filter chips */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide self-center mr-1">Mood</span>
+            {MOOD_FILTERS.map(f => (
+              <button key={f} type="button" onClick={() => setMoodFilter(f)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                  moodFilter === f ? "bg-rose-500 text-white border-rose-500" : "border-border text-muted-foreground hover:border-rose-300 hover:text-foreground"
+                )}>{f}</button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide self-center mr-1">Age</span>
+            {AGE_FILTERS.map(f => (
+              <button key={f} type="button" onClick={() => setAgeFilter(f)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                  ageFilter === f ? "bg-rose-500 text-white border-rose-500" : "border-border text-muted-foreground hover:border-rose-300 hover:text-foreground"
+                )}>{f}</button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {templates.map((tpl: any) => {
+          {templates
+            .filter((tpl: any) => {
+              const meta = TEMPLATE_META[tpl._id];
+              if (!meta) return true;
+              if (moodFilter !== "All" && meta.mood !== moodFilter) return false;
+              if (ageFilter !== "All" && meta.ageGroup !== ageFilter) return false;
+              return true;
+            })
+            .map((tpl: any) => {
             const SvgComponent = COVER_TEMPLATE_SVG_MAP[tpl._id];
             const isSelected = selectedTplId === tpl._id;
+            const meta = TEMPLATE_META[tpl._id];
+            const imgSrc = COVER_TEMPLATE_PNG_MAP[tpl._id];
 
             return (
               <button
                 key={tpl._id}
                 type="button"
                 onClick={() => selectTemplate(tpl._id)}
+                onMouseEnter={() => setHoveredTpl(tpl._id)}
+                onMouseLeave={() => setHoveredTpl(null)}
                 className={cn(
                   "group relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]",
                   isSelected
@@ -1066,16 +1122,9 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
                     : "border-gray-200 hover:border-rose-300 bg-white"
                 )}
               >
-                <div
-                  className="w-full rounded-lg overflow-hidden shadow-sm"
-                  style={{ aspectRatio: "5/7" }}
-                >
-                  {COVER_TEMPLATE_PNG_MAP[tpl._id] ? (
-                    <img
-                      src={COVER_TEMPLATE_PNG_MAP[tpl._id]}
-                      alt={tpl.name}
-                      className="w-full h-full object-cover"
-                    />
+                <div className="w-full rounded-lg overflow-hidden shadow-sm" style={{ aspectRatio: "5/7" }}>
+                  {imgSrc ? (
+                    <img src={imgSrc} alt={tpl.name} className="w-full h-full object-cover" />
                   ) : SvgComponent ? (
                     <SvgComponent />
                   ) : (
@@ -1085,29 +1134,33 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
                   )}
                 </div>
 
-                <span
-                  className={cn(
-                    "text-xs font-semibold text-center leading-tight",
-                    isSelected ? "text-rose-700" : "text-gray-700"
-                  )}
-                >
+                <span className={cn("text-xs font-semibold text-center leading-tight", isSelected ? "text-rose-700" : "text-gray-700")}>
                   {tpl.name}
                 </span>
 
                 <div className="flex gap-1">
                   {tpl.palette?.slice(0, 4).map((hex: string) => (
-                    <span
-                      key={hex}
-                      className="w-3 h-3 rounded-full border border-white shadow-sm"
-                      style={{ backgroundColor: hex }}
-                    />
+                    <span key={hex} className="w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: hex }} />
                   ))}
                 </div>
+
+                {/* Recommended badge */}
+                {meta?.recommended && (
+                  <span className="absolute bottom-7 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white">★ Rec</span>
+                )}
 
                 {isSelected && (
                   <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
                     <Check className="w-3 h-3 text-white" />
                   </span>
+                )}
+
+                {/* Hover enlarged preview */}
+                {hoveredTpl === tpl._id && imgSrc && (
+                  <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 rounded-xl overflow-hidden shadow-2xl border-2 border-rose-300 pointer-events-none"
+                    style={{ aspectRatio: "5/7" }}>
+                    <img src={imgSrc} alt={tpl.name} className="w-full h-full object-cover" />
+                  </div>
                 )}
               </button>
             );
