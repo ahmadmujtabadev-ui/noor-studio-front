@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import {
   Sparkles, RefreshCw, ArrowRight, Loader2, BookOpen,
-  Globe, Library, AlertCircle,
+  Globe, Library, AlertCircle, ChevronDown, ChevronUp, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { Universe } from "@/lib/api/types";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
+import { KBStrengthScore } from "@/components/kb/KBStrengthScore";
 
 const AGE_RANGES = [
   { value: "1-6",  label: "1-6 years (Picture book)" },
@@ -24,6 +25,75 @@ interface StoryStepProps {
   bb: BookBuilderHook;
   universes: Universe[];
   onContinue: () => void;
+}
+
+function KBImpactPanel({ kb }: { kb: any }) {
+  const [open, setOpen] = useState(false);
+
+  const sections = [
+    { label: "Islamic Values", count: kb.islamicValues?.length || 0, tab: "faith", emoji: "🕌" },
+    { label: "Du'as", count: kb.duas?.length || 0, tab: "faith", emoji: "🤲" },
+    { label: "Vocabulary", count: kb.vocabulary?.length || 0, tab: "faith", emoji: "📖" },
+    { label: "Avoid Topics", count: kb.avoidTopics?.length || 0, tab: "faith", emoji: "🚫" },
+    { label: "Character Voices", count: kb.characterGuides?.length || 0, tab: "story", emoji: "🗣️" },
+    { label: "Scene Settings", count: (kb.backgroundSettings?.junior?.locations?.length || 0) + (kb.backgroundSettings?.middleGrade?.locations?.length || 0), tab: "visual", emoji: "🏞️" },
+  ];
+
+  const filledSections = sections.filter(s => s.count > 0);
+  const kbUrl = `/app/knowledge-base`;
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-emerald-700">
+            ✓ KB active — {filledSections.length} of {sections.length} domains populated
+          </span>
+          {filledSections.length < 4 && (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+              Build it up for better output
+            </span>
+          )}
+        </div>
+        {open ? <ChevronUp className="h-3.5 w-3.5 text-emerald-600" /> : <ChevronDown className="h-3.5 w-3.5 text-emerald-600" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-emerald-100 px-4 py-3 space-y-3 bg-white/60">
+          <KBStrengthScore kb={kb} compact />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {sections.map(s => (
+              <a
+                key={s.tab + s.label}
+                href={`${kbUrl}?tab=${s.tab}`}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors hover:bg-muted/60",
+                  s.count > 0 ? "border-emerald-200 bg-emerald-50/50 text-emerald-800" : "border-dashed border-muted text-muted-foreground"
+                )}
+              >
+                <span>{s.emoji}</span>
+                <span className="font-medium">{s.label}</span>
+                <span className={cn("ml-auto font-bold", s.count > 0 ? "text-emerald-600" : "text-muted-foreground/60")}>
+                  {s.count > 0 ? s.count : "—"}
+                </span>
+              </a>
+            ))}
+          </div>
+          <a
+            href={kbUrl}
+            className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-800 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open Knowledge Base to edit
+          </a>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
@@ -39,6 +109,10 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
 
   const hasStory = !!bb.storyReview?.current?.storyText;
   const current  = bb.storyReview?.current;
+
+  const selectedKBData = bb.knowledgeBaseId
+    ? kbsForUniverse.find((kb: any) => (kb.id || kb._id) === bb.knowledgeBaseId)
+    : null;
 
   // Validation
   const missingUniverse = !bb.universeId;
@@ -165,7 +239,10 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 Knowledge Base injects story rules, illustration styles & faith guidance
               </p>
             )}
-            {bb.knowledgeBaseId && (
+            {bb.knowledgeBaseId && selectedKBData && (
+              <KBImpactPanel kb={selectedKBData} />
+            )}
+            {bb.knowledgeBaseId && !selectedKBData && (
               <p className="text-xs text-emerald-600 font-medium">✓ KB rules applied to all AI generations</p>
             )}
             {bb.universeId && kbsForUniverse.length === 0 && !bb.knowledgeBaseId && (

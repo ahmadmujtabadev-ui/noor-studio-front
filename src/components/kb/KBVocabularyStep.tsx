@@ -11,6 +11,7 @@ interface VocabWord {
   definition: string;
   example?: string;
   type?: string;
+  avoid?: string;
 }
 
 interface Props {
@@ -27,13 +28,13 @@ const VOCAB_PRESETS: Array<VocabWord & {
   textColor: string;
   subColor: string;
 }> = [
-  { word: "Quran",        definition: "The holy book of Islam, revealed to Prophet Muhammad ﷺ",         example: "Layla read from the Quran every morning after Fajr.",                              icon: IconQuran,       bg: "bg-emerald-50",  border: "border-emerald-200", textColor: "text-emerald-900", subColor: "text-emerald-700", type: "Quranic" },
-  { word: "Salah",        definition: "The five daily prayers — the pillar of every Muslim's day",       example: "Ibrahim stopped his game and ran to join his father for Salah.",                  icon: IconSalah,       bg: "bg-teal-50",     border: "border-teal-200",    textColor: "text-teal-900",    subColor: "text-teal-700",    type: "Pillar" },
-  { word: "Masjid",       definition: "The mosque — the house of Allah where Muslims pray together",     example: "The family walked to the masjid for Friday prayers.",                             icon: IconMasjid,     bg: "bg-blue-50",     border: "border-blue-200",    textColor: "text-blue-900",    subColor: "text-blue-700",    type: "Place" },
+  { word: "Quran",        definition: "The holy book of Islam, revealed to Prophet Muhammad ﷺ",         example: "Layla read from the Quran every morning after Fajr.",                              avoid: "Koran",    icon: IconQuran,       bg: "bg-emerald-50",  border: "border-emerald-200", textColor: "text-emerald-900", subColor: "text-emerald-700", type: "Quranic" },
+  { word: "Salah",        definition: "The five daily prayers — the pillar of every Muslim's day",       example: "Ibrahim stopped his game and ran to join his father for Salah.",                  avoid: "Namaz",    icon: IconSalah,       bg: "bg-teal-50",     border: "border-teal-200",    textColor: "text-teal-900",    subColor: "text-teal-700",    type: "Pillar" },
+  { word: "Masjid",       definition: "The mosque — the house of Allah where Muslims pray together",     example: "The family walked to the masjid for Friday prayers.",                             avoid: "Mosque",   icon: IconMasjid,     bg: "bg-blue-50",     border: "border-blue-200",    textColor: "text-blue-900",    subColor: "text-blue-700",    type: "Place" },
   { word: "Tasbih",       definition: "Prayer beads used while doing dhikr — remembering Allah",        example: "Grandma's fingers moved quietly along her tasbih.",                               icon: IconTasbih,     bg: "bg-purple-50",   border: "border-purple-200",  textColor: "text-purple-900",  subColor: "text-purple-700",  type: "Worship" },
   { word: "Bismillah",    definition: "Saying 'In the name of Allah' before starting anything",         example: "She whispered Bismillah before opening her exam paper.",                          icon: IconBismillah,  bg: "bg-green-50",    border: "border-green-200",   textColor: "text-green-900",   subColor: "text-green-700",   type: "Expression" },
   { word: "Tawakkul",     definition: "Trusting Allah completely after doing your best effort",          example: "After studying hard, he made du'a and practised tawakkul.",                       icon: IconTawakkul,   bg: "bg-sky-50",      border: "border-sky-200",     textColor: "text-sky-900",     subColor: "text-sky-700",     type: "Value" },
-  { word: "Sadaqah",      definition: "Giving charity freely for the sake of Allah",                     example: "Zara put her pocket money in the sadaqah box with a smile.",                     icon: IconKindness,   bg: "bg-rose-50",     border: "border-rose-200",    textColor: "text-rose-900",    subColor: "text-rose-700",    type: "Pillar" },
+  { word: "Sadaqah",      definition: "Giving charity freely for the sake of Allah",                     example: "Zara put her pocket money in the sadaqah box with a smile.",                     avoid: "Charity",  icon: IconKindness,   bg: "bg-rose-50",     border: "border-rose-200",    textColor: "text-rose-900",    subColor: "text-rose-700",    type: "Pillar" },
   { word: "Prayer Mat",   definition: "The clean mat placed on the floor when praying salah",            example: "Yusuf rolled out the prayer mat and faced the qibla.",                            icon: IconPrayerMat,  bg: "bg-orange-50",   border: "border-orange-200",  textColor: "text-orange-900",  subColor: "text-orange-700",  type: "Object" },
 ];
 
@@ -65,7 +66,7 @@ function WordAvatar({ word, colorIdx }: { word: string; colorIdx: number }) {
 
 export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
   const [showForm, setShowForm] = useState(false);
-  const [newWord, setNewWord] = useState<VocabWord>({ word: "", definition: "", example: "", type: "" });
+  const [newWord, setNewWord] = useState<VocabWord>({ word: "", definition: "", example: "", type: "", avoid: "" });
 
   const presetWords = VOCAB_PRESETS.map(p => p.word);
   const addedPresetWords = vocab.map(v => v.word);
@@ -82,7 +83,7 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
     const w = newWord.word.trim();
     if (!w || !newWord.definition.trim()) return;
     onSave([...vocab, { ...newWord, word: w }]);
-    setNewWord({ word: "", definition: "", example: "", type: "" });
+    setNewWord({ word: "", definition: "", example: "", type: "", avoid: "" });
     setShowForm(false);
   };
 
@@ -125,6 +126,14 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
               <span className={cn("text-base font-extrabold leading-tight", isAdded ? preset.textColor : "text-gray-800")}>
                 {preset.word}
               </span>
+              {/* Prefer / avoid pair */}
+              {preset.avoid && (
+                <span className="flex items-center gap-1 text-[10px]">
+                  <span className="rounded bg-red-100 px-1 py-0.5 text-red-600 line-through">{preset.avoid}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className={cn("rounded px-1 py-0.5 font-semibold", isAdded ? preset.textColor : "text-gray-700")}>{preset.word}</span>
+                </span>
+              )}
               {/* Definition snippet */}
               <span className={cn("text-[11px] leading-tight line-clamp-2", isAdded ? preset.subColor : "text-gray-500")}>
                 {preset.definition.split(" ").slice(0, 6).join(" ")}…
@@ -186,7 +195,7 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
         <div className="rounded-2xl border border-orange-100 bg-orange-50/50 p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-semibold">Word *</Label>
+              <Label className="text-xs font-semibold">Preferred term *</Label>
               <Input placeholder="Alhamdulillah" value={newWord.word}
                 onChange={e => setNewWord({ ...newWord, word: e.target.value })} />
             </div>
@@ -195,7 +204,12 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
               <Input placeholder="All praise is for Allah" value={newWord.definition}
                 onChange={e => setNewWord({ ...newWord, definition: e.target.value })} />
             </div>
-            <div className="sm:col-span-2">
+            <div>
+              <Label className="text-xs font-semibold">Avoid this term instead (optional)</Label>
+              <Input placeholder='e.g. "Mosque" → prefer "Masjid"' value={newWord.avoid || ""}
+                onChange={e => setNewWord({ ...newWord, avoid: e.target.value })} />
+            </div>
+            <div>
               <Label className="text-xs font-semibold">Story Example (optional)</Label>
               <Input placeholder='"Alhamdulillah!" said Zahra, hugging her mama.' value={newWord.example}
                 onChange={e => setNewWord({ ...newWord, example: e.target.value })} />

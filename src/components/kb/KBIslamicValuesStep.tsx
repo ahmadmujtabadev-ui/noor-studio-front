@@ -13,6 +13,7 @@ interface Props {
 
 export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
   const [customInput, setCustomInput] = useState("");
+  const [customHow, setCustomHow] = useState("");
 
   const toggle = (value: string) => {
     const next = items.includes(value)
@@ -24,8 +25,10 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
   const addCustom = () => {
     const v = customInput.trim();
     if (!v || items.includes(v)) return;
-    onSave([...items, v]);
+    const combined = customHow.trim() ? `${v} — ${customHow.trim()}` : v;
+    onSave([...items, combined]);
     setCustomInput("");
+    setCustomHow("");
   };
 
   const customItems = items.filter(v => !ISLAMIC_VALUE_TILES.some(t => t.value === v));
@@ -100,16 +103,22 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
       )}
 
       {/* Custom input */}
-      <div className="flex gap-2">
+      <div className="space-y-2">
         <Input
-          placeholder="Add your own value…"
+          placeholder="Value name — e.g. Generosity"
           value={customInput}
           onChange={e => setCustomInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") addCustom(); }}
-          className="flex-1"
         />
-        <Button variant="outline" onClick={addCustom} disabled={!customInput.trim() || isSaving}>
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+        <Input
+          placeholder="How it should appear in stories (optional) — e.g. Characters pause to thank Allah for trees"
+          value={customHow}
+          onChange={e => setCustomHow(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") addCustom(); }}
+        />
+        <Button variant="outline" onClick={addCustom} disabled={!customInput.trim() || isSaving} size="sm">
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+          Add Value
         </Button>
       </div>
     </div>

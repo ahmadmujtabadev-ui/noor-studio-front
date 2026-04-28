@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronDown, ChevronUp, Frame, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Frame, Plus, X, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -964,7 +964,7 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
   const { data: templates = [] } = useCoverTemplates();
   const [moodFilter, setMoodFilter] = useState<string>("All");
   const [ageFilter, setAgeFilter] = useState<string>("All");
-  const [hoveredTpl, setHoveredTpl] = useState<string | null>(null);
+  const [previewTpl, setPreviewTpl] = useState<{ id: string; name: string; src: string } | null>(null);
 
   const selectedTplId = cd.selectedCoverTemplate || null;
   const selectedTpl = templates.find((t: any) => t._id === selectedTplId);
@@ -1109,60 +1109,63 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
             const imgSrc = COVER_TEMPLATE_PNG_MAP[tpl._id];
 
             return (
-              <button
-                key={tpl._id}
-                type="button"
-                onClick={() => selectTemplate(tpl._id)}
-                onMouseEnter={() => setHoveredTpl(tpl._id)}
-                onMouseLeave={() => setHoveredTpl(null)}
-                className={cn(
-                  "group relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]",
-                  isSelected
-                    ? "border-rose-500 bg-rose-50 shadow-md"
-                    : "border-gray-200 hover:border-rose-300 bg-white"
-                )}
-              >
-                <div className="w-full rounded-lg overflow-hidden shadow-sm" style={{ aspectRatio: "5/7" }}>
-                  {imgSrc ? (
-                    <img src={imgSrc} alt={tpl.name} className="w-full h-full object-cover" />
-                  ) : SvgComponent ? (
-                    <SvgComponent />
-                  ) : (
-                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                      <Frame className="w-6 h-6 text-gray-400" />
-                    </div>
+              <div key={tpl._id} className="relative flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => selectTemplate(tpl._id)}
+                  className={cn(
+                    "w-full relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]",
+                    isSelected
+                      ? "border-rose-500 bg-rose-50 shadow-md"
+                      : "border-gray-200 hover:border-rose-300 bg-white"
                   )}
-                </div>
-
-                <span className={cn("text-xs font-semibold text-center leading-tight", isSelected ? "text-rose-700" : "text-gray-700")}>
-                  {tpl.name}
-                </span>
-
-                <div className="flex gap-1">
-                  {tpl.palette?.slice(0, 4).map((hex: string) => (
-                    <span key={hex} className="w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: hex }} />
-                  ))}
-                </div>
-
-                {/* Recommended badge */}
-                {meta?.recommended && (
-                  <span className="absolute bottom-7 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white">★ Rec</span>
-                )}
-
-                {isSelected && (
-                  <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-white" />
-                  </span>
-                )}
-
-                {/* Hover enlarged preview */}
-                {hoveredTpl === tpl._id && imgSrc && (
-                  <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-36 rounded-xl overflow-hidden shadow-2xl border-2 border-rose-300 pointer-events-none"
-                    style={{ aspectRatio: "5/7" }}>
-                    <img src={imgSrc} alt={tpl.name} className="w-full h-full object-cover" />
+                >
+                  <div className="w-full rounded-lg overflow-hidden shadow-sm" style={{ aspectRatio: "5/7" }}>
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={tpl.name} className="w-full h-full object-cover" />
+                    ) : SvgComponent ? (
+                      <SvgComponent />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <Frame className="w-6 h-6 text-gray-400" />
+                      </div>
+                    )}
                   </div>
+
+                  <span className={cn("text-xs font-semibold text-center leading-tight", isSelected ? "text-rose-700" : "text-gray-700")}>
+                    {tpl.name}
+                  </span>
+
+                  <div className="flex gap-1">
+                    {tpl.palette?.slice(0, 4).map((hex: string) => (
+                      <span key={hex} className="w-3 h-3 rounded-full border border-white shadow-sm" style={{ backgroundColor: hex }} />
+                    ))}
+                  </div>
+
+                  {/* Recommended badge */}
+                  {meta?.recommended && (
+                    <span className="absolute top-8 left-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap">★ Recommended</span>
+                  )}
+
+                  {isSelected && (
+                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
+                </button>
+
+                {/* Preview button */}
+                {imgSrc && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTpl({ id: tpl._id, name: tpl.name, src: imgSrc })}
+                    className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"
+                    title="Preview"
+                  >
+                    <ZoomIn className="w-3 h-3 text-white" />
+                  </button>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -1647,6 +1650,27 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
 
       {isSaving && (
         <div className="text-xs text-muted-foreground px-1">Saving changes...</div>
+      )}
+
+      {/* Template preview modal */}
+      {previewTpl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setPreviewTpl(null)}
+        >
+          <div
+            className="relative bg-white rounded-2xl overflow-hidden shadow-2xl max-w-xs w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <img src={previewTpl.src} alt={previewTpl.name} className="w-full object-cover" style={{ maxHeight: "70vh" }} />
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-800">{previewTpl.name}</p>
+              <button type="button" onClick={() => setPreviewTpl(null)} className="text-gray-400 hover:text-gray-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

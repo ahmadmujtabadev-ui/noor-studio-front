@@ -99,107 +99,113 @@ export default function UniverseDetailPage() {
         </div>
       }
     >
-      {/* Book DNA Hierarchy — T-55 */}
-      <div className="mb-8 rounded-2xl border border-border bg-card/50 overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">Series Architecture</span>
-          <span className="text-xs text-muted-foreground ml-1">— how every book stays consistent</span>
+      {/* Universe at-a-glance stats */}
+      <div className="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Universe card */}
+        <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Globe className="w-5 h-5 text-primary" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Universe</span>
+          </div>
+          <p className="font-bold text-base leading-tight truncate">{universe.name}</p>
+          {universe.artStyle ? (
+            <span className="text-xs text-muted-foreground capitalize">{universe.artStyle.replace(/-/g, " ")}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground/50">No art style set</span>
+          )}
         </div>
 
-        <div className="flex items-stretch divide-x divide-border">
-          {/* Universe node */}
-          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Globe className="w-4 h-4 text-primary" />
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider">Universe</span>
+        {/* Book DNA / KB card */}
+        <div className={cn(
+          "rounded-2xl border p-5 flex flex-col gap-2",
+          primaryKb ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card"
+        )}>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+              <Dna className="w-5 h-5 text-amber-500" />
             </div>
-            <p className="font-semibold text-sm truncate">{universe.name}</p>
-            {universe.artStyle && (
-              <p className="text-xs text-muted-foreground capitalize">{universe.artStyle.replace(/-/g, " ")}</p>
-            )}
+            <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Book DNA</span>
           </div>
-
-          {/* Arrow */}
-          <div className="flex items-center px-2">
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-          </div>
-
-          {/* Book DNA / KB node — visually highlighted */}
-          <div className={cn(
-            "flex-1 px-5 py-4 flex flex-col gap-1 border-amber-500/20",
-            "bg-amber-500/5"
-          )}>
-            <div className="flex items-center gap-2 mb-1">
-              <Dna className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Book DNA</span>
-            </div>
-            {primaryKb ? (
-              <>
-                <p className="font-semibold text-sm truncate">{primaryKb.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={cn("text-xs font-medium", strength?.color)}>{strength?.label}</span>
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2].map((i) => {
-                      const filled = (primaryKb.islamicValues.length > 0 ? 1 : 0) +
-                        (primaryKb.duas.length > 0 ? 1 : 0) +
-                        (primaryKb.vocabulary.length > 0 ? 1 : 0);
-                      return (
-                        <div
-                          key={i}
-                          className={cn(
-                            "w-5 h-1.5 rounded-full",
-                            i < filled ? "bg-amber-500" : "bg-muted"
-                          )}
-                        />
-                      );
-                    })}
-                  </div>
+          {primaryKb ? (
+            <>
+              <p className="font-bold text-base leading-tight truncate">{primaryKb.name}</p>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-xs font-semibold", strength?.color)}>{strength?.label}</span>
+                <div className="flex gap-1">
+                  {[0, 1, 2].map((i) => {
+                    const filled = (primaryKb.islamicValues.length > 0 ? 1 : 0) +
+                      (primaryKb.duas.length > 0 ? 1 : 0) +
+                      (primaryKb.vocabulary.length > 0 ? 1 : 0);
+                    return <div key={i} className={cn("w-6 h-2 rounded-full", i < filled ? "bg-amber-500" : "bg-muted")} />;
+                  })}
                 </div>
-              </>
-            ) : (
-              <>
-                <p className="text-xs text-muted-foreground">No Knowledge Base yet</p>
-                <Link to={`/app/knowledge-base?universeId=${id}`} className="text-xs text-amber-500 hover:underline mt-0.5">
-                  Add Book DNA →
-                </Link>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">No Book DNA yet</p>
+              <Link to={`/app/knowledge-base?universeId=${id}`} className="text-xs text-amber-500 font-semibold hover:underline">
+                Add Book DNA →
+              </Link>
+            </>
+          )}
+        </div>
 
-          {/* Arrow */}
-          <div className="flex items-center px-2">
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-          </div>
-
-          {/* Characters node */}
-          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="w-4 h-4 text-blue-400" />
-              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">Characters</span>
+        {/* Characters card */}
+        <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-blue-500" />
             </div>
-            <p className="text-2xl font-bold">{characters.length}</p>
-            <Link to={`/app/characters/new?universeId=${id}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              + Add character
-            </Link>
+            <span className="text-xs font-semibold text-blue-500 uppercase tracking-wider">Characters</span>
           </div>
+          <p className="text-3xl font-bold leading-none">{characters.length}</p>
+          <Link to={`/app/characters/new?universeId=${id}`} className="text-xs text-muted-foreground hover:text-foreground font-medium transition-colors">
+            + Add character
+          </Link>
+        </div>
 
-          {/* Arrow */}
-          <div className="flex items-center px-2">
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-          </div>
-
-          {/* Books node */}
-          <div className="flex-1 px-5 py-4 flex flex-col gap-1">
-            <div className="flex items-center gap-2 mb-1">
-              <BookMarked className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Books</span>
+        {/* Books card */}
+        <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <BookMarked className="w-5 h-5 text-emerald-500" />
             </div>
-            <p className="text-2xl font-bold">{universe.bookCount ?? 0}</p>
-            <Link to="/app/books/new" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              + New book
-            </Link>
+            <span className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Books</span>
           </div>
+          <p className="text-3xl font-bold leading-none">{universe.bookCount ?? 0}</p>
+          <Link to="/app/books/new" className="text-xs text-muted-foreground hover:text-foreground font-medium transition-colors">
+            + New book
+          </Link>
+        </div>
+      </div>
+
+      {/* Series Architecture flow (compact) */}
+      <div className="mb-8 flex items-center gap-2 px-4 py-3 rounded-2xl border border-border bg-card/50 overflow-x-auto">
+        <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span className="text-xs font-semibold text-foreground shrink-0">Series Architecture</span>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Globe className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs text-foreground font-medium truncate max-w-[100px]">{universe.name}</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Dna className="w-3.5 h-3.5 text-amber-500" />
+          <span className="text-xs font-medium text-amber-600">{primaryKb ? primaryKb.name : "No DNA"}</span>
+          {strength && <span className={cn("text-[10px] font-semibold", strength.color)}>· {strength.label}</span>}
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Users className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-xs font-medium text-blue-600">{characters.length} characters</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <BookMarked className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="text-xs font-medium text-emerald-600">{universe.bookCount ?? 0} books</span>
         </div>
       </div>
 

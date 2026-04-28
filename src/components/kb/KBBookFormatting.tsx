@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Plus, X, Baby, BookOpen } from "lucide-react";
+import { Check, Plus, X, Baby, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +74,23 @@ function GroupHeader({ label }: { label: string }) {
   );
 }
 
+function VisualGuide({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-border/60 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+      >
+        <span>{open ? "Hide visual guide" : "Show visual guide"}</span>
+        {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+      </button>
+      {open && <div className="p-3 bg-muted/20 border-t border-border/40">{children}</div>}
+    </div>
+  );
+}
+
 export function KBBookFormatting({ kb, onSave, isSaving }: Props) {
   const [activeTab, setActiveTab] = useState<FormatTabKey>("middleGrade");
 
@@ -130,6 +147,33 @@ export function KBBookFormatting({ kb, onSave, isSaving }: Props) {
         {/* Ages 8–14 */}
         {activeTab === "middleGrade" && (
           <>
+            {/* Visual guide */}
+            <VisualGuide>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">Typical Middle Grade Structure</p>
+                <svg viewBox="0 0 320 80" xmlns="http://www.w3.org/2000/svg" className="w-full rounded-lg">
+                  <rect width="320" height="80" fill="#EFF6FF" rx="8" />
+                  {[0,1,2,3,4,5,6,7,8,9].map(i => (
+                    <rect key={i} x={8 + i * 30} y="20" width="22" height="42" rx="4"
+                      fill={i === 0 || i === 9 ? "#93C5FD" : i === 4 ? "#BFDBFE" : "#DBEAFE"}
+                      stroke="#93C5FD" strokeWidth="1" />
+                  ))}
+                  <text x="19" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF" fontWeight="bold">Ch.1</text>
+                  <text x="49" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">Ch.2</text>
+                  <text x="79" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">Ch.3</text>
+                  <text x="109" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">···</text>
+                  <text x="139" y="41" textAnchor="middle" fontSize="5" fill="#2563EB">Mid-</text>
+                  <text x="139" y="48" textAnchor="middle" fontSize="5" fill="#2563EB">point</text>
+                  <text x="169" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">···</text>
+                  <text x="199" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">Ch.N</text>
+                  <text x="229" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">···</text>
+                  <text x="259" y="44" textAnchor="middle" fontSize="5.5" fill="#1E40AF">···</text>
+                  <text x="289" y="41" textAnchor="middle" fontSize="5" fill="#1E40AF" fontWeight="bold">End</text>
+                  <text x="289" y="48" textAnchor="middle" fontSize="5" fill="#1E40AF" fontWeight="bold">Chap</text>
+                  <text x="160" y="72" textAnchor="middle" fontSize="7" fill="#3B82F6">8–12 chapters · 300–600 words/scene</text>
+                </svg>
+              </div>
+            </VisualGuide>
             {/* Pacing group */}
             <div className="space-y-3">
               <GroupHeader label="Pacing" />
@@ -179,6 +223,27 @@ export function KBBookFormatting({ kb, onSave, isSaving }: Props) {
         {/* Under Six */}
         {activeTab === "underSix" && (
           <>
+            {/* Visual guide */}
+            <VisualGuide>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">Typical Under 6 Spread Layout</p>
+                <svg viewBox="0 0 320 100" xmlns="http://www.w3.org/2000/svg" className="w-full rounded-lg">
+                  <rect width="320" height="100" fill="#F7FEE7" rx="8" />
+                  {[0,1,2,3,4,5].map(i => (
+                    <g key={i}>
+                      <rect x={8 + i * 52} y="10" width="22" height="32" rx="3" fill="#D9F99D" stroke="#86EFAC" strokeWidth="1" />
+                      <rect x={32 + i * 52} y="10" width="22" height="32" rx="3" fill="#ECFCCB" stroke="#86EFAC" strokeWidth="1" />
+                      <rect x={8 + i * 52} y="46" width="46" height="8" rx="2" fill="#BBF7D0" />
+                      <text x={31 + i * 52} y="56" textAnchor="middle" fontSize="5" fill="#166534">text</text>
+                      <text x={19 + i * 52} y="30" textAnchor="middle" fontSize="7" fill="#166534">🖼</text>
+                      <text x={43 + i * 52} y="30" textAnchor="middle" fontSize="7" fill="#166534">🖼</text>
+                      <text x={31 + i * 52} y="72" textAnchor="middle" fontSize="5.5" fill="#4D7C0F">{`Sp.${i + 1}`}</text>
+                    </g>
+                  ))}
+                  <text x="160" y="90" textAnchor="middle" fontSize="7" fill="#4D7C0F">24 pages · 8–12 words/spread · 1 idea per spread</text>
+                </svg>
+              </div>
+            </VisualGuide>
             {/* Pacing group */}
             <div className="space-y-3">
               <GroupHeader label="Pacing" />

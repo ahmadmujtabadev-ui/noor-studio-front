@@ -53,6 +53,7 @@ import { KBBackgroundSettings } from "@/components/kb/KBBackgroundSettings";
 import { KBBookFormatting } from "@/components/kb/KBBookFormatting";
 import { KBCoverDesign } from "@/components/kb/KBCoverDesign";
 import { KBCharacterVoiceBuilder } from "@/components/kb/KBCharacterVoiceBuilder";
+import { KBStrengthScore } from "@/components/kb/KBStrengthScore";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 
@@ -497,15 +498,20 @@ export default function KnowledgeBasePage() {
     kbNav.setKbNav(id, wf ? (wf.sections[0] as SectionId) : activeSection);
   };
 
-  // When a KB is selected, reset to first section + sync completion dots to sidebar
+  // Reset navigation only when a different KB is selected (not on every save)
   useEffect(() => {
     if (!selectedKB) return;
     kbNav.setKbNav("faith", "islamicValues");
+  }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync completion dots whenever KB data changes (does NOT reset navigation)
+  useEffect(() => {
+    if (!selectedKB) return;
     const kb = selectedKB as any;
     const hasFaith = (kb.islamicValues?.length || 0) + (kb.duas?.length || 0) + (kb.vocabulary?.length || 0) + (kb.avoidTopics?.length || 0) > 0;
     const hasStory = (kb.characterGuides?.length || 0) > 0;
-    const hasVisual = !!(kb.backgroundSettings?.junior?.tone || kb.backgroundSettings?.middleGrade?.tone || kb.backgroundSettings?.saeeda?.tone);
-    const hasBookFormat = !!(kb.bookFormatting?.middleGrade?.wordCount || kb.bookFormatting?.junior?.wordCount);
+    const hasVisual = !!(kb.backgroundSettings?.junior?.tone || kb.backgroundSettings?.middleGrade?.tone || (kb.backgroundSettings?.junior?.locations?.length || 0) > 0 || (kb.backgroundSettings?.middleGrade?.locations?.length || 0) > 0);
+    const hasBookFormat = !!(kb.bookFormatting?.middleGrade?.chapterRange || kb.bookFormatting?.middleGrade?.sceneLength || kb.underSixDesign?.pageCount || kb.underSixDesign?.maxWordsPerSpread);
     const hasCover = !!(kb.coverDesign?.brandingRules?.length || kb.coverDesign?.selectedCoverTemplate);
     const done: string[] = [];
     if (hasFaith) done.push("faith");
@@ -1379,24 +1385,41 @@ export default function KnowledgeBasePage() {
             </Button>
           </div>
 
+          {/* KB Strength Score */}
+          <KBStrengthScore
+            kb={selectedKB}
+            onNavigate={(tab) => setActiveWorkflow(tab as any)}
+          />
+
           {/* Workflow tabs */}
-          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 flex-wrap">
-            {WORKFLOWS.map(wf => (
-              <button
-                key={wf.id}
-                title={wf.description}
-                onClick={() => setActiveWorkflow(wf.id as WorkflowId)}
-                className={cn(
-                  "px-3 py-2 rounded-lg transition-all text-left",
-                  activeWorkflow === wf.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span className="block text-xs font-semibold leading-tight">{wf.label}</span>
-                <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">{wf.sublabel}</span>
-              </button>
-            ))}
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 flex-wrap mt-5">
+            {WORKFLOWS.map(wf => {
+              const isDone = kbNav.completedWorkflows.has(wf.id);
+              return (
+                <button
+                  key={wf.id}
+                  title={wf.description}
+                  onClick={() => setActiveWorkflow(wf.id as WorkflowId)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-left",
+                    activeWorkflow === wf.id
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 h-2 w-2 shrink-0 rounded-full",
+                      isDone ? "bg-emerald-500" : "bg-muted-foreground/30"
+                    )}
+                  />
+                  <span>
+                    <span className="block text-xs font-semibold leading-tight">{wf.label}</span>
+                    <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">{wf.sublabel}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* ── Faith & Language → single stepper card ── */}

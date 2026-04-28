@@ -9,6 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+// ChevronDown/ChevronUp retained for AdvancedBlock toggle
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +57,14 @@ const FAITH_EXAMPLES: Record<string, string> = {
   "Reflective & questioning — wrestles with faith sincerely": `"But why do we do it this way?"`,
   "Warm & sincere — authentic heartfelt expressions of faith": `"I really felt Allah with me today."`,
   "Gentle & encouraging — softly guides others toward good": `"Maybe say Bismillah first?"`,
+  "Bold & brave — expresses faith with confidence and courage": `"I'm not ashamed. Alhamdulillah!"`,
+  "Playful & lighthearted — weaves Islam into jokes and fun": `"Race you to prayer! Hehe, Bismillah!"`,
+  "Earnest & serious — takes deen very seriously, rarely jokes": `"We should not joke about salah."`,
+  "Curious & exploratory — asks why, reads, full of questions": `"Why do we face the Qibla exactly?"`,
+  "Quiet & private — faith is deep but inward and personal": `(closes eyes, whispers quietly)`,
+  "Traditional & formal — uses classical Arabic, respects old ways": `"Assalamu alaykum wa rahmatullah."`,
+  "Poetic & lyrical — speaks in metaphors, connects nature to Allah": `"Every leaf falls by His will."`,
+  "Empathetic & caring — faith expressed through caring for others": `"Let me help. That's what we do."`,
 };
 
 const DUA_EXAMPLES: Record<string, string> = {
@@ -158,40 +167,18 @@ function ExpandableCardGrid({
   onSelect: (v: string) => void;
   getExample: (v: string) => string;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  const MAX = 4;
-  const visible = showAll ? options : options.slice(0, MAX);
-  const hasMore = options.length > MAX;
-
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {visible.map((opt) => (
-          <VoiceCard
-            key={opt.value}
-            icon={opt.icon}
-            label={opt.label}
-            example={getExample(opt.value)}
-            selected={selected === opt.value}
-            onClick={() => onSelect(selected === opt.value ? "" : opt.value)}
-          />
-        ))}
-      </div>
-
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setShowAll((s) => !s)}
-          className="mx-auto flex items-center gap-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-emerald-600"
-        >
-          {showAll ? (
-            <ChevronUp className="h-3 w-3" />
-          ) : (
-            <ChevronDown className="h-3 w-3" />
-          )}
-          {showAll ? "Show fewer" : `${options.length - MAX} more`}
-        </button>
-      )}
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      {options.map((opt) => (
+        <VoiceCard
+          key={opt.value}
+          icon={opt.icon}
+          label={opt.label}
+          example={getExample(opt.value)}
+          selected={selected === opt.value}
+          onClick={() => onSelect(selected === opt.value ? "" : opt.value)}
+        />
+      ))}
     </div>
   );
 }

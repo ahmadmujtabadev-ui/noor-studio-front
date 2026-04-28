@@ -27,6 +27,7 @@ interface GroupSettings {
   colorStyle?: string;
   lightingStyle?: string;
   locations?: string[];
+  locationNotes?: Record<string, string>;
   additionalNotes?: string;
 }
 
@@ -138,6 +139,14 @@ const LOCATION_PRESETS = [
   { value: "library", label: "Library", img: "/background/loc-library.png" },
   { value: "desert dunes", label: "Desert", img: "/background/loc-desert.png" },
   { value: "snowy mountain", label: "Mountain", img: "/background/loc-mountain.png" },
+  { value: "madrasa", label: "Madrasa", img: "/background/loc-madrasa.png" },
+  { value: "Ramadan tent", label: "Ramadan Tent", img: "/background/loc-ramadan-tent.png" },
+  { value: "Eid venue", label: "Eid Venue", img: "/background/loc-eid-venue.png" },
+  { value: "hammam courtyard", label: "Hammam Courtyard", img: "/background/loc-hammam.png" },
+  { value: "farmyard", label: "Farmyard", img: "/background/loc-farmyard.png" },
+  { value: "river bank", label: "River", img: "/background/loc-river.png" },
+  { value: "oasis", label: "Oasis", img: "/background/loc-oasis.png" },
+  { value: "library madrasa", label: "Library Madrasa", img: "/background/loc-library-madrasa.png" },
 ];
 
 function TagPills({
@@ -376,160 +385,197 @@ export function KBBackgroundSettings({ bs, onSave, isSaving }: Props) {
           )}
         </div>
 
-        <div className="space-y-8">
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock3 className="h-4 w-4 text-amber-600" />
-              <Label className="text-sm font-semibold">Time of Day</Label>
-            </div>
-            <VisualPicker
-              options={TIME_OPTIONS}
-              value={groupData.timeOfDay || ""}
-              onChange={(v) => patchBg(activeGroup, { timeOfDay: v })}
-              accent="amber"
-            />
-          </section>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {/* Left column */}
+          <div className="space-y-8">
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4 text-amber-600" />
+                <Label className="text-sm font-semibold">Time of Day</Label>
+              </div>
+              <VisualPicker
+                options={TIME_OPTIONS}
+                value={groupData.timeOfDay || ""}
+                onChange={(v) => patchBg(activeGroup, { timeOfDay: v })}
+                accent="amber"
+              />
+            </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-blue-600" />
-              <Label className="text-sm font-semibold">Camera View</Label>
-            </div>
-            <VisualPicker
-              options={CAMERA_OPTIONS}
-              value={groupData.cameraHint || ""}
-              onChange={(v) => patchBg(activeGroup, { cameraHint: v })}
-              accent="blue"
-            />
-          </section>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-blue-600" />
+                <Label className="text-sm font-semibold">Camera View</Label>
+              </div>
+              <VisualPicker
+                options={CAMERA_OPTIONS}
+                value={groupData.cameraHint || ""}
+                onChange={(v) => patchBg(activeGroup, { cameraHint: v })}
+                accent="blue"
+              />
+            </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-600" />
-              <Label className="text-sm font-semibold">Mood & Tone</Label>
-            </div>
-            <VisualPicker
-              options={TONE_OPTIONS_LIST}
-              value={groupData.tone || ""}
-              onChange={(v) => patchBg(activeGroup, { tone: v })}
-              accent="violet"
-            />
-            <Input
-              className="h-10 text-sm"
-              placeholder="Or type a custom mood..."
-              value={TONE_OPTIONS_LIST.some((o) => o.value === groupData.tone) ? "" : groupData.tone || ""}
-              onChange={(e) => patchBg(activeGroup, { tone: e.target.value })}
-            />
-          </section>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-600" />
+                <Label className="text-sm font-semibold">Mood & Tone</Label>
+              </div>
+              <VisualPicker
+                options={TONE_OPTIONS_LIST}
+                value={groupData.tone || ""}
+                onChange={(v) => patchBg(activeGroup, { tone: v })}
+                accent="violet"
+              />
+              <Input
+                className="h-10 text-sm"
+                placeholder="Or type a custom mood..."
+                value={TONE_OPTIONS_LIST.some((o) => o.value === groupData.tone) ? "" : groupData.tone || ""}
+                onChange={(e) => patchBg(activeGroup, { tone: e.target.value })}
+              />
+            </section>
+          </div>
 
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-emerald-600" />
-              <Label className="text-sm font-semibold">Color Style</Label>
-            </div>
-            <VisualPicker
-              options={COLOR_STYLE_LIST}
-              value={groupData.colorStyle || ""}
-              onChange={(v) => patchBg(activeGroup, { colorStyle: v })}
-              accent="emerald"
-            />
-            <Input
-              className="h-10 text-sm"
-              placeholder="Or type a custom color style..."
-              value={COLOR_STYLE_LIST.some((o) => o.value === groupData.colorStyle) ? "" : groupData.colorStyle || ""}
-              onChange={(e) => patchBg(activeGroup, { colorStyle: e.target.value })}
-            />
-          </section>
+          {/* Right column */}
+          <div className="space-y-8">
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4 text-emerald-600" />
+                <Label className="text-sm font-semibold">Color Style</Label>
+              </div>
+              <VisualPicker
+                options={COLOR_STYLE_LIST}
+                value={groupData.colorStyle || ""}
+                onChange={(v) => patchBg(activeGroup, { colorStyle: v })}
+                accent="emerald"
+              />
+              <Input
+                className="h-10 text-sm"
+                placeholder="Or type a custom color style..."
+                value={COLOR_STYLE_LIST.some((o) => o.value === groupData.colorStyle) ? "" : groupData.colorStyle || ""}
+                onChange={(e) => patchBg(activeGroup, { colorStyle: e.target.value })}
+              />
+            </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <SunMedium className="h-4 w-4 text-amber-600" />
-              <Label className="text-sm font-semibold">Lighting Style</Label>
-            </div>
-            <VisualPicker
-              options={LIGHTING_OPTIONS}
-              value={groupData.lightingStyle || ""}
-              onChange={(v) => patchBg(activeGroup, { lightingStyle: v })}
-              accent="amber"
-            />
-            <Input
-              className="h-10 text-sm"
-              placeholder="Or describe a custom lighting style..."
-              value={LIGHTING_OPTIONS.some((o) => o.value === groupData.lightingStyle) ? "" : groupData.lightingStyle || ""}
-              onChange={(e) => patchBg(activeGroup, { lightingStyle: e.target.value })}
-            />
-          </section>
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <SunMedium className="h-4 w-4 text-amber-600" />
+                <Label className="text-sm font-semibold">Lighting Style</Label>
+              </div>
+              <VisualPicker
+                options={LIGHTING_OPTIONS}
+                value={groupData.lightingStyle || ""}
+                onChange={(v) => patchBg(activeGroup, { lightingStyle: v })}
+                accent="amber"
+              />
+              <Input
+                className="h-10 text-sm"
+                placeholder="Or describe a custom lighting style..."
+                value={LIGHTING_OPTIONS.some((o) => o.value === groupData.lightingStyle) ? "" : groupData.lightingStyle || ""}
+                onChange={(e) => patchBg(activeGroup, { lightingStyle: e.target.value })}
+              />
+            </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-teal-600" />
-              <Label className="text-sm font-semibold">Locations</Label>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {LOCATION_PRESETS.map((loc) => {
-                const isAdded = selectedLocations.includes(loc.value);
-
-                return (
-                  <button
-                    key={loc.value}
-                    type="button"
-                    onClick={() => {
-                      const next = isAdded
-                        ? selectedLocations.filter((l: string) => l !== loc.value)
-                        : [...selectedLocations, loc.value];
-                      patchBg(activeGroup, { locations: next });
-                    }}
-                    className={cn(
-                      "relative overflow-hidden rounded-2xl border-2 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                      isAdded ? "border-teal-500 bg-teal-50" : "border-slate-200 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img src={loc.img} alt={loc.label} className="h-full w-full object-cover" />
-                    </div>
-
-                    <div className="border-t border-slate-100 px-3 py-3">
-                      <p className={cn("text-sm font-semibold", isAdded ? "text-teal-700" : "text-slate-700")}>
-                        {loc.label}
-                      </p>
-                    </div>
-
-                    {isAdded && (
-                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-teal-500 shadow">
-                        <Check className="h-3.5 w-3.5 text-white" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <TagPills
-              items={customLocations}
-              onAdd={(v) => patchBg(activeGroup, { locations: [...selectedLocations, v] })}
-              onRemove={(i) => {
-                const removed = customLocations[i];
-                patchBg(activeGroup, {
-                  locations: selectedLocations.filter((l: string) => l !== removed),
-                });
-              }}
-              placeholder="Add custom location e.g. moonlit rooftop..."
-            />
-          </section>
-
-          <section className="space-y-2">
-            <div className="flex items-center gap-2">
-              <NotebookPen className="h-4 w-4 text-slate-600" />
-              <Label className="text-sm font-semibold">Additional Notes</Label>
-            </div>
-            <Input
-              placeholder="Any extra scene rules for AI..."
-              defaultValue={groupData.additionalNotes || ""}
-              onBlur={(e) => patchBg(activeGroup, { additionalNotes: e.target.value })}
-            />
-          </section>
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <NotebookPen className="h-4 w-4 text-slate-600" />
+                <Label className="text-sm font-semibold">Additional Notes</Label>
+              </div>
+              <Input
+                placeholder="Any extra scene rules for AI..."
+                defaultValue={groupData.additionalNotes || ""}
+                onBlur={(e) => patchBg(activeGroup, { additionalNotes: e.target.value })}
+              />
+            </section>
+          </div>
         </div>
+
+        {/* Locations — full width below the two columns */}
+        <section className="space-y-3 border-t border-slate-200 pt-6">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-teal-600" />
+            <Label className="text-sm font-semibold">Locations</Label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {LOCATION_PRESETS.map((loc) => {
+              const isAdded = selectedLocations.includes(loc.value);
+
+              return (
+                <button
+                  key={loc.value}
+                  type="button"
+                  onClick={() => {
+                    const next = isAdded
+                      ? selectedLocations.filter((l: string) => l !== loc.value)
+                      : [...selectedLocations, loc.value];
+                    patchBg(activeGroup, { locations: next });
+                  }}
+                  className={cn(
+                    "relative overflow-hidden rounded-2xl border-2 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+                    isAdded ? "border-teal-500 bg-teal-50" : "border-slate-200 hover:border-slate-300"
+                  )}
+                >
+                  <div className="aspect-square w-full overflow-hidden">
+                    <img src={loc.img} alt={loc.label} className="h-full w-full object-cover" />
+                  </div>
+
+                  <div className="border-t border-slate-100 px-3 py-2">
+                    <p className={cn("text-xs font-semibold", isAdded ? "text-teal-700" : "text-slate-700")}>
+                      {loc.label}
+                    </p>
+                  </div>
+
+                  {isAdded && (
+                    <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-teal-500 shadow">
+                      <Check className="h-3.5 w-3.5 text-white" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Per-location context notes */}
+          {selectedLocations.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-teal-100 bg-teal-50/50 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">
+                Location context notes (optional — passed to image prompts)
+              </p>
+              <div className="space-y-2">
+                {selectedLocations.map((loc: string) => {
+                  const preset = LOCATION_PRESETS.find((p) => p.value === loc);
+                  const label = preset?.label || loc;
+                  return (
+                    <div key={loc} className="flex items-center gap-2">
+                      <span className="w-28 shrink-0 text-[11px] font-medium text-teal-800">{label}</span>
+                      <Input
+                        placeholder={`e.g. Always show prayer rugs visible…`}
+                        value={groupData.locationNotes?.[loc] || ""}
+                        onChange={(e) =>
+                          patchBg(activeGroup, {
+                            locationNotes: { ...(groupData.locationNotes || {}), [loc]: e.target.value },
+                          })
+                        }
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <TagPills
+            items={customLocations}
+            onAdd={(v) => patchBg(activeGroup, { locations: [...selectedLocations, v] })}
+            onRemove={(i) => {
+              const removed = customLocations[i];
+              patchBg(activeGroup, {
+                locations: selectedLocations.filter((l: string) => l !== removed),
+              });
+            }}
+            placeholder="Add custom location e.g. moonlit rooftop..."
+          />
+        </section>
       </div>
 
       <div className="rounded-3xl border border-red-100 bg-red-50/50 p-5 shadow-sm">

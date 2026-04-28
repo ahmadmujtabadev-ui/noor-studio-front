@@ -1506,11 +1506,126 @@ export function FaithGentleSvg() {
   );
 }
 
+export function FaithBoldSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FEF2F2" rx="8"/>
+      <path d="M24 8 L28 18 L39 18 L30 25 L33 36 L24 29 L15 36 L18 25 L9 18 L20 18Z" fill="#EF4444" opacity="0.85"/>
+      <circle cx="24" cy="24" r="5" fill="#FCA5A5"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#B91C1C" fontFamily="sans-serif" fontWeight="bold">Bold & Brave</text>
+    </svg>
+  );
+}
+
+export function FaithPlayfulSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFF7ED" rx="8"/>
+      <circle cx="16" cy="18" r="6" fill="#FDE68A"/>
+      <circle cx="32" cy="18" r="6" fill="#FDE68A"/>
+      <path d="M14 26 Q24 36 34 26" stroke="#F59E0B" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      <circle cx="13" cy="14" r="2" fill="#FCD34D"/>
+      <circle cx="35" cy="14" r="2" fill="#FCD34D"/>
+      <circle cx="24" cy="8" r="3" fill="#FBBF24" opacity="0.7"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#92400E" fontFamily="sans-serif" fontWeight="bold">Playful</text>
+    </svg>
+  );
+}
+
+export function FaithEarnestSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F5F3FF" rx="8"/>
+      <rect x="10" y="12" width="28" height="22" rx="3" fill="#DDD6FE" stroke="#8B5CF6" strokeWidth="1.5"/>
+      <line x1="14" y1="18" x2="34" y2="18" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="14" y1="22" x2="34" y2="22" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="14" y1="26" x2="26" y2="26" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M10 34 L8 40 L24 37 L40 40 L38 34Z" fill="#C4B5FD" opacity="0.6"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#5B21B6" fontFamily="sans-serif" fontWeight="bold">Earnest</text>
+    </svg>
+  );
+}
+
+export function FaithCuriousSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#ECFDF5" rx="8"/>
+      <circle cx="24" cy="20" r="10" fill="#D1FAE5" stroke="#34D399" strokeWidth="1.5"/>
+      <text x="24" y="25" textAnchor="middle" fontSize="16" fill="#065F46" fontFamily="serif" fontWeight="bold">?</text>
+      <circle cx="10" cy="10" r="2.5" fill="#A7F3D0"/>
+      <circle cx="38" cy="10" r="2.5" fill="#A7F3D0"/>
+      <circle cx="10" cy="34" r="2" fill="#6EE7B7"/>
+      <circle cx="38" cy="34" r="2" fill="#6EE7B7"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#065F46" fontFamily="sans-serif" fontWeight="bold">Curious</text>
+    </svg>
+  );
+}
+
+export function FaithQuietSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F8FAFC" rx="8"/>
+      <circle cx="24" cy="20" r="10" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="1"/>
+      <path d="M20 20 Q24 26 28 20" stroke="#64748B" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <circle cx="20" cy="18" r="1.2" fill="#64748B"/>
+      <circle cx="28" cy="18" r="1.2" fill="#64748B"/>
+      <path d="M18 34 Q24 38 30 34" stroke="#CBD5E1" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#475569" fontFamily="sans-serif" fontWeight="bold">Quiet</text>
+    </svg>
+  );
+}
+
+export function FaithTraditionalSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FFFBEB" rx="8"/>
+      <path d="M24 6 Q28 14 36 14 Q28 18 24 30 Q20 18 12 14 Q20 14 24 6Z" fill="#F59E0B" opacity="0.9"/>
+      <rect x="16" y="30" width="16" height="10" rx="2" fill="#FCD34D" opacity="0.6"/>
+      <line x1="24" y1="30" x2="24" y2="40" stroke="#D97706" strokeWidth="1" strokeLinecap="round"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#92400E" fontFamily="sans-serif" fontWeight="bold">Traditional</text>
+    </svg>
+  );
+}
+
+export function FaithPoeticSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#F0FDF4" rx="8"/>
+      <path d="M24 36 Q10 26 10 16 A8 8 0 0 1 24 12 A8 8 0 0 1 38 16 Q38 26 24 36Z" fill="#86EFAC" opacity="0.7"/>
+      <path d="M24 14 Q20 20 24 26 Q28 20 24 14Z" fill="#22C55E" opacity="0.9"/>
+      <circle cx="16" cy="10" r="2" fill="#BBF7D0"/>
+      <circle cx="32" cy="8" r="2" fill="#BBF7D0"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#15803D" fontFamily="sans-serif" fontWeight="bold">Poetic</text>
+    </svg>
+  );
+}
+
+export function FaithEmpatheticSvg() {
+  return (
+    <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" fill="#FDF2F8" rx="8"/>
+      <circle cx="17" cy="16" r="5" fill="#F9A8D4"/>
+      <circle cx="31" cy="16" r="5" fill="#F9A8D4"/>
+      <path d="M10 26 Q10 36 17 36 L31 36 Q38 36 38 26 Q38 20 31 20 L17 20 Q10 20 10 26Z" fill="#FBCFE8" opacity="0.7"/>
+      <path d="M24 22 C22 20 18 20 18 23 C18 25 20 26 24 29 C28 26 30 25 30 23 C30 20 26 20 24 22Z" fill="#EC4899" opacity="0.8"/>
+      <text x="24" y="47" textAnchor="middle" fontSize="4" fill="#9D174D" fontFamily="sans-serif" fontWeight="bold">Empathetic</text>
+    </svg>
+  );
+}
+
 export const FAITH_TONE_OPTIONS = [
-  { value: "Joyful & imitative — mirrors Islamic joy, frequent Alhamdulillah moments",        label: "Joyful",     icon: <FaithJoyfulSvg /> },
-  { value: "Reflective & questioning — wrestles with faith sincerely",                         label: "Reflective", icon: <FaithReflectiveSvg /> },
-  { value: "Warm & sincere — authentic heartfelt expressions of faith",                        label: "Warm",       icon: <FaithWarmSvg /> },
-  { value: "Gentle & encouraging — softly guides others toward good",                          label: "Gentle",     icon: <FaithGentleSvg /> },
+  { value: "Joyful & imitative — mirrors Islamic joy, frequent Alhamdulillah moments",        label: "Joyful",      icon: <FaithJoyfulSvg /> },
+  { value: "Reflective & questioning — wrestles with faith sincerely",                         label: "Reflective",  icon: <FaithReflectiveSvg /> },
+  { value: "Warm & sincere — authentic heartfelt expressions of faith",                        label: "Warm",        icon: <FaithWarmSvg /> },
+  { value: "Gentle & encouraging — softly guides others toward good",                          label: "Gentle",      icon: <FaithGentleSvg /> },
+  { value: "Bold & brave — expresses faith with confidence and courage",                       label: "Bold",        icon: <FaithBoldSvg /> },
+  { value: "Playful & lighthearted — weaves Islam into jokes and fun",                         label: "Playful",     icon: <FaithPlayfulSvg /> },
+  { value: "Earnest & serious — takes deen very seriously, rarely jokes",                      label: "Earnest",     icon: <FaithEarnestSvg /> },
+  { value: "Curious & exploratory — asks why, reads, full of questions",                       label: "Curious",     icon: <FaithCuriousSvg /> },
+  { value: "Quiet & private — faith is deep but inward and personal",                          label: "Quiet",       icon: <FaithQuietSvg /> },
+  { value: "Traditional & formal — uses classical Arabic, respects old ways",                  label: "Traditional", icon: <FaithTraditionalSvg /> },
+  { value: "Poetic & lyrical — speaks in metaphors, connects nature to Allah",                 label: "Poetic",      icon: <FaithPoeticSvg /> },
+  { value: "Empathetic & caring — faith expressed through caring for others",                  label: "Empathetic",  icon: <FaithEmpatheticSvg /> },
 ];
 
 export function RoleProtagonistSvg() {
