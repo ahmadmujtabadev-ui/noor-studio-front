@@ -43,6 +43,7 @@ import { useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useUniverses } from "@/hooks/useUniverses";
 import type { Character } from "@/lib/api/types";
 import { VisualPicker } from "@/components/shared/VisualPicker";
+import { CharacterAvatarPreview } from "@/components/shared/CharacterAvatarPreview";
 import { GeneratingOverlay } from "@/components/shared/GeneratingOverlay";
 import {
   Pixar3DSvg, WatercolorSvg, FlatIllustrationSvg, StorybookSvg, GhibliSvg,
@@ -418,56 +419,54 @@ const steps = [
   { id: 3, title: "Pose Sheet", icon: Image },
 ];
 
-// ─── Visual DNA sub-progress ──────────────────────────────────────────────────
+// ─── Visual DNA tabs ─────────────────────────────────────────────────────────
 
-const DNA_SECTIONS = [
-  { id: "dna-face",        label: "Face",    emoji: "😊" },
-  { id: "dna-hair",        label: "Hair",    emoji: "💇" },
-  { id: "dna-outfit",      label: "Outfit",  emoji: "👕" },
-  { id: "dna-body",        label: "Body",    emoji: "📏" },
-  { id: "dna-accessories", label: "Extras",  emoji: "✨" },
-] as const;
+const DNA_TABS = ["character", "face", "hair", "outfit", "body", "extras"] as const;
+type DnaTab = typeof DNA_TABS[number];
 
-function DNASubProgress({ activeId }: { activeId: string }) {
-  const activeIndex = DNA_SECTIONS.findIndex(s => s.id === activeId);
+const DNA_TAB_META: Record<DnaTab, { label: string; icon: string }> = {
+  character: { label: "Character", icon: "🎭" },
+  face:      { label: "Face",      icon: "😊" },
+  hair:      { label: "Hair",      icon: "💇" },
+  outfit:    { label: "Outfit",    icon: "👕" },
+  body:      { label: "Body",      icon: "📏" },
+  extras:    { label: "Extras",    icon: "✨" },
+};
 
+function DNATabs({ active, onChange }: { active: DnaTab; onChange: (t: DnaTab) => void }) {
   return (
-    <div className="sticky top-16 z-10 -mx-1 bg-background/95 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm px-2 py-1.5">
-      <div className="flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-0.5">
-        {DNA_SECTIONS.map((section, i) => {
-          const isActive = section.id === activeId;
-          const isDone   = i < activeIndex;
+    <div className="sticky top-16 z-10 -mx-1 bg-background/95 backdrop-blur-sm rounded-2xl border border-border/50 shadow-sm p-1">
+      <div className="flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden gap-1">
+        {DNA_TABS.map((tab, i) => {
+          const meta = DNA_TAB_META[tab];
+          const isActive = tab === active;
+          const isPast = DNA_TABS.indexOf(active) > i;
           return (
-            <div key={section.id} className="flex items-center flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-200",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm scale-105"
-                    : isDone
-                    ? "text-primary/70 hover:text-primary hover:bg-primary/8"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                )}
-              >
-                <span className={cn(
-                  "w-4 h-4 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 font-bold",
-                  isActive ? "bg-white/25 text-white" : isDone ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                )}>
-                  {isDone ? "✓" : (i + 1)}
-                </span>
-                <span>{section.label}</span>
-              </button>
-              {i < DNA_SECTIONS.length - 1 && (
-                <div className={cn(
-                  "w-5 h-px flex-shrink-0 mx-0.5 rounded-full transition-colors duration-300",
-                  isDone ? "bg-primary/40" : "bg-border"
-                )} />
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onChange(tab)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap flex-shrink-0 transition-all duration-200",
+                isActive
+                  ? "bg-foreground text-background shadow-sm"
+                  : isPast
+                  ? "text-primary hover:bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
-            </div>
+            >
+              <span className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0",
+                isActive
+                  ? "bg-white/20 text-background"
+                  : isPast
+                  ? "bg-primary/15 text-primary"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {isPast ? "✓" : String(i + 1).padStart(2, "0")}
+              </span>
+              <span>{meta.icon} {meta.label}</span>
+            </button>
           );
         })}
       </div>
@@ -539,7 +538,7 @@ export default function CharacterCreatePage() {
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
-  const [dnaActiveSection, setDnaActiveSection] = useState<string>(DNA_SECTIONS[0].id);
+  const [dnaTab, setDnaTab] = useState<DnaTab>("face");
 
   const characterId = createdCharacter?.id || createdCharacter?._id || "";
   const generatePortrait = useGeneratePortrait(characterId);
@@ -611,25 +610,6 @@ export default function CharacterCreatePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // T-60: scroll-spy — track active DNA sub-section while on step 1
-  useEffect(() => {
-    if (currentStep !== 1) return;
-    const update = () => {
-      // threshold: 30% down the viewport — the section whose top is closest to but ≤ threshold
-      const threshold = window.innerHeight * 0.3;
-      for (let i = DNA_SECTIONS.length - 1; i >= 0; i--) {
-        const el = document.getElementById(DNA_SECTIONS[i].id);
-        if (el && el.getBoundingClientRect().top <= threshold) {
-          setDnaActiveSection(DNA_SECTIONS[i].id);
-          return;
-        }
-      }
-      setDnaActiveSection(DNA_SECTIONS[0].id);
-    };
-    window.addEventListener("scroll", update, { passive: true });
-    update();
-    return () => window.removeEventListener("scroll", update);
-  }, [currentStep]);
 
   const applyValuesMode = (mode: ValuesMode) => {
     setForm((f) => {
@@ -1175,913 +1155,829 @@ export default function CharacterCreatePage() {
             <div className="space-y-6">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
 
-              {/* ── Sub-progress indicator (T-60) ─────────────────────────── */}
-              <DNASubProgress activeId={dnaActiveSection} />
+              {/* ── Tab bar ─────────────────────────────────────────────────── */}
+              <DNATabs active={dnaTab} onChange={(t) => { setDnaTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
 
-              {/* ── Family Values Mode (T-03) ─────────────────────────────── */}
-              <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Family Values Mode</span>
+              {/* ── Mobile avatar strip ─────────────────────────────────────── */}
+              <div className="lg:hidden flex items-center gap-4 rounded-2xl border border-border bg-card overflow-hidden p-3">
+                <div className="w-20 h-24 shrink-0 rounded-xl bg-gradient-to-b from-amber-50 to-stone-100 dark:from-stone-900/50 dark:to-stone-800/30 flex items-center justify-center">
+                  <CharacterAvatarPreview
+                    form={{
+                      gender: form.gender, skinTone: form.skinTone, eyeColor: form.eyeColor,
+                      hairStyle: form.hairStyle, hairColor: form.hairColor, wearHijab: form.wearHijab,
+                      hijabStyle: form.hijabStyle, hijabColor: form.hijabColor,
+                      topGarmentType: form.topGarmentType, topGarmentColor: form.topGarmentColor,
+                      bottomGarmentType: form.bottomGarmentType, bottomGarmentColor: form.bottomGarmentColor,
+                      shoeType: form.shoeType, shoeColor: form.shoeColor,
+                      bodyBuild: form.bodyBuild, ageLook: form.ageLook,
+                    }}
+                  />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {VALUES_PRESETS.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => applyValuesMode(p.id)}
-                      className={cn(
-                        "rounded-lg border-2 p-2.5 text-left text-xs transition-all",
-                        form.valuesMode === p.id
-                          ? "border-emerald-500 bg-white dark:bg-emerald-900/40 shadow-sm"
-                          : "border-transparent bg-white/60 dark:bg-white/5 hover:border-emerald-300"
-                      )}
-                    >
-                      <div className="font-bold mb-0.5">{p.emoji} {p.label}</div>
-                      <div className="text-muted-foreground leading-tight">{p.desc}</div>
-                    </button>
-                  ))}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Live Preview</p>
+                  <div className="flex flex-wrap gap-1">
+                    {form.gender && <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 rounded-full px-2 py-0.5 font-semibold capitalize">{form.gender}</span>}
+                    {form.skinTone && <span className="text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 rounded-full px-2 py-0.5 font-semibold capitalize">{form.skinTone.replace(/-/g, " ")}</span>}
+                    {form.wearHijab && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-semibold">Hijab</span>}
+                    {!form.skinTone && <span className="text-[10px] text-muted-foreground italic">Select options to preview</span>}
+                  </div>
                 </div>
               </div>
 
-              {/* ── Art Style ─────────────────────────────────────────────── */}
-              <div id="dna-face" className="space-y-2 scroll-mt-24">
-                <Label className="text-base font-bold">🎬 Art Style</Label>
-                <VisualPicker
-                  columns={5}
-                  iconSize="lg"
-                  value={form.style}
-                  onChange={(v) => updateForm("style", v)}
-                  options={[
-                    { value: "pixar-3d",          label: "3D Rendered",        icon: <Pixar3DSvg /> },
-                    { value: "watercolor",         label: "Watercolor",         icon: <WatercolorSvg /> },
-                    { value: "flat-illustration",  label: "Flat Illus.",        icon: <FlatIllustrationSvg /> },
-                    { value: "storybook",          label: "Storybook",          icon: <StorybookSvg /> },
-                    { value: "ghibli",             label: "Hand-Painted Anime", icon: <GhibliSvg /> },
-                  ]}
-                />
-              </div>
+              {/* ═══════════════════════════════════════════════════════════════
+                  CHARACTER TAB — Art Style + Gender + Age
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "character" && (
+                <div className="space-y-8">
+                  {/* Family Values Mode */}
+                  <div className="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Family Values Mode</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {VALUES_PRESETS.map((p) => (
+                        <button key={p.id} type="button" onClick={() => applyValuesMode(p.id)}
+                          className={cn("rounded-lg border-2 p-2.5 text-left text-xs transition-all",
+                            form.valuesMode === p.id
+                              ? "border-emerald-500 bg-white dark:bg-emerald-900/40 shadow-sm"
+                              : "border-transparent bg-white/60 dark:bg-white/5 hover:border-emerald-300"
+                          )}>
+                          <div className="font-bold mb-0.5">{p.emoji} {p.label}</div>
+                          <div className="text-muted-foreground leading-tight">{p.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              {/* ── Gender + Hijab + Age Look ─────────────────────────────── */}
-              <div className="space-y-3">
-                <Label className="text-base font-bold">👤 Gender</Label>
-                <VisualPicker
-                  columns={4}
-                  iconSize="lg"
-                  value={form.gender}
-                  onChange={(v) => {
-                    updateForm("gender", v);
-                    if (v !== "girl") {
-                      updateForm("wearHijab", false);
-                      updateForm("hijabStyle", "");
-                      updateForm("hijabColor", "");
-                    } else {
-                      if (ageLookImpliesHijabAge(form.ageLook)) updateForm("wearHijab", true);
-                    }
-                  }}
-                  options={[
-                    { value: "girl",   label: "Girl",           icon: <GirlSvg /> },
-                    { value: "boy",    label: "Boy",            icon: <BoySvg /> },
-                    { value: "animal", label: "Animal",         icon: <AnimalSvg /> },
-                    { value: "other",  label: "Creature/Fantasy",icon: <CreatureSvg /> },
-                  ]}
-                />
-                {form.gender === "girl" && (
-                  <div className="flex items-center gap-3 pt-1">
-                    <Switch
-                      checked={form.wearHijab}
-                      disabled={form.valuesMode === "shariah-compliant"}
-                      onCheckedChange={(v) => {
-                        updateForm("wearHijab", v);
-                        if (!v) { updateForm("hijabStyle", ""); updateForm("hijabColor", ""); }
+                  {/* Art Style */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">🎬 Art Style</Label>
+                    <VisualPicker columns={5} iconSize="xl" value={form.style} onChange={(v) => updateForm("style", v)}
+                      options={[
+                        { value: "pixar-3d",         label: "3D Rendered",        icon: <Pixar3DSvg /> },
+                        { value: "watercolor",        label: "Watercolor",         icon: <WatercolorSvg /> },
+                        { value: "flat-illustration", label: "Flat Illus.",        icon: <FlatIllustrationSvg /> },
+                        { value: "storybook",         label: "Storybook",          icon: <StorybookSvg /> },
+                        { value: "ghibli",            label: "Anime",              icon: <GhibliSvg /> },
+                      ]}
+                    />
+                  </div>
+
+                  {/* Gender */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">👤 Gender</Label>
+                    <VisualPicker columns={4} iconSize="2xl" value={form.gender}
+                      onChange={(v) => {
+                        updateForm("gender", v);
+                        if (v !== "girl") { updateForm("wearHijab", false); updateForm("hijabStyle", ""); updateForm("hijabColor", ""); }
+                        else { if (ageLookImpliesHijabAge(form.ageLook)) updateForm("wearHijab", true); }
                       }}
+                      options={[
+                        { value: "girl",   label: "Girl",            icon: <img src="/characters/girl.png" alt="Girl" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "boy",    label: "Boy",             icon: <img src="/characters/boy.png" alt="Boy" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "animal", label: "Animal",          icon: <img src="/characters/animal.png" alt="Animal" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "other",  label: "Creature/Fantasy",icon: <img src="/characters/creaturefantasy.png" alt="Creature/Fantasy" className="w-full h-full object-contain" draggable={false} /> },
+                      ]}
                     />
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <Label>Wears Hijab 🧕</Label>
-                        {form.valuesMode === "shariah-compliant" && <Lock className="w-3 h-3 text-emerald-600" />}
+                    {form.gender === "girl" && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <Switch checked={form.wearHijab} disabled={form.valuesMode === "shariah-compliant"}
+                          onCheckedChange={(v) => { updateForm("wearHijab", v); if (!v) { updateForm("hijabStyle", ""); updateForm("hijabColor", ""); } }} />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <Label>Wears Hijab 🧕</Label>
+                            {form.valuesMode === "shariah-compliant" && <Lock className="w-3 h-3 text-emerald-600" />}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">Defaults ON for girls aged 9+</p>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">Defaults ON for girls aged 9+</p>
-                    </div>
-                  </div>
-                )}
-                {isOther && (
-                  <div className="rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
-                    <p className="font-semibold">🐾 Tips for animal / creature characters:</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      <li><strong>Skin Tone</strong> → describe fur / feather / scale colour</li>
-                      <li><strong>Hair / Texture</strong> → select a crest, fur, or scale option</li>
-                      <li><strong>Palette Notes</strong> → full colour scheme description</li>
-                    </ul>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>{isOther ? "Creature Description" : "Age Look"}</Label>
-                  {!isOther ? (
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {AGE_LOOK_CHIPS.map((chip) => (
-                          <button
-                            key={chip.value}
-                            type="button"
-                            onClick={() => {
-                              updateForm("ageLook", chip.value);
-                              if (form.gender === "girl" && ageLookImpliesHijabAge(chip.value)) {
-                                updateForm("wearHijab", true);
-                              }
-                            }}
-                            className={cn(
-                              "px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                              form.ageLook === chip.value
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border hover:border-primary/30"
-                            )}
-                          >
-                            {chip.label}
-                          </button>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder="Or describe custom age look…"
-                        value={AGE_LOOK_CHIPS.some((c) => c.value === form.ageLook) ? "" : form.ageLook}
-                        onChange={(e) => updateForm("ageLook", e.target.value)}
-                      />
-                    </div>
-                  ) : (
-                    <Input
-                      placeholder="e.g. small cartoon bird, plump and round"
-                      value={form.ageLook}
-                      onChange={(e) => updateForm("ageLook", e.target.value)}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* ── Skin Tone ─────────────────────────────────────────────── */}
-              <div className="space-y-2">
-                <Label className="text-base font-bold">
-                  {isOther ? "🐾 Fur / Feather / Scale Colour *" : "🎨 Skin Tone *"}
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
-                </Label>
-                {validationErrors.has("skinTone") && (
-                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a skin tone</p>
-                )}
-                {isOther ? (
-                  <Input
-                    placeholder="e.g. bright golden-yellow feathers, orange wingtips"
-                    value={form.skinTone}
-                    onChange={(e) => updateForm("skinTone", e.target.value)}
-                  />
-                ) : (
-                  <VisualPicker
-                    columns={7}
-                    iconSize="md"
-                    value={form.skinTone}
-                    onChange={(v) => updateForm("skinTone", v)}
-                    options={Object.entries(SKIN_TONE_COLORS).map(([value, { label }]) => ({
-                      value,
-                      label,
-                      icon: <SkinToneSwatch color={value} />,
-                    }))}
-                  />
-                )}
-              </div>
-
-              {/* ── Eye Color ─────────────────────────────────────────────── */}
-              <div className="space-y-2">
-                <Label className="text-base font-bold">
-                  👁️ Eye Color *
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
-                </Label>
-                {validationErrors.has("eyeColor") && (
-                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select an eye colour</p>
-                )}
-                <VisualPicker
-                  columns={7}
-                  iconSize="md"
-                  value={form.eyeColor}
-                  onChange={(v) => updateForm("eyeColor", v)}
-                  options={Object.entries(EYE_COLOR_MAP).map(([value]) => ({
-                    value,
-                    label: value.split("-").map(w => w[0].toUpperCase() + w.slice(1)).join(" "),
-                    icon: <EyeSwatch color={value} />,
-                  }))}
-                />
-              </div>
-
-              {/* ── Face Shape ────────────────────────────────────────────── */}
-              <div className="space-y-2">
-                <Label className="text-base font-bold">
-                  😊 Face Shape *
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
-                </Label>
-                {validationErrors.has("faceShape") && (
-                  <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a face shape</p>
-                )}
-                <VisualPicker
-                  columns={6}
-                  iconSize="md"
-                  value={form.faceShape}
-                  onChange={(v) => updateForm("faceShape", v)}
-                  options={[
-                    { value: "round-friendly",  label: "Round",        icon: <RoundFaceSvg /> },
-                    { value: "oval-gentle",      label: "Oval Gentle",  icon: <OvalFaceSvg /> },
-                    { value: "heart-creative",   label: "Heart",        icon: <HeartFaceSvg /> },
-                    { value: "square-determined",label: "Square",       icon: <SquareFaceSvg /> },
-                    { value: "oval-balanced",    label: "Oval",         icon: <OvalBalancedFaceSvg /> },
-                    { value: "round-youthful",   label: "Round Soft",   icon: <RoundYouthfulFaceSvg /> },
-                  ]}
-                />
-              </div>
-
-              {/* ── Advanced Details (collapsed) — T-08 ──────────────── */}
-              <div className="rounded-xl border border-border overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground/80 hover:bg-muted/30 transition-colors"
-                >
-                  <span>🔬 Advanced Details <span className="font-normal text-muted-foreground">(eyebrows, nose, cheeks, facial hair)</span></span>
-                  {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-                {showAdvanced && (
-                  <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
-                    {!isOther && <div className="grid sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label className="font-bold">🪮 Eyebrow Style</Label>
-                        <VisualPicker columns={3} iconSize="sm" value={form.eyebrowStyle}
-                          onChange={(v) => updateForm("eyebrowStyle", v)} allowDeselect
-                          options={[
-                            { value: "thick-arched",   label: "Thick Arch",   icon: <ThickArchedBrowSvg /> },
-                            { value: "thin-straight",  label: "Thin Straight",icon: <ThinStraightBrowSvg /> },
-                            { value: "bushy-straight", label: "Bushy",        icon: <BushyStraightBrowSvg /> },
-                            { value: "soft-rounded",   label: "Soft",         icon: <SoftRoundedBrowSvg /> },
-                            { value: "natural-full",   label: "Natural",      icon: <NaturalFullBrowSvg /> },
-                          ]}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-bold">👃 Nose Style</Label>
-                        <VisualPicker columns={3} iconSize="sm" value={form.noseStyle}
-                          onChange={(v) => updateForm("noseStyle", v)} allowDeselect
-                          options={[
-                            { value: "button",          label: "Button",   icon: <ButtonNoseSvg /> },
-                            { value: "broad-flat",      label: "Broad",    icon: <BroadFlatNoseSvg /> },
-                            { value: "straight-narrow", label: "Straight", icon: <StraightNarrowNoseSvg /> },
-                            { value: "rounded-soft",    label: "Rounded",  icon: <RoundedSoftNoseSvg /> },
-                            { value: "wide-nostrils",   label: "Wide",     icon: <WideNostrilsNoseSvg /> },
-                          ]}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-bold">😊 Cheek Style</Label>
-                        <VisualPicker columns={3} iconSize="sm" value={form.cheekStyle}
-                          onChange={(v) => updateForm("cheekStyle", v)} allowDeselect
-                          options={[
-                            { value: "chubby-rosy",  label: "Rosy",    icon: <ChubbyRosyCheekSvg /> },
-                            { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
-                            { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
-                            { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
-                            { value: "soft-round",   label: "Soft",    icon: <SoftRoundCheekSvg /> },
-                          ]}
-                        />
-                      </div>
-                    </div>}
-                    {/* Facial Hair — boys only T-05 */}
-                    {form.gender === "boy" && (
-                      <div className="space-y-2">
-                        <Label className="font-bold">
-                          🧔 Facial Hair
-                          {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
-                        </Label>
-                        <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
-                          <SelectTrigger><SelectValue placeholder="Select facial hair…" /></SelectTrigger>
-                          <SelectContent>
-                            {FACIAL_HAIR_OPTIONS.map((o) => (
-                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">Locks in every illustration</p>
+                    )}
+                    {isOther && (
+                      <div className="rounded-xl bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-800 dark:text-yellow-200 space-y-1">
+                        <p className="font-semibold">🐾 Tips for animal / creature characters:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          <li><strong>Skin Tone</strong> → describe fur / feather / scale colour (Face tab)</li>
+                          <li><strong>Hair / Texture</strong> → select a crest, fur, or scale option (Hair tab)</li>
+                          <li><strong>Palette Notes</strong> → full colour scheme (Extras tab)</li>
+                        </ul>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* ── Hair / Hijab ──────────────────────────────────────────── */}
-              <div id="dna-hair" className="space-y-2 scroll-mt-24">
-                <Label className="text-base font-bold">
-                  {isOther ? "🪺 Head Texture / Crest" : form.wearHijab ? "🧕 Hijab Style" : "💇 Hair Style"}
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
-                </Label>
-                {/* GIRL — HIJAB */}
-                {!isOther && form.gender === "girl" && form.wearHijab && (
-                  <>
-                    <VisualPicker
-                      columns={6}
-                      iconSize="md"
-                      value={form.hijabStyle}
-                      onChange={(v) => updateForm("hijabStyle", v)}
-                      options={[
-                        { value: "simple-white",   label: "White",       icon: <HijabSvg color="white" /> },
-                        { value: "simple-black",   label: "Black",       icon: <HijabSvg color="black" /> },
-                        { value: "simple-beige",   label: "Beige",       icon: <HijabSvg color="beige" /> },
-                        { value: "blue-solid",     label: "Blue",        icon: <HijabSvg color="blue" /> },
-                        { value: "pink-solid",     label: "Pink",        icon: <HijabSvg color="pink" /> },
-                        { value: "purple-solid",   label: "Purple",      icon: <HijabSvg color="purple" /> },
-                        { value: "al-amira-white", label: "Al-Amira",    icon: <HijabSvg color="white" /> },
-                        { value: "al-amira-black", label: "Al-Amira Blk",icon: <HijabSvg color="black" /> },
-                        { value: "shayla-drape",   label: "Shayla",      icon: <HijabSvg color="teal" /> },
-                        { value: "turban-style",   label: "Turban",      icon: <HijabSvg color="maroon" /> },
-                        { value: "khimar-long",    label: "Khimar",      icon: <HijabSvg color="navy" /> },
-                        { value: "pashmina-wrap",  label: "Pashmina",    icon: <HijabSvg color="gray" /> },
-                      ]}
-                    />
-                    <Input placeholder="Hijab colour or custom description…" value={form.hijabColor}
-                      onChange={(e) => updateForm("hijabColor", e.target.value)} className="mt-2" />
-                  </>
-                )}
-                {/* GIRL — HAIR */}
-                {!isOther && form.gender === "girl" && !form.wearHijab && (
-                  <>
-                    <VisualPicker
-                      columns={5}
-                      iconSize="md"
-                      value={form.hairStyle}
-                      onChange={(v) => updateForm("hairStyle", v)}
-                      options={[
-                        { value: "long-black",        label: "Long",          icon: <LongHairGirlSvg /> },
-                        { value: "long-dark-brown",   label: "Dark Brown",    icon: <LongHairGirlSvg /> },
-                        { value: "long-brown",        label: "Brown",         icon: <LongHairGirlSvg /> },
-                        { value: "shoulder-length",   label: "Shoulder",      icon: <LongHairGirlSvg /> },
-                        { value: "short-bob",         label: "Short Bob",     icon: <BunHairSvg /> },
-                        { value: "side-swept",        label: "Side Swept",    icon: <LongHairGirlSvg /> },
-                        { value: "curly-long",        label: "Long Curly",    icon: <CurlyLongHairSvg /> },
-                        { value: "curly-short",       label: "Short Curly",   icon: <CurlyLongHairSvg /> },
-                        { value: "wavy-loose",        label: "Loose Wavy",    icon: <WavyHairBoySvg /> },
-                        { value: "braided-long",      label: "Braided",       icon: <BraidedHairSvg /> },
-                        { value: "two-braids",        label: "Two Braids",    icon: <BraidedHairSvg /> },
-                        { value: "ponytail-high",     label: "High Ponytail", icon: <PonytailHairSvg /> },
-                        { value: "ponytail-low",      label: "Low Ponytail",  icon: <PonytailHairSvg /> },
-                        { value: "bun-top",           label: "Top Bun",       icon: <BunHairSvg /> },
-                        { value: "half-up-half-down", label: "Half-Up",       icon: <BunHairSvg /> },
-                      ]}
-                    />
-                    <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
-                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
-                  </>
-                )}
-                {/* BOY — HAIR */}
-                {!isOther && form.gender === "boy" && !isElderMale && (
-                  <>
-                    <VisualPicker
-                      columns={5}
-                      iconSize="md"
-                      value={form.hairStyle}
-                      onChange={(v) => updateForm("hairStyle", v)}
-                      options={[
-                        { value: "short-black",      label: "Short",       icon: <ShortHairBoySvg /> },
-                        { value: "short-dark-brown", label: "Short Brown", icon: <ShortHairBoySvg /> },
-                        { value: "curly-black",      label: "Curly",       icon: <CurlyHairBoySvg /> },
-                        { value: "wavy-dark",        label: "Wavy",        icon: <WavyHairBoySvg /> },
-                        { value: "spiky-black",      label: "Spiky",       icon: <SpikyHairBoySvg /> },
-                        { value: "afro",             label: "Afro",        icon: <AfroHairSvg /> },
-                        { value: "buzz-cut",         label: "Buzz Cut",    icon: <BuzzCutSvg /> },
-                      ]}
-                    />
-                    <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
-                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
-                  </>
-                )}
-                {/* ELDER MALE — HAIR */}
-                {!isOther && form.gender === "boy" && isElderMale && (
-                  <>
-                    <VisualPicker
-                      columns={4}
-                      iconSize="md"
-                      value={form.hairStyle}
-                      onChange={(v) => updateForm("hairStyle", v)}
-                      options={[
-                        { value: "bald",                        label: "Bald",          icon: <BaldSvg /> },
-                        { value: "bald with white hair sides",  label: "Bald + Sides",  icon: <BaldSvg /> },
-                        { value: "short white hair",            label: "White Short",   icon: <WhiteShortHairSvg /> },
-                        { value: "short gray hair",             label: "Gray Short",    icon: <GrayShortHairSvg /> },
-                        { value: "full white hair short",       label: "White Full",    icon: <WhiteShortHairSvg /> },
-                        { value: "full gray hair short",        label: "Gray Full",     icon: <GrayShortHairSvg /> },
-                      ]}
-                    />
-                  </>
-                )}
-                {/* OTHER / CREATURE */}
-                {isOther && (
-                  <>
-                    <VisualPicker
-                      columns={4}
-                      iconSize="md"
-                      value={form.hairStyle}
-                      onChange={(v) => updateForm("hairStyle", v)}
-                      options={[
-                        { value: "feathered crest on head", label: "Feather Crest", icon: <FeatheredCrestSvg /> },
-                        { value: "no hair (feathers)",      label: "Feathers",       icon: <FeatheredCrestSvg /> },
-                        { value: "no hair (fur)",           label: "Fur",            icon: <FurBodySvg /> },
-                        { value: "mane",                    label: "Mane",           icon: <AfroHairSvg /> },
-                        { value: "spikes on head",          label: "Spikes",         icon: <SpikyHairBoySvg /> },
-                        { value: "none",                    label: "None / N/A",     icon: <BaldSvg /> },
-                      ]}
-                    />
-                    <Input placeholder="Crest / texture colour (e.g. orange crest)…" value={form.hairColor}
-                      onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
-                  </>
-                )}
-              </div>
-
-              {/* ── Glasses — all human characters (T-05) ───────────────── */}
-              {!isOther && (
-                <div className="space-y-2">
-                  <Label className="font-bold">
-                    👓 Glasses
-                    {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
-                  </Label>
-                  <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
-                    <SelectTrigger><SelectValue placeholder="Select glasses…" /></SelectTrigger>
-                    <SelectContent>
-                      {GLASSES_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Locks in every illustration</p>
+                  {/* Age Look */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">{isOther ? "🐾 Creature Description" : "🎂 Age Look"}</Label>
+                    {!isOther ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {AGE_LOOK_CHIPS.map((chip) => (
+                            <button key={chip.value} type="button"
+                              onClick={() => { updateForm("ageLook", chip.value); if (form.gender === "girl" && ageLookImpliesHijabAge(chip.value)) updateForm("wearHijab", true); }}
+                              className={cn("px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all",
+                                form.ageLook === chip.value ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/30"
+                              )}>{chip.label}</button>
+                          ))}
+                        </div>
+                        <Input placeholder="Or describe custom age look…"
+                          value={AGE_LOOK_CHIPS.some((c) => c.value === form.ageLook) ? "" : form.ageLook}
+                          onChange={(e) => updateForm("ageLook", e.target.value)} />
+                      </div>
+                    ) : (
+                      <Input placeholder="e.g. small cartoon bird, plump and round"
+                        value={form.ageLook} onChange={(e) => updateForm("ageLook", e.target.value)} />
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* ── Outfit ─────────────────────────────────────────────────── */}
-              <div id="dna-outfit" className="space-y-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 scroll-mt-24">
-                <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">👕 Outfit</p>
+              {/* ═══════════════════════════════════════════════════════════════
+                  FACE TAB — Skin + Eyes + Face Shape + Advanced
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "face" && (
+                <div className="space-y-8">
+                  {/* Skin Tone */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">
+                      {isOther ? "🐾 Fur / Feather / Scale Colour *" : "🎨 Skin Tone *"}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                    </Label>
+                    {validationErrors.has("skinTone") && (
+                      <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a skin tone</p>
+                    )}
+                    {isOther ? (
+                      <Input placeholder="e.g. bright golden-yellow feathers, orange wingtips"
+                        value={form.skinTone} onChange={(e) => updateForm("skinTone", e.target.value)} />
+                    ) : (
+                      <VisualPicker columns={7} iconSize="md" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
+                        options={Object.entries(SKIN_TONE_COLORS).map(([value, { label }]) => ({ value, label, icon: <SkinToneSwatch color={value} /> }))}
+                      />
+                    )}
+                  </div>
 
-                {/* Top Garment */}
-                <div className="space-y-2">
-                  <Label>Top Garment</Label>
-                  {form.gender === "girl" ? (
-                    <VisualPicker
-                      accent="amber"
-                      columns={4}
-                      iconSize="lg"
-                      allowDeselect
-                      value={form.topGarmentType}
-                      onChange={(v) => {
-                        updateForm("topGarmentType", v);
-                        if (v === "salwar kameez top" && !form.bottomGarmentType) {
-                          updateForm("bottomGarmentType", "shalwar");
-                        }
-                      }}
+                  {/* Eye Color */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">
+                      👁️ Eye Color *
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                    </Label>
+                    {validationErrors.has("eyeColor") && (
+                      <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select an eye colour</p>
+                    )}
+                    <VisualPicker columns={4} iconSize="xl" value={form.eyeColor} onChange={(v) => updateForm("eyeColor", v)}
                       options={[
-                        { value: "long-sleeve tunic",      label: "Tunic",        icon: <LongSleeveTunicSvg /> },
-                        { value: "abaya",                  label: "Abaya",        icon: <AbayaSvg /> },
-                        { value: "modest blouse",          label: "Blouse",       icon: <ModestBlouseSvg /> },
-                        { value: "salwar kameez top",      label: "Kameez",       icon: <SalwarKameezTopSvg /> },
-                        { value: "long-sleeve dress",      label: "Dress",        icon: <LongSleeveDressSvg /> },
-                        { value: "school uniform blouse",  label: "Uniform",      icon: <SchoolUniformBlouseSvg /> },
-                        { value: "long cardigan",          label: "Cardigan",     icon: <LongCardiganSvg /> },
+                        { value: "amber",      label: "Amber",      icon: <img src="/eyes/amber.png" alt="Amber" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "dark-brown", label: "Dark Brown", icon: <img src="/eyes/deepbrown.png" alt="Dark Brown" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "brown",      label: "Brown",      icon: <img src="/eyes/brown.png" alt="Brown" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "hazel",      label: "Hazel",      icon: <img src="/eyes/hazel.png" alt="Hazel" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "green",      label: "Green",      icon: <img src="/eyes/green.png" alt="Green" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "blue",       label: "Blue",       icon: <img src="/eyes/blue.png" alt="Blue" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "gray",       label: "Gray",       icon: <img src="/eyes/gray.png" alt="Gray" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "black",      label: "Black",      icon: <img src="/eyes/black.png" alt="Black" className="w-full h-full object-contain" draggable={false} /> },
                       ]}
                     />
-                  ) : (
-                    <VisualPicker
-                      accent="amber"
-                      columns={4}
-                      iconSize="lg"
-                      allowDeselect
-                      value={form.topGarmentType}
-                      onChange={(v) => updateForm("topGarmentType", v)}
-                      options={[
-                        { value: "t-shirt",          label: "T-Shirt",   icon: <TShirtSvg /> },
-                        { value: "long-sleeve shirt", label: "Long Sleeve", icon: <LongSleeveShirtSvg /> },
-                        { value: "collared shirt",   label: "Collar",    icon: <CollarShirtSvg /> },
-                        { value: "hoodie",           label: "Hoodie",    icon: <HoodieSvg /> },
-                        { value: "thobe",            label: "Thobe",     icon: <ThobeSvg /> },
-                        { value: "jalabiya",         label: "Jalabiya",  icon: <JalabiyaSvg /> },
-                        { value: "kurta",            label: "Kurta",     icon: <KurtaSvg /> },
-                        { value: "jacket",           label: "Jacket",    icon: <JacketSvg /> },
+                  </div>
+
+                  {/* Face Shape */}
+                  <div className="space-y-3">
+                    <Label className="text-lg font-bold">
+                      😊 Face Shape *
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                    </Label>
+                    {validationErrors.has("faceShape") && (
+                      <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a face shape</p>
+                    )}
+                    <VisualPicker columns={3} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
+                      options={form.gender === "girl" ? [
+                        { value: "round-friendly",    label: "Round",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "oval-gentle",        label: "Oval Gentle", icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval%20gentle.png" alt="Oval Gentle" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "heart-creative",     label: "Heart",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/heart.png" alt="Heart" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "square-determined",  label: "Square",      icon: <img src="/girls%20E.%20Face%20Shape%20Cards/square.png" alt="Square" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "oval-balanced",      label: "Oval",        icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval.png" alt="Oval" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "round-youthful",     label: "Round Soft",  icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round%20soft.png" alt="Round Soft" className="w-full h-full object-contain" draggable={false} /> },
+                      ] : [
+                        { value: "round-friendly",    label: "Round",      icon: <RoundFaceSvg /> },
+                        { value: "oval-gentle",        label: "Oval Gentle",icon: <OvalFaceSvg /> },
+                        { value: "heart-creative",     label: "Heart",      icon: <HeartFaceSvg /> },
+                        { value: "square-determined",  label: "Square",     icon: <SquareFaceSvg /> },
+                        { value: "oval-balanced",      label: "Oval",       icon: <OvalBalancedFaceSvg /> },
+                        { value: "round-youthful",     label: "Round Soft", icon: <RoundYouthfulFaceSvg /> },
                       ]}
                     />
-                  )}
-                  <Input
-                    placeholder="Or type a custom garment type…"
-                    value={
-                      (form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).includes(form.topGarmentType)
-                        ? ""
-                        : form.topGarmentType
-                    }
-                    onChange={(e) => updateForm("topGarmentType", e.target.value)}
-                    className="mt-1"
-                  />
+                  </div>
+
+                  {/* Advanced Details */}
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <button type="button" onClick={() => setShowAdvanced((v) => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground/80 hover:bg-muted/30 transition-colors">
+                      <span>🔬 Advanced Details <span className="font-normal text-muted-foreground">(eyebrows, nose, cheeks, facial hair)</span></span>
+                      {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                    {showAdvanced && (
+                      <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+                        {!isOther && (
+                          <div className="grid sm:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label className="font-bold">🪮 Eyebrow Style</Label>
+                              <VisualPicker columns={3} iconSize="sm" value={form.eyebrowStyle} onChange={(v) => updateForm("eyebrowStyle", v)} allowDeselect
+                                options={[
+                                  { value: "thick-arched",   label: "Thick Arch",    icon: <ThickArchedBrowSvg /> },
+                                  { value: "thin-straight",  label: "Thin Straight", icon: <ThinStraightBrowSvg /> },
+                                  { value: "bushy-straight", label: "Bushy",         icon: <BushyStraightBrowSvg /> },
+                                  { value: "soft-rounded",   label: "Soft",          icon: <SoftRoundedBrowSvg /> },
+                                  { value: "natural-full",   label: "Natural",       icon: <NaturalFullBrowSvg /> },
+                                ]} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="font-bold">👃 Nose Style</Label>
+                              <VisualPicker columns={3} iconSize="sm" value={form.noseStyle} onChange={(v) => updateForm("noseStyle", v)} allowDeselect
+                                options={[
+                                  { value: "button",          label: "Button",   icon: <ButtonNoseSvg /> },
+                                  { value: "broad-flat",      label: "Broad",    icon: <BroadFlatNoseSvg /> },
+                                  { value: "straight-narrow", label: "Straight", icon: <StraightNarrowNoseSvg /> },
+                                  { value: "rounded-soft",    label: "Rounded",  icon: <RoundedSoftNoseSvg /> },
+                                  { value: "wide-nostrils",   label: "Wide",     icon: <WideNostrilsNoseSvg /> },
+                                ]} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="font-bold">😊 Cheek Style</Label>
+                              <VisualPicker columns={3} iconSize="sm" value={form.cheekStyle} onChange={(v) => updateForm("cheekStyle", v)} allowDeselect
+                                options={[
+                                  { value: "chubby-rosy",  label: "Rosy",    icon: <ChubbyRosyCheekSvg /> },
+                                  { value: "flat-smooth",  label: "Flat",    icon: <FlatSmoothCheekSvg /> },
+                                  { value: "high-defined", label: "High",    icon: <HighDefinedCheekSvg /> },
+                                  { value: "dimpled",      label: "Dimpled", icon: <DimpledCheekSvg /> },
+                                  { value: "soft-round",   label: "Soft",    icon: <SoftRoundCheekSvg /> },
+                                ]} />
+                            </div>
+                          </div>
+                        )}
+                        {form.gender === "boy" && (
+                          <div className="space-y-2">
+                            <Label className="font-bold">🧔 Facial Hair {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}</Label>
+                            <Select value={form.facialHair} onValueChange={(v) => updateForm("facialHair", v)}>
+                              <SelectTrigger><SelectValue placeholder="Select facial hair…" /></SelectTrigger>
+                              <SelectContent>
+                                {FACIAL_HAIR_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                {/* Top Color */}
-                <div className="space-y-2">
-                  <Label>Top Color</Label>
-                  <ColorScrollRow>
-                    {OUTFIT_COLORS.map((c) => {
-                      const isSelected = form.topGarmentColor === c.name;
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          title={c.name}
-                          onClick={() => updateForm("topGarmentColor", isSelected ? "" : c.name)}
-                          className={cn(
-                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
-                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
-                          )}
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      );
-                    })}
-                  </ColorScrollRow>
-                  <Input
-                    placeholder="Or type a custom color…"
-                    value={OUTFIT_COLORS.some((c) => c.name === form.topGarmentColor) ? "" : form.topGarmentColor}
-                    onChange={(e) => updateForm("topGarmentColor", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Top Details */}
-                <div className="space-y-2">
-                  <Label>Top Details <span className="text-xs text-muted-foreground">(optional)</span></Label>
-                  <Input
-                    placeholder="e.g. embroidered collar, plain fabric"
-                    value={form.topGarmentDetails}
-                    onChange={(e) => updateForm("topGarmentDetails", e.target.value)}
-                  />
-                </div>
-
-                {/* Bottom Garment */}
-                <div className="space-y-2">
-                  <Label>Bottom Garment</Label>
-                  {form.gender === "girl" ? (
-                    <VisualPicker
-                      accent="amber"
-                      columns={4}
-                      iconSize="lg"
-                      allowDeselect
-                      value={form.bottomGarmentType}
-                      onChange={(v) => updateForm("bottomGarmentType", v)}
-                      options={[
-                        { value: "wide-leg trousers", label: "Wide Leg",   icon: <WideLegTrousersSvg /> },
-                        { value: "long skirt",        label: "Long Skirt", icon: <LongSkirtSvg /> },
-                        { value: "maxi skirt",        label: "Maxi Skirt", icon: <MaxiSkirtSvg /> },
-                        { value: "school uniform skirt", label: "Uniform",  icon: <SchoolSkirtSvg /> },
-                        { value: "shalwar",           label: "Shalwar",    icon: <ShalwarSvg /> },
-                        { value: "palazzo pants",     label: "Palazzo",    icon: <PalazzoPantsSvg /> },
-                      ]}
-                    />
-                  ) : (
-                    <VisualPicker
-                      accent="amber"
-                      columns={4}
-                      iconSize="lg"
-                      allowDeselect
-                      value={form.bottomGarmentType}
-                      onChange={(v) => updateForm("bottomGarmentType", v)}
-                      options={[
-                        { value: "trousers", label: "Trousers", icon: <TrousersSvg /> },
-                        { value: "jeans",    label: "Jeans",    icon: <JeansSvg /> },
-                        { value: "shorts",   label: "Shorts",   icon: <ShortsSvg /> },
-                      ]}
-                    />
-                  )}
-                  <Input
-                    placeholder="Or type a custom bottom garment…"
-                    value={
-                      (form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).includes(form.bottomGarmentType)
-                        ? ""
-                        : form.bottomGarmentType
-                    }
-                    onChange={(e) => updateForm("bottomGarmentType", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Bottom Color */}
-                <div className="space-y-2">
-                  <Label>Bottom Color</Label>
-                  <ColorScrollRow>
-                    {OUTFIT_COLORS.map((c) => {
-                      const isSelected = form.bottomGarmentColor === c.name;
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          title={c.name}
-                          onClick={() => updateForm("bottomGarmentColor", isSelected ? "" : c.name)}
-                          className={cn(
-                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
-                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
-                          )}
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      );
-                    })}
-                  </ColorScrollRow>
-                  <Input
-                    placeholder="Or type a custom color…"
-                    value={OUTFIT_COLORS.some((c) => c.name === form.bottomGarmentColor) ? "" : form.bottomGarmentColor}
-                    onChange={(e) => updateForm("bottomGarmentColor", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Shoes */}
-                <div className="space-y-2">
-                  <Label>Shoe Type</Label>
-                  <VisualPicker
-                    accent="amber"
-                    columns={4}
-                    iconSize="lg"
-                    allowDeselect
-                    value={form.shoeType}
-                    onChange={(v) => updateForm("shoeType", v)}
-                    options={[
-                      { value: "sneakers",        label: "Sneakers",     icon: <SneakersSvg /> },
-                      { value: "school shoes",    label: "School",       icon: <SchoolShoesSvg /> },
-                      { value: "mary jane flats", label: "Mary Jane",    icon: <MaryJaneFlats /> },
-                      { value: "sandals",         label: "Sandals",      icon: <SandalsSvg /> },
-                      { value: "leather sandals", label: "Leather Sand", icon: <LeatherSandalsSvg /> },
-                      { value: "boots",           label: "Boots",        icon: <BootsSvg /> },
-                      { value: "slippers",        label: "Slippers",     icon: <SlippersSvg /> },
-                      { value: "oxford shoes",    label: "Oxford",       icon: <OxfordShoesSvg /> },
-                      { value: "khussa",          label: "Khussa",       icon: <KhussaSvg /> },
-                      { value: "balgha slippers", label: "Balgha",       icon: <BalghaSlipperSvg /> },
-                      { value: "open-toe sandals",label: "Open-Toe",     icon: <SandalsSvg /> },
-                    ]}
-                  />
-                  <Input
-                    placeholder="Or type a custom shoe type…"
-                    value={SHOE_PRESETS.includes(form.shoeType) ? "" : form.shoeType}
-                    onChange={(e) => updateForm("shoeType", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Shoe Color */}
-                <div className="space-y-2">
-                  <Label>Shoe Color</Label>
-                  <ColorScrollRow>
-                    {OUTFIT_COLORS.map((c) => {
-                      const isSelected = form.shoeColor === c.name;
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          title={c.name}
-                          onClick={() => updateForm("shoeColor", isSelected ? "" : c.name)}
-                          className={cn(
-                            "w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
-                            isSelected ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border"
-                          )}
-                          style={{ backgroundColor: c.hex }}
-                        />
-                      );
-                    })}
-                  </ColorScrollRow>
-                  <Input
-                    placeholder="Or type a custom color…"
-                    value={OUTFIT_COLORS.some((c) => c.name === form.shoeColor) ? "" : form.shoeColor}
-                    onChange={(e) => updateForm("shoeColor", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
-              {/* ── Body Proportions ───────────────────────────────────────── */}
-              <div id="dna-body" className="space-y-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 scroll-mt-24">
-                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                  📏 Body Proportions
-                  <span className="text-xs font-normal text-blue-500 dark:text-blue-400">(locks size across all illustrations)</span>
-                </p>
-
-                {/* Body Build — visual silhouettes */}
-                <div className="space-y-2">
-                  <Label className="font-bold">🧍 Body Build</Label>
-                  <VisualPicker
-                    columns={5}
-                    iconSize="md"
-                    accent="blue"
-                    value={form.bodyBuild}
-                    onChange={(v) => updateForm("bodyBuild", v)}
-                    allowDeselect
-                    options={[
-                      { value: "slim and lean",             label: "Slim",          icon: <SlimBodySvg /> },
-                      { value: "average build",             label: "Average",       icon: <AverageBodySvg /> },
-                      { value: "soft and round",            label: "Soft",          icon: <ChubbyBodySvg /> },
-                      { value: "athletic and fit",          label: "Athletic",      icon: <AthleticBodySvg /> },
-                      { value: "stocky and strong",         label: "Stocky",        icon: <StockyBodySvg /> },
-                      { value: "tall and slender",          label: "Tall Slim",     icon: <TallSlenderBodySvg /> },
-                      { value: "petite and light",          label: "Petite",        icon: <PetiteBodySvg /> },
-                      { value: "broad-shouldered",          label: "Broad",         icon: <BroadShoulderBodySvg /> },
-                      { value: "small toddler round tummy", label: "Toddler",       icon: <ToddlerBodySvg /> },
-                      { value: "round and full",            label: "Round",         icon: <RoundFullBodySvg /> },
-                    ]}
-                  />
-                  <Input
-                    placeholder="Or describe a custom build…"
-                    value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
-                    onChange={(e) => updateForm("bodyBuild", e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-
-                {/* Height Feel — visual ruler tiles */}
-                <div className="space-y-2">
-                  <Label className="font-bold">📐 Height Feel</Label>
-                  <VisualPicker
-                    columns={8}
-                    iconSize="sm"
-                    accent="blue"
-                    value={form.heightFeel}
-                    onChange={(v) => updateForm("heightFeel", v)}
-                    allowDeselect
-                    options={HEIGHT_FEELS.map((opt, i) => ({
-                      value: opt,
-                      label: opt,
-                      icon: <HeightFeelSvg level={i} />,
-                    }))}
-                  />
-                </div>
-
-                {/* Exact height (T-27 — hidden under Advanced) */}
-                <details className="group">
-                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1 mt-1">
-                    <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
-                    Add exact measurements (optional)
-                  </summary>
-                  <div className="grid sm:grid-cols-2 gap-4 mt-3">
+              {/* ═══════════════════════════════════════════════════════════════
+                  HAIR TAB
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "hair" && (
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Height (cm)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input type="number" min={40} max={220} placeholder="e.g. 115"
-                        value={form.heightCm || ""}
-                        onChange={(e) => updateForm("heightCm", parseInt(e.target.value, 10) || 0)}
-                        className="flex-1" />
-                      <span className="text-xs text-muted-foreground shrink-0">cm</span>
+                    <Label className="text-base font-bold">
+                      {isOther ? "🪺 Head Texture / Crest" : form.wearHijab ? "🧕 Hijab Style" : "💇 Hair Style"}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
+                    </Label>
+                    {/* GIRL — HIJAB */}
+                    {!isOther && form.gender === "girl" && form.wearHijab && (
+                      <>
+                        <VisualPicker columns={4} iconSize="md" value={form.hijabStyle} onChange={(v) => updateForm("hijabStyle", v)}
+                          options={[
+                            { value: "simple-white",   label: "White",        icon: <HijabSvg color="white" /> },
+                            { value: "simple-black",   label: "Black",        icon: <HijabSvg color="black" /> },
+                            { value: "simple-beige",   label: "Beige",        icon: <HijabSvg color="beige" /> },
+                            { value: "blue-solid",     label: "Blue",         icon: <HijabSvg color="blue" /> },
+                            { value: "pink-solid",     label: "Pink",         icon: <HijabSvg color="pink" /> },
+                            { value: "purple-solid",   label: "Purple",       icon: <HijabSvg color="purple" /> },
+                            { value: "al-amira-white", label: "Al-Amira",     icon: <HijabSvg color="white" /> },
+                            { value: "al-amira-black", label: "Al-Amira Blk", icon: <HijabSvg color="black" /> },
+                            { value: "shayla-drape",   label: "Shayla",       icon: <HijabSvg color="teal" /> },
+                            { value: "turban-style",   label: "Turban",       icon: <HijabSvg color="maroon" /> },
+                            { value: "khimar-long",    label: "Khimar",       icon: <HijabSvg color="navy" /> },
+                            { value: "pashmina-wrap",  label: "Pashmina",     icon: <HijabSvg color="gray" /> },
+                          ]}
+                        />
+                        <Input placeholder="Hijab colour or custom description…" value={form.hijabColor}
+                          onChange={(e) => updateForm("hijabColor", e.target.value)} className="mt-2" />
+                      </>
+                    )}
+                    {/* GIRL — HAIR */}
+                    {!isOther && form.gender === "girl" && !form.wearHijab && (
+                      <>
+                        <VisualPicker columns={3} iconSize="xl" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
+                          options={[
+                            { value: "long-black",        label: "Long",          icon: <img src="/girls%20F.%20Hair%20Style%20Cards/long.png" alt="Long" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "long-dark-brown",   label: "Dark Brown",    icon: <img src="/girls%20F.%20Hair%20Style%20Cards/dark%20brown.png" alt="Dark Brown" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "long-brown",        label: "Brown",         icon: <img src="/girls%20F.%20Hair%20Style%20Cards/brown.png" alt="Brown" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "shoulder-length",   label: "Shoulder",      icon: <img src="/girls%20F.%20Hair%20Style%20Cards/shoulder.png" alt="Shoulder" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "short-bob",         label: "Short Bob",     icon: <img src="/girls%20F.%20Hair%20Style%20Cards/short%20bob.png" alt="Short Bob" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "side-swept",        label: "Side Swept",    icon: <img src="/girls%20F.%20Hair%20Style%20Cards/side%20swept.png" alt="Side Swept" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "curly-long",        label: "Long Curly",    icon: <img src="/girls%20F.%20Hair%20Style%20Cards/long%20curly.png" alt="Long Curly" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "curly-short",       label: "Short Curly",   icon: <img src="/girls%20F.%20Hair%20Style%20Cards/short%20curly.png" alt="Short Curly" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "wavy-loose",        label: "Loose Wavy",    icon: <img src="/girls%20F.%20Hair%20Style%20Cards/loose%20wavy.png" alt="Loose Wavy" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "braided-long",      label: "Braided",       icon: <img src="/girls%20F.%20Hair%20Style%20Cards/braided.png" alt="Braided" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "two-braids",        label: "Two Braids",    icon: <img src="/girls%20F.%20Hair%20Style%20Cards/two%20braids.png" alt="Two Braids" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "ponytail-high",     label: "High Ponytail", icon: <img src="/girls%20F.%20Hair%20Style%20Cards/high%20ponytail.png" alt="High Ponytail" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "ponytail-low",      label: "Low Ponytail",  icon: <img src="/girls%20F.%20Hair%20Style%20Cards/low%20ponytail.png" alt="Low Ponytail" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "bun-top",           label: "Top Bun",       icon: <img src="/girls%20F.%20Hair%20Style%20Cards/top%20bun.png" alt="Top Bun" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "half-up-half-down", label: "Half-Up",       icon: <img src="/girls%20F.%20Hair%20Style%20Cards/half%20up.png" alt="Half-Up" className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
+                          onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                      </>
+                    )}
+                    {/* BOY — HAIR */}
+                    {!isOther && form.gender === "boy" && !isElderMale && (
+                      <>
+                        <VisualPicker columns={4} iconSize="xl" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
+                          options={[
+                            { value: "short-black",      label: "Short",       icon: <img src="/boy%20hairs/short.png" alt="Short" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "short-dark-brown", label: "Short Brown", icon: <img src="/boy%20hairs/short%20brown.png" alt="Short Brown" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "curly-black",      label: "Curly",       icon: <img src="/boy%20hairs/curly.png" alt="Curly" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "wavy-dark",        label: "Wavy",        icon: <img src="/boy%20hairs/wavy.png" alt="Wavy" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "spiky-black",      label: "Spiky",       icon: <img src="/boy%20hairs/spiky.png" alt="Spiky" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "afro",             label: "Afro",        icon: <img src="/boy%20hairs/afro.png" alt="Afro" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "buzz-cut",         label: "Buzz Cut",    icon: <img src="/boy%20hairs/buzz-cut.png" alt="Buzz Cut" className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input placeholder="Hair colour (e.g. dark brown)…" value={form.hairColor}
+                          onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                      </>
+                    )}
+                    {/* ELDER MALE — HAIR */}
+                    {!isOther && form.gender === "boy" && isElderMale && (
+                      <VisualPicker columns={4} iconSize="md" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
+                        options={[
+                          { value: "bald",                       label: "Bald",        icon: <BaldSvg /> },
+                          { value: "bald with white hair sides", label: "Bald + Sides",icon: <BaldSvg /> },
+                          { value: "short white hair",           label: "White Short", icon: <WhiteShortHairSvg /> },
+                          { value: "short gray hair",            label: "Gray Short",  icon: <GrayShortHairSvg /> },
+                          { value: "full white hair short",      label: "White Full",  icon: <WhiteShortHairSvg /> },
+                          { value: "full gray hair short",       label: "Gray Full",   icon: <GrayShortHairSvg /> },
+                        ]}
+                      />
+                    )}
+                    {/* OTHER / CREATURE */}
+                    {isOther && (
+                      <>
+                        <VisualPicker columns={3} iconSize="xl" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
+                          options={[
+                            { value: "feathered crest on head", label: "Feather Crest", icon: <img src="/animal%20and%20fantasy%20hairs/feather%20crest.png" alt="Feather Crest" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "no hair (feathers)",      label: "Feathers",       icon: <img src="/animal%20and%20fantasy%20hairs/feathers.png" alt="Feathers" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "no hair (fur)",           label: "Fur",            icon: <img src="/animal%20and%20fantasy%20hairs/fur.png" alt="Fur" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "mane",                    label: "Mane",           icon: <img src="/animal%20and%20fantasy%20hairs/mane.png" alt="Mane" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "spikes on head",          label: "Spikes",         icon: <img src="/animal%20and%20fantasy%20hairs/spikes.png" alt="Spikes" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "none",                    label: "None / N/A",     icon: <BaldSvg /> },
+                          ]}
+                        />
+                        <Input placeholder="Crest / texture colour (e.g. orange crest)…" value={form.hairColor}
+                          onChange={(e) => updateForm("hairColor", e.target.value)} className="mt-2" />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Glasses */}
+                  {!isOther && (
+                    <div className="space-y-2">
+                      <Label className="font-bold">
+                        👓 Glasses
+                        {isElderAge && <span className="ml-1.5 text-xs text-amber-600 font-medium">Recommended for elders</span>}
+                      </Label>
+                      <Select value={form.glasses} onValueChange={(v) => updateForm("glasses", v)}>
+                        <SelectTrigger><SelectValue placeholder="Select glasses…" /></SelectTrigger>
+                        <SelectContent>
+                          {GLASSES_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Locks in every illustration</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">Typical: {suggestedHeightRange(ageNum)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Height (ft)</Label>
-                    <Input type="number" value={form.heightFeet || ""}
-                      onChange={(e) => updateForm("heightFeet", parseFloat(e.target.value) || 0)}
-                      placeholder="e.g. 4.0" step="0.1" />
-                  </div>
-                </div>
-                </details>
-              </div>
-
-              {/* ── Accessories ────────────────────────────────────────────── */}
-              <div id="dna-accessories" className="space-y-2 scroll-mt-24">
-                <Label>Accessories</Label>
-                <div className="flex flex-wrap gap-2">
-                  {ACCESSORIES_PRESETS.map((opt) => (
-                    <button key={opt} type="button"
-                      onClick={() => {
-                        const list = form.accessoriesList.includes(opt)
-                          ? form.accessoriesList.filter((a) => a !== opt)
-                          : [...form.accessoriesList, opt];
-                        updateForm("accessoriesList", list);
-                      }}
-                      className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
-                        form.accessoriesList.includes(opt)
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/30"
-                      )}>{opt}</button>
-                  ))}
-                </div>
-                <Input
-                  placeholder="Add more accessories (comma-separated)…"
-                  value={form.accessoriesText}
-                  onChange={(e) => updateForm("accessoriesText", e.target.value)}
-                  className="mt-1"
-                />
-                {(form.accessoriesList.length > 0 || form.accessoriesText) && (
-                  <p className="text-xs text-primary">
-                    Selected: {[...form.accessoriesList, ...form.accessoriesText.split(",").map(s=>s.trim()).filter(Boolean)].join(", ")}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Palette Notes</Label>
-                <Input
-                  placeholder="e.g. warm soft colors, blue + cream only"
-                  value={form.paletteNotes}
-                  onChange={(e) => updateForm("paletteNotes", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Outfit Rules <span className="text-xs text-muted-foreground">(extra locking rules for AI)</span></Label>
-                <Textarea
-                  rows={2}
-                  placeholder="e.g. always wears the same uniform, no random color changes"
-                  value={form.outfitRules}
-                  onChange={(e) => updateForm("outfitRules", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border">
-                <div className="flex items-center gap-2">
-                  <Label>Modesty Rules</Label>
-                  {form.valuesMode !== "custom" && (
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      <Lock className="w-3 h-3" /> Locked by {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
-                    </span>
                   )}
                 </div>
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={form.longSleeves}
-                      disabled={form.valuesMode !== "custom"}
-                      onCheckedChange={(v) => updateForm("longSleeves", v)}
-                    />
-                    <span className="text-sm">Long Sleeves</span>
-                    {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={form.looseClothing}
-                      disabled={form.valuesMode !== "custom"}
-                      onCheckedChange={(v) => updateForm("looseClothing", v)}
-                    />
-                    <span className="text-sm">Loose Clothing</span>
-                    {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
-                  </div>
-                </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label>Additional Notes</Label>
-                  <Input
-                    placeholder="e.g. always neat and modest"
-                    value={form.modestyNotes}
-                    onChange={(e) => updateForm("modestyNotes", e.target.value)}
-                  />
+              {/* ═══════════════════════════════════════════════════════════════
+                  OUTFIT TAB
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "outfit" && (
+                <div className="space-y-6">
+                  {/* Top Garment */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">👕 Top Garment</Label>
+                    {form.gender === "girl" ? (
+                      <VisualPicker accent="amber" columns={3} iconSize="xl" allowDeselect value={form.topGarmentType}
+                        onChange={(v) => { updateForm("topGarmentType", v); if (v === "salwar kameez top" && !form.bottomGarmentType) updateForm("bottomGarmentType", "shalwar"); }}
+                        options={[
+                          { value: "long-sleeve tunic",     label: "Tunic",   icon: <img src="/girl%20top%20garments/tunic.png" alt="Tunic" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "abaya",                 label: "Abaya",   icon: <img src="/girl%20top%20garments/abaya.png" alt="Abaya" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "modest blouse",         label: "Blouse",  icon: <img src="/girl%20top%20garments/blouse.png" alt="Blouse" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "salwar kameez top",     label: "Kameez",  icon: <img src="/girl%20top%20garments/kameez.png" alt="Kameez" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "long-sleeve dress",     label: "Dress",   icon: <img src="/girl%20top%20garments/dress.png" alt="Dress" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "school uniform blouse", label: "Uniform", icon: <img src="/girl%20top%20garments/uniform.png" alt="Uniform" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "long cardigan",         label: "Cardigan",icon: <LongCardiganSvg /> },
+                        ]}
+                      />
+                    ) : (
+                      <VisualPicker accent="amber" columns={4} iconSize="xl" allowDeselect value={form.topGarmentType}
+                        onChange={(v) => updateForm("topGarmentType", v)}
+                        options={[
+                          { value: "t-shirt",           label: "T-Shirt",    icon: <TShirtSvg /> },
+                          { value: "long-sleeve shirt", label: "Long Sleeve",icon: <LongSleeveShirtSvg /> },
+                          { value: "collared shirt",    label: "Collar",     icon: <CollarShirtSvg /> },
+                          { value: "hoodie",            label: "Hoodie",     icon: <HoodieSvg /> },
+                          { value: "thobe",             label: "Thobe",      icon: <ThobeSvg /> },
+                          { value: "jalabiya",          label: "Jalabiya",   icon: <JalabiyaSvg /> },
+                          { value: "kurta",             label: "Kurta",      icon: <KurtaSvg /> },
+                          { value: "jacket",            label: "Jacket",     icon: <JacketSvg /> },
+                        ]}
+                      />
+                    )}
+                    <Input placeholder="Or type a custom garment type…"
+                      value={(form.gender === "girl" ? TOP_GARMENT_PRESETS_GIRL : TOP_GARMENT_PRESETS_BOY).includes(form.topGarmentType) ? "" : form.topGarmentType}
+                      onChange={(e) => updateForm("topGarmentType", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Top Color */}
+                  <div className="space-y-2">
+                    <Label className="font-bold">Top Color</Label>
+                    <ColorScrollRow>
+                      {OUTFIT_COLORS.map((c) => {
+                        const isSel = form.topGarmentColor === c.name;
+                        return (
+                          <button key={c.name} type="button" title={c.name}
+                            onClick={() => updateForm("topGarmentColor", isSel ? "" : c.name)}
+                            className={cn("w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
+                              isSel ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border")}
+                            style={{ backgroundColor: c.hex }} />
+                        );
+                      })}
+                    </ColorScrollRow>
+                    <Input placeholder="Or type a custom color…"
+                      value={OUTFIT_COLORS.some((c) => c.name === form.topGarmentColor) ? "" : form.topGarmentColor}
+                      onChange={(e) => updateForm("topGarmentColor", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Top Details */}
+                  <div className="space-y-2">
+                    <Label>Top Details <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                    <Input placeholder="e.g. embroidered collar, plain fabric"
+                      value={form.topGarmentDetails} onChange={(e) => updateForm("topGarmentDetails", e.target.value)} />
+                  </div>
+
+                  {/* Bottom Garment */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">👖 Bottom Garment</Label>
+                    {form.gender === "girl" ? (
+                      <VisualPicker accent="amber" columns={3} iconSize="xl" allowDeselect value={form.bottomGarmentType}
+                        onChange={(v) => updateForm("bottomGarmentType", v)}
+                        options={[
+                          { value: "wide-leg trousers",    label: "Wide Leg",  icon: <img src="/girl%20bottom%20garments/wide%20leg.png" alt="Wide Leg" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "long skirt",           label: "Long Skirt",icon: <img src="/girl%20bottom%20garments/long%20skirt.png" alt="Long Skirt" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "maxi skirt",           label: "Maxi Skirt",icon: <img src="/girl%20bottom%20garments/maxi%20shirk.png" alt="Maxi Skirt" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "school uniform skirt", label: "Uniform",   icon: <img src="/girl%20bottom%20garments/uniform.png" alt="Uniform" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "shalwar",              label: "Shalwar",   icon: <img src="/girl%20bottom%20garments/shalwar.png" alt="Shalwar" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "palazzo pants",        label: "Palazzo",   icon: <img src="/girl%20bottom%20garments/palazzo.png" alt="Palazzo" className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
+                      />
+                    ) : (
+                      <VisualPicker accent="amber" columns={3} iconSize="xl" allowDeselect value={form.bottomGarmentType}
+                        onChange={(v) => updateForm("bottomGarmentType", v)}
+                        options={[
+                          { value: "trousers", label: "Trousers", icon: <TrousersSvg /> },
+                          { value: "jeans",    label: "Jeans",    icon: <img src="/trousers/jeans.png" alt="Jeans" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "shorts",   label: "Shorts",   icon: <img src="/trousers/shorts.png" alt="Shorts" className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
+                      />
+                    )}
+                    <Input placeholder="Or type a custom bottom garment…"
+                      value={(form.gender === "girl" ? BOTTOM_GARMENT_PRESETS_GIRL : BOTTOM_GARMENT_PRESETS_BOY).includes(form.bottomGarmentType) ? "" : form.bottomGarmentType}
+                      onChange={(e) => updateForm("bottomGarmentType", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Bottom Color */}
+                  <div className="space-y-2">
+                    <Label className="font-bold">Bottom Color</Label>
+                    <ColorScrollRow>
+                      {OUTFIT_COLORS.map((c) => {
+                        const isSel = form.bottomGarmentColor === c.name;
+                        return (
+                          <button key={c.name} type="button" title={c.name}
+                            onClick={() => updateForm("bottomGarmentColor", isSel ? "" : c.name)}
+                            className={cn("w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
+                              isSel ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border")}
+                            style={{ backgroundColor: c.hex }} />
+                        );
+                      })}
+                    </ColorScrollRow>
+                    <Input placeholder="Or type a custom color…"
+                      value={OUTFIT_COLORS.some((c) => c.name === form.bottomGarmentColor) ? "" : form.bottomGarmentColor}
+                      onChange={(e) => updateForm("bottomGarmentColor", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Shoes */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">👟 Shoe Type</Label>
+                    <VisualPicker accent="amber" columns={4} iconSize="xl" allowDeselect value={form.shoeType}
+                      onChange={(v) => updateForm("shoeType", v)}
+                      options={[
+                        { value: "sneakers",         label: "Sneakers",  icon: <img src="/shoes/sneakers.png" alt="Sneakers" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "school shoes",     label: "School",    icon: <img src="/shoes/school.png" alt="School" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "mary jane flats",  label: "Mary Jane", icon: <img src="/shoes/mary-jane.png" alt="Mary Jane" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "sandals",          label: "Sandals",   icon: <img src="/shoes/sandals.png" alt="Sandals" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "leather sandals",  label: "Leather",   icon: <img src="/shoes/leather.png" alt="Leather Sandals" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "boots",            label: "Boots",     icon: <img src="/shoes/boots.png" alt="Boots" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "slippers",         label: "Slippers",  icon: <img src="/shoes/slippers.png" alt="Slippers" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "oxford shoes",     label: "Oxford",    icon: <img src="/shoes/oxford.png" alt="Oxford" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "khussa",           label: "Khussa",    icon: <img src="/shoes/khussa.png" alt="Khussa" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "balgha slippers",  label: "Balgha",    icon: <img src="/shoes/balga.png" alt="Balgha" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "open-toe sandals", label: "Open-Toe",  icon: <img src="/shoes/open-toe.png" alt="Open-Toe" className="w-full h-full object-contain" draggable={false} /> },
+                      ]}
+                    />
+                    <Input placeholder="Or type a custom shoe type…"
+                      value={SHOE_PRESETS.includes(form.shoeType) ? "" : form.shoeType}
+                      onChange={(e) => updateForm("shoeType", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Shoe Color */}
+                  <div className="space-y-2">
+                    <Label className="font-bold">Shoe Color</Label>
+                    <ColorScrollRow>
+                      {OUTFIT_COLORS.map((c) => {
+                        const isSel = form.shoeColor === c.name;
+                        return (
+                          <button key={c.name} type="button" title={c.name}
+                            onClick={() => updateForm("shoeColor", isSel ? "" : c.name)}
+                            className={cn("w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
+                              isSel ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border")}
+                            style={{ backgroundColor: c.hex }} />
+                        );
+                      })}
+                    </ColorScrollRow>
+                    <Input placeholder="Or type a custom color…"
+                      value={OUTFIT_COLORS.some((c) => c.name === form.shoeColor) ? "" : form.shoeColor}
+                      onChange={(e) => updateForm("shoeColor", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Modesty Rules */}
+                  <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border">
+                    <div className="flex items-center gap-2">
+                      <Label>Modesty Rules</Label>
+                      {form.valuesMode !== "custom" && (
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          <Lock className="w-3 h-3" /> Locked by {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <Switch checked={form.longSleeves} disabled={form.valuesMode !== "custom"}
+                          onCheckedChange={(v) => updateForm("longSleeves", v)} />
+                        <span className="text-sm">Long Sleeves</span>
+                        {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch checked={form.looseClothing} disabled={form.valuesMode !== "custom"}
+                          onCheckedChange={(v) => updateForm("looseClothing", v)} />
+                        <span className="text-sm">Loose Clothing</span>
+                        {form.valuesMode !== "custom" && <Lock className="w-3 h-3 text-muted-foreground" />}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Additional Notes</Label>
+                      <Input placeholder="e.g. always neat and modest" value={form.modestyNotes}
+                        onChange={(e) => updateForm("modestyNotes", e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Outfit Rules */}
+                  <div className="space-y-2">
+                    <Label>Outfit Rules <span className="text-xs text-muted-foreground">(extra locking rules for AI)</span></Label>
+                    <Textarea rows={2} placeholder="e.g. always wears the same uniform, no random color changes"
+                      value={form.outfitRules} onChange={(e) => updateForm("outfitRules", e.target.value)} />
+                  </div>
                 </div>
+              )}
+
+              {/* ═══════════════════════════════════════════════════════════════
+                  BODY TAB
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "body" && (
+                <div className="space-y-6">
+                  {/* Body Build */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">🧍 Body Build</Label>
+                    <VisualPicker columns={4} iconSize="xl" accent="blue" allowDeselect value={form.bodyBuild}
+                      onChange={(v) => updateForm("bodyBuild", v)}
+                      options={[
+                        { value: "slim and lean",             label: "Slim",     icon: <img src="/weight%20feel%20card/slim.png" alt="Slim" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "average build",             label: "Average",  icon: <img src="/weight%20feel%20card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "soft and round",            label: "Soft",     icon: <img src="/weight%20feel%20card/soft.png" alt="Soft" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "athletic and fit",          label: "Athletic", icon: <img src="/weight%20feel%20card/atletic.png" alt="Athletic" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "stocky and strong",         label: "Stocky",   icon: <img src="/weight%20feel%20card/stocky.png" alt="Stocky" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "tall and slender",          label: "Tall Slim",icon: <TallSlenderBodySvg /> },
+                        { value: "petite and light",          label: "Petite",   icon: <img src="/weight%20feel%20card/petite.png" alt="Petite" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "broad-shouldered",          label: "Broad",    icon: <BroadShoulderBodySvg /> },
+                        { value: "small toddler round tummy", label: "Toddler",  icon: <img src="/weight%20feel%20card/toddler.png" alt="Toddler" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "round and full",            label: "Round",    icon: <img src="/weight%20feel%20card/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
+                      ]}
+                    />
+                    <Input placeholder="Or describe a custom build…"
+                      value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
+                      onChange={(e) => updateForm("bodyBuild", e.target.value)} className="mt-1" />
+                  </div>
+
+                  {/* Height Feel */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">📐 Height Feel</Label>
+                    <VisualPicker columns={4} iconSize="xl" accent="blue" allowDeselect value={form.heightFeel}
+                      onChange={(v) => updateForm("heightFeel", v)}
+                      options={[
+                        { value: "very small",        label: "Very Small",     icon: <img src="/height-feel-card/very%20small.png" alt="Very Small" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "small",             label: "Small",          icon: <img src="/height-feel-card/small.png" alt="Small" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "slightly short",    label: "Slightly Short", icon: <img src="/height-feel-card/slighlty%20short.png" alt="Slightly Short" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "average height",    label: "Average",        icon: <img src="/height-feel-card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "slightly tall",     label: "Slightly Tall",  icon: <img src="/height-feel-card/slighlty%20tall.png" alt="Slightly Tall" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "tall",              label: "Tall",           icon: <img src="/height-feel-card/tall.png" alt="Tall" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "very tall",         label: "Very Tall",      icon: <img src="/height-feel-card/very%20tall.png" alt="Very Tall" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "towers over others",label: "Towering",       icon: <img src="/height-feel-card/towering.png" alt="Towering" className="w-full h-full object-contain" draggable={false} /> },
+                      ]}
+                    />
+                  </div>
+
+                  {/* Exact measurements */}
+                  <details className="group">
+                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-1">
+                      <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
+                      Add exact measurements (optional)
+                    </summary>
+                    <div className="grid sm:grid-cols-2 gap-4 mt-3">
+                      <div className="space-y-2">
+                        <Label>Height (cm)</Label>
+                        <div className="flex items-center gap-2">
+                          <Input type="number" min={40} max={220} placeholder="e.g. 115"
+                            value={form.heightCm || ""} onChange={(e) => updateForm("heightCm", parseInt(e.target.value, 10) || 0)} className="flex-1" />
+                          <span className="text-xs text-muted-foreground shrink-0">cm</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Typical: {suggestedHeightRange(ageNum)}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Height (ft)</Label>
+                        <Input type="number" value={form.heightFeet || ""} placeholder="e.g. 4.0" step="0.1"
+                          onChange={(e) => updateForm("heightFeet", parseFloat(e.target.value) || 0)} />
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              )}
+
+              {/* ═══════════════════════════════════════════════════════════════
+                  EXTRAS TAB
+              ═══════════════════════════════════════════════════════════════ */}
+              {dnaTab === "extras" && (
+                <div className="space-y-6">
+                  {/* Accessories */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">✨ Accessories</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {ACCESSORIES_PRESETS.map((opt) => (
+                        <button key={opt} type="button"
+                          onClick={() => { const list = form.accessoriesList.includes(opt) ? form.accessoriesList.filter((a) => a !== opt) : [...form.accessoriesList, opt]; updateForm("accessoriesList", list); }}
+                          className={cn("px-3 py-1.5 rounded-full text-sm border-2 transition-all",
+                            form.accessoriesList.includes(opt) ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/30"
+                          )}>{opt}</button>
+                      ))}
+                    </div>
+                    <Input placeholder="Add more accessories (comma-separated)…"
+                      value={form.accessoriesText} onChange={(e) => updateForm("accessoriesText", e.target.value)} className="mt-1" />
+                    {(form.accessoriesList.length > 0 || form.accessoriesText) && (
+                      <p className="text-xs text-primary">
+                        Selected: {[...form.accessoriesList, ...form.accessoriesText.split(",").map(s => s.trim()).filter(Boolean)].join(", ")}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Palette Notes */}
+                  <div className="space-y-2">
+                    <Label className="text-base font-bold">🎨 Palette Notes</Label>
+                    <Input placeholder="e.g. warm soft colors, blue + cream only"
+                      value={form.paletteNotes} onChange={(e) => updateForm("paletteNotes", e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── Tab prev / next navigation ──────────────────────────────── */}
+              <div className="flex items-center justify-between pt-4 border-t border-border/40">
+                {DNA_TABS.indexOf(dnaTab) > 0 ? (
+                  <Button variant="outline" onClick={() => { setDnaTab(DNA_TABS[DNA_TABS.indexOf(dnaTab) - 1]); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                    <ArrowLeft className="w-4 h-4 mr-1.5" />
+                    {DNA_TAB_META[DNA_TABS[DNA_TABS.indexOf(dnaTab) - 1]].label}
+                  </Button>
+                ) : <div />}
+                {DNA_TABS.indexOf(dnaTab) < DNA_TABS.length - 1 ? (
+                  <Button onClick={() => { setDnaTab(DNA_TABS[DNA_TABS.indexOf(dnaTab) + 1]); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                    {DNA_TAB_META[DNA_TABS[DNA_TABS.indexOf(dnaTab) + 1]].label}
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                ) : (
+                  <Button onClick={tryAdvance}>
+                    Continue to Generate <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* ── Live Preview Panel (T-04) — sticky right column ─────── */}
+            {/* ── Live Avatar Preview — sticky right column ───────────── */}
             <div className="lg:sticky lg:top-4 space-y-3 hidden lg:block">
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Live Preview</p>
-
-                {/* Values mode badge */}
-                <div className={cn(
-                  "rounded-lg px-2.5 py-1.5 text-xs font-semibold flex items-center gap-1.5",
-                  form.valuesMode === "shariah-compliant"
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                    : form.valuesMode === "wholesome"
-                      ? "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                      : "bg-muted text-muted-foreground"
-                )}>
-                  <Shield className="w-3 h-3" />
-                  {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-lg">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-border/60 bg-gradient-to-r from-card to-muted/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <p className="text-xs font-bold uppercase tracking-wider">Live Preview</p>
+                  </div>
+                  <div className={cn(
+                    "rounded-full px-2.5 py-1 text-[11px] font-bold flex items-center gap-1",
+                    form.valuesMode === "shariah-compliant"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                      : form.valuesMode === "wholesome"
+                        ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+                        : "bg-muted text-muted-foreground"
+                  )}>
+                    <Shield className="w-3 h-3" />
+                    {VALUES_PRESETS.find(p => p.id === form.valuesMode)?.label}
+                  </div>
                 </div>
 
-                {/* Character summary rows */}
-                <div className="space-y-2 text-xs">
-                  {[
-                    { label: "Gender", value: form.gender ? form.gender.charAt(0).toUpperCase() + form.gender.slice(1) : "—" },
-                    { label: "Age", value: form.ageLook || "—" },
-                    { label: "Style", value: STYLES.find(s => s.id === form.style)?.label || "—" },
-                    { label: "Skin", value: form.skinTone || "—" },
-                    { label: "Eyes", value: form.eyeColor || "—" },
-                    {
-                      label: form.wearHijab ? "Hijab" : "Hair",
-                      value: form.wearHijab
-                        ? (form.hijabStyle || "—")
-                        : (form.hairStyle ? `${form.hairStyle}${form.hairColor ? ` · ${form.hairColor}` : ""}` : "—"),
-                    },
-                    { label: "Top", value: form.topGarmentType ? `${form.topGarmentType}${form.topGarmentColor ? ` · ${form.topGarmentColor}` : ""}` : "—" },
-                    { label: "Build", value: form.bodyBuild || "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex justify-between gap-2">
-                      <span className="text-muted-foreground shrink-0">{label}</span>
-                      <span className="font-medium text-right truncate max-w-[140px]">{value}</span>
-                    </div>
-                  ))}
+                {/* Avatar canvas */}
+                <div className="relative bg-gradient-to-b from-amber-50 via-orange-50/60 to-stone-100 dark:from-stone-900/60 dark:via-stone-800/40 dark:to-stone-900/60 h-[340px] flex items-center justify-center px-6 py-4">
+                  {/* Decorative ring */}
+                  <div className="absolute inset-4 rounded-2xl border border-amber-200/40 dark:border-stone-700/30 pointer-events-none" />
+                  <CharacterAvatarPreview
+                    form={{
+                      gender: form.gender,
+                      skinTone: form.skinTone,
+                      eyeColor: form.eyeColor,
+                      hairStyle: form.hairStyle,
+                      hairColor: form.hairColor,
+                      wearHijab: form.wearHijab,
+                      hijabStyle: form.hijabStyle,
+                      hijabColor: form.hijabColor,
+                      topGarmentType: form.topGarmentType,
+                      topGarmentColor: form.topGarmentColor,
+                      bottomGarmentType: form.bottomGarmentType,
+                      bottomGarmentColor: form.bottomGarmentColor,
+                      shoeType: form.shoeType,
+                      shoeColor: form.shoeColor,
+                      bodyBuild: form.bodyBuild,
+                      ageLook: form.ageLook,
+                      name: form.name || undefined,
+                    }}
+                  />
                 </div>
 
-                {/* Modesty indicators */}
-                <div className="border-t border-border pt-2 flex flex-wrap gap-1.5">
-                  {form.longSleeves && (
-                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Long sleeves</span>
+                {/* Character name */}
+                {form.name && (
+                  <div className="px-4 py-2 border-t border-border/40 bg-muted/10 text-center">
+                    <p className="text-sm font-bold truncate">{form.name}</p>
+                    {form.ageLook && <p className="text-xs text-muted-foreground capitalize truncate">{form.ageLook}</p>}
+                  </div>
+                )}
+
+                {/* Quick stat pills */}
+                <div className="px-3 py-3 flex flex-wrap gap-1.5 border-t border-border/60 bg-muted/10">
+                  {form.gender && (
+                    <span className="text-[11px] bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 rounded-full px-2.5 py-0.5 font-semibold capitalize">
+                      {form.gender}
+                    </span>
                   )}
-                  {form.looseClothing && (
-                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Loose fit</span>
+                  {form.skinTone && (
+                    <span className="text-[11px] bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 rounded-full px-2.5 py-0.5 font-semibold capitalize">
+                      {form.skinTone.replace(/-/g, " ")}
+                    </span>
+                  )}
+                  {form.topGarmentType && (
+                    <span className="text-[11px] bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 rounded-full px-2.5 py-0.5 font-semibold capitalize">
+                      {form.topGarmentType}
+                    </span>
                   )}
                   {form.wearHijab && (
-                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-full px-2 py-0.5 font-medium">Hijab</span>
+                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full px-2.5 py-0.5 font-semibold">
+                      Hijab
+                    </span>
+                  )}
+                  {form.longSleeves && (
+                    <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full px-2.5 py-0.5 font-semibold">
+                      Long sleeves
+                    </span>
+                  )}
+                  {form.bodyBuild && (
+                    <span className="text-[11px] bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 rounded-full px-2.5 py-0.5 font-semibold capitalize">
+                      {form.bodyBuild.replace(/ and /gi, " & ")}
+                    </span>
+                  )}
+                  {!form.skinTone && !form.gender && (
+                    <span className="text-xs text-muted-foreground italic">Select options to see preview</span>
                   )}
                 </div>
               </div>

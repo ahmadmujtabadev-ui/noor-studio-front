@@ -28,36 +28,35 @@ interface VisualPickerProps {
   value: string;
   onChange: (value: string) => void;
   columns?: number;
-  iconSize?: "sm" | "md" | "lg";
+  iconSize?: "sm" | "md" | "lg" | "xl" | "2xl";
   accent?: "primary" | "amber" | "blue" | "emerald";
   className?: string;
   allowDeselect?: boolean;
 }
 
-const ACCENT = {
-  primary: {
-    selected: "border-primary bg-primary/8 shadow-sm shadow-primary/20",
-    label: "text-primary",
-    check: "bg-primary",
-  },
-  amber: {
-    selected: "border-amber-500 bg-amber-50 shadow-sm shadow-amber-200",
-    label: "text-amber-700",
-    check: "bg-amber-500",
-  },
-  blue: {
-    selected: "border-blue-500 bg-blue-50 shadow-sm shadow-blue-200",
-    label: "text-blue-700",
-    check: "bg-blue-500",
-  },
-  emerald: {
-    selected: "border-emerald-500 bg-emerald-50 shadow-sm shadow-emerald-200",
-    label: "text-emerald-700",
-    check: "bg-emerald-500",
-  },
+const ACCENT_RING = {
+  primary: "ring-primary/60 border-primary shadow-primary/15",
+  amber:   "ring-amber-400/60 border-amber-400 shadow-amber-200/60",
+  blue:    "ring-blue-400/60 border-blue-400 shadow-blue-200/60",
+  emerald: "ring-emerald-400/60 border-emerald-400 shadow-emerald-200/60",
 };
 
-const ICON_SIZES = { sm: "w-12 h-12", md: "w-16 h-16", lg: "w-20 h-20" };
+const ACCENT_BADGE = {
+  primary: "bg-slate-900",
+  amber:   "bg-amber-700",
+  blue:    "bg-blue-700",
+  emerald: "bg-emerald-700",
+};
+
+const ACCENT_CHECK = {
+  primary: "bg-primary",
+  amber:   "bg-amber-500",
+  blue:    "bg-blue-500",
+  emerald: "bg-emerald-500",
+};
+
+// Icon area height by size
+const ICON_H = { sm: "h-12", md: "h-16", lg: "h-20", xl: "h-32", "2xl": "h-44" };
 
 export function VisualPicker({
   options,
@@ -71,7 +70,7 @@ export function VisualPicker({
 }: VisualPickerProps) {
   const isMobile = useIsMobile();
   const effectiveCols = isMobile ? Math.min(columns, 3) : columns;
-  const ac = ACCENT[accent];
+
   return (
     <div
       className={cn("grid gap-2", className)}
@@ -85,38 +84,56 @@ export function VisualPicker({
             type="button"
             onClick={() => onChange(allowDeselect && isSelected ? "" : opt.value)}
             className={cn(
-              "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all hover:scale-[1.03] active:scale-[0.98]",
+              "group relative flex flex-col overflow-hidden rounded-2xl border-2 transition-all duration-200",
+              "hover:scale-[1.03] active:scale-[0.97] hover:shadow-md",
               isSelected
-                ? ac.selected
-                : "border-border hover:border-primary/40 bg-white dark:bg-muted/40"
+                ? cn("border-2 shadow-lg ring-2", ACCENT_RING[accent])
+                : "border-border/60 bg-white dark:bg-card hover:border-border"
             )}
           >
-            <div className={cn("relative flex items-center justify-center rounded-lg overflow-hidden bg-transparent", ICON_SIZES[iconSize])}>
-              {opt.icon}
+            {/* Illustration area — warm cream gradient background */}
+            <div
+              className={cn(
+                "relative w-full flex items-center justify-center overflow-hidden",
+                "bg-gradient-to-b from-amber-50 via-stone-50 to-orange-50/60",
+                "dark:from-stone-900/60 dark:via-stone-800/40 dark:to-amber-950/30",
+                ICON_H[iconSize],
+                isSelected && "from-amber-100 via-amber-50 to-orange-50"
+              )}
+            >
+              <div className="w-4/5 h-full flex items-center justify-center py-1">
+                {opt.icon}
+              </div>
+
+              {/* Selected checkmark badge */}
               {isSelected && (
                 <span
                   className={cn(
-                    "absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center z-10",
-                    ac.check
+                    "absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center z-10 shadow-sm",
+                    ACCENT_CHECK[accent]
                   )}
                 >
-                  <Check className="w-2.5 h-2.5 text-white" />
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </span>
               )}
             </div>
-            <span
+
+            {/* Label badge */}
+            <div
               className={cn(
-                "text-[11px] font-semibold text-center leading-tight w-full truncate",
-                isSelected ? ac.label : "text-muted-foreground"
+                "w-full px-1.5 py-2 text-center transition-colors",
+                isSelected
+                  ? cn("text-white text-xs font-bold", ACCENT_BADGE[accent])
+                  : "bg-gray-100/80 dark:bg-muted/60 text-gray-600 dark:text-muted-foreground text-xs font-semibold"
               )}
             >
-              {opt.label}
-            </span>
-            {opt.sublabel && (
-              <span className="text-[9px] text-muted-foreground/70 text-center leading-tight w-full truncate -mt-1">
-                {opt.sublabel}
-              </span>
-            )}
+              <span className="truncate block leading-tight">{opt.label}</span>
+              {opt.sublabel && (
+                <span className="text-[10px] opacity-70 block truncate leading-tight">
+                  {opt.sublabel}
+                </span>
+              )}
+            </div>
           </button>
         );
       })}

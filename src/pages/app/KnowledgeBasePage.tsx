@@ -29,9 +29,14 @@ import { useKbNavStore } from "@/lib/store/kbNavStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   useKnowledgeBases, useCreateKnowledgeBase, useUpdateKnowledgeBase, useDeleteKnowledgeBase,
-  useCoverTemplates, useKBTemplates,
+  useCoverTemplates,
 } from "@/hooks/useKnowledgeBase";
 import { knowledgeBasesApi } from "@/lib/api/knowledgeBases.api";
+import {
+  buildKBPayloadFromTemplate,
+  DEFAULT_KB_STARTER_TEMPLATES,
+  getKBStarterTemplateById,
+} from "@/constants/kbStarterTemplates";
 import { COVER_TEMPLATE_SVG_MAP, COVER_TEMPLATE_PNG_MAP } from "@/components/shared/CoverTemplateSvgs";
 import {
   TIME_OF_DAY_OPTIONS, CAMERA_HINT_OPTIONS, TONE_OPTIONS, COLOR_STYLE_OPTIONS,
@@ -525,6 +530,27 @@ export default function KnowledgeBasePage() {
   const [showDelete, setShowDelete] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    const shouldOpenCreate = searchParams.get("create") === "1";
+    if (!shouldOpenCreate) return;
+
+    if (!canCreateKnowledgeBase) {
+      setKbGateOpen(true);
+      return;
+    }
+
+    const requestedTemplateId = searchParams.get("template");
+    const matchedTemplate = getKBStarterTemplateById(requestedTemplateId);
+
+    setForm((current) => ({
+      ...current,
+      starterTemplateId: matchedTemplate?.id ?? "",
+    }));
+    setCreateStep("details");
+    setShowCreate(true);
+    navigate("/app/knowledge-base", { replace: true });
+  }, [canCreateKnowledgeBase, navigate, searchParams]);
+
   // Structured new-item states
   const [newDua, setNewDua] = useState({ arabic: "", transliteration: "", meaning: "", when: "" });
   const [newVocab, setNewVocab] = useState({ word: "", definition: "", example: "", type: "" });
@@ -538,7 +564,7 @@ export default function KnowledgeBasePage() {
   // Create form — name + universe + optional starter template
   const [form, setForm] = useState({ name: "", universeId: "", starterTemplateId: "" });
   const [createStep, setCreateStep] = useState<"template" | "details">("template");
-  const { data: kbTemplates = [] } = useKBTemplates();
+  const kbTemplates = DEFAULT_KB_STARTER_TEMPLATES;
 
   const updateMutation = useUpdateKnowledgeBase(selectedKB?.id || "");
   const { data: universeChars = [] } = useCharacters((selectedKB as any)?.universeId);
@@ -570,19 +596,11 @@ export default function KnowledgeBasePage() {
 
       // Apply starter template fields if one was selected
       if (form.starterTemplateId) {
-        const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+        const tpl = getKBStarterTemplateById(form.starterTemplateId);
         if (tpl) {
           const filled = await knowledgeBasesApi.update(
             created.id || (created as any)._id,
-            {
-              islamicValues: tpl.islamicValues || [],
-              duas: tpl.duas || [],
-              avoidTopics: tpl.avoidTopics || [],
-              backgroundSettings: tpl.backgroundSettings,
-              coverDesign: tpl.coverDesign,
-              bookFormatting: tpl.bookFormatting,
-              underSixDesign: tpl.underSixDesign,
-            } as any
+            buildKBPayloadFromTemplate(tpl) as any
           );
           setSelectedKB(filled as any);
         } else {
@@ -1533,14 +1551,14 @@ export default function KnowledgeBasePage() {
 
               {/* Template grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {kbTemplates.map((tpl: any) => {
-                  const SvgComp = KB_TEMPLATE_SVG_MAP[tpl._id];
-                  const isSelected = form.starterTemplateId === tpl._id;
+                {kbTemplates.map((tpl) => {
+                  const SvgComp = KB_TEMPLATE_SVG_MAP[tpl.id as keyof typeof KB_TEMPLATE_SVG_MAP];
+                  const isSelected = form.starterTemplateId === tpl.id;
                   return (
                     <button
-                      key={tpl._id}
+                      key={tpl.id}
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, starterTemplateId: tpl._id }))}
+                      onClick={() => setForm(f => ({ ...f, starterTemplateId: tpl.id }))}
                       className={cn(
                         "relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all hover:shadow-md text-center",
                         isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40"
@@ -1548,7 +1566,19 @@ export default function KnowledgeBasePage() {
                     >
                       {/* SVG thumbnail */}
                       <div className="w-20 h-24 rounded-lg overflow-hidden shadow-sm">
-                        {SvgComp ? <SvgComp /> : <div className="w-full h-full bg-muted flex items-center justify-center text-2xl">{tpl.icon}</div>}
+                        {tpl.previewImage ? (
+                          <img
+                            src={tpl.previewImage}
+                            alt={tpl.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : SvgComp ? (
+                          <SvgComp />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] font-semibold px-2">
+                            {tpl.themeLabel}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <p className="text-xs font-semibold leading-tight">{tpl.name}</p>
@@ -1572,10 +1602,10 @@ export default function KnowledgeBasePage() {
 
               {/* Template description preview */}
               {form.starterTemplateId && (() => {
-                const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+                const tpl = getKBStarterTemplateById(form.starterTemplateId);
                 return tpl ? (
                   <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{tpl.icon} {tpl.name}</span> — {tpl.description}
+                    <span className="font-medium text-foreground">{tpl.flavourLabel} � {tpl.name}</span> - {tpl.description}
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {tpl.islamicValues?.slice(0, 3).map((v: string) => (
                         <span key={v} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px]">{v}</span>
@@ -1610,12 +1640,11 @@ export default function KnowledgeBasePage() {
                 <p className="text-xs text-muted-foreground">Characters from this universe will appear in the Char. Voice tab.</p>
               </div>
               {form.starterTemplateId && (() => {
-                const tpl = kbTemplates.find((t: any) => t._id === form.starterTemplateId);
+                const tpl = getKBStarterTemplateById(form.starterTemplateId);
                 return tpl ? (
                   <div className="flex items-center gap-2 text-xs rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-3 py-2">
-                    <span>{tpl.icon}</span>
                     <span className="text-emerald-700 dark:text-emerald-400 font-medium">Template: {tpl.name}</span>
-                    <span className="text-muted-foreground">— will be pre-filled after creation</span>
+                    <span className="text-muted-foreground">- {tpl.flavourLabel}, pre-filled after creation</span>
                   </div>
                 ) : null;
               })()}
@@ -1662,3 +1691,4 @@ export default function KnowledgeBasePage() {
     </>
   );
 }
+

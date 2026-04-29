@@ -1,15 +1,8 @@
 /**
- * DEFAULT_KB_STARTER_TEMPLATES
- *
- * Two normalised starter templates that cover every age group NoorStudio serves.
- * Each template fully populates every KB section so users start with a solid
- * foundation they can edit, not a blank canvas.
- *
- * Image strategy: store generated images at /public/assets/kb-templates/<id>.jpg
- * Set previewImage to null until an image exists — the UI renders a gradient placeholder.
+ * KB starter templates used by the gallery, dashboard, and KB creation flow.
+ * T-54 expands the library to a universal-first taxonomy with Islamic-Forward
+ * as a flagship flavour, plus visible roadmap flavour placeholders.
  */
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
 
 export interface KBDua {
   arabic?: string;
@@ -29,23 +22,28 @@ export interface KBAgeGroupBackground {
   additionalNotes?: string;
 }
 
+export type KBAgeGroup = "under-six" | "middle-grade";
+export type KBTemplateFlavour = "universal" | "islamic-forward";
+export type KBTemplateTheme =
+  | "wholesome-everyday"
+  | "adventure-discovery"
+  | "animals-nature";
+
 export interface KBStarterTemplate {
   id: string;
   name: string;
-  ageGroup: "under-six" | "middle-grade";
+  ageGroup: KBAgeGroup;
   ageRange: string;
+  flavour: KBTemplateFlavour;
+  flavourLabel: string;
+  theme: KBTemplateTheme;
+  themeLabel: string;
   tagline: string;
   description: string;
-  /** Path relative to /public — null until generated */
   previewImage: string | null;
-  /** AI prompt used to generate the preview image (store for regeneration) */
   previewPrompt: string;
-  /** 4 colours that summarise the template's visual identity */
   palette: [string, string, string, string];
-  /** Short feature bullets shown in template cards */
   highlightBadges: string[];
-
-  // ── Full KB data ────────────────────────────────────────────────────────────
   islamicValues: string[];
   duas: KBDua[];
   avoidTopics: string[];
@@ -80,311 +78,579 @@ export interface KBStarterTemplate {
   };
 }
 
-// ─── Template 1 — Under Six ────────────────────────────────────────────────────
+export interface KBTemplateRoadmapFlavour {
+  id: string;
+  label: string;
+  description: string;
+  status: "coming-soon";
+}
 
-const underSix: KBStarterTemplate = {
-  id: "kbt_under_six",
-  name: "Under Six",
-  ageGroup: "under-six",
-  ageRange: "Ages 3–6",
-  tagline: "Safe, bright, and full of barakah",
-  description:
-    "Perfect for picture books and parent-read-aloud stories. Simple faith values, gentle du'as, warm safe scenes, and large-text formatting designed for the very young.",
-  previewImage: "/kb-templates/under-six.png",
-  previewPrompt:
-    "Children's book illustration, warm cosy Islamic home interior, bright morning light streaming through curtained window, young Muslim girl aged 4 wearing soft green dress and cream hijab sitting cross-legged reading a colourful picture book, surrounded by a crescent moon mobile, soft star-shaped cushions, simple Islamic geometric wall art in pastel blue and gold, stylized 3D render style, warm golden hour light, safe and inviting, high saturation, rounded shapes, friendly atmosphere",
-  palette: ["#FFD93D", "#4FC3F7", "#81C784", "#F5A623"],
-  highlightBadges: [
-    "Ages 3–6 picture book",
-    "Parent read-aloud",
-    "Max 12 words / spread",
-    "Simple du'as & values",
-    "Classic Children's cover style",
+const BASE_JUNIOR_BACKGROUND: KBAgeGroupBackground = {
+  tone: "bright, safe, familiar, cheerful",
+  colorStyle: "vibrant, saturated, primary colors with warm accents",
+  lightingStyle: "soft diffused daylight, even illumination, crisp and clear",
+  timeOfDay: "afternoon",
+  cameraHint: "medium",
+  locations: ["bedroom", "garden", "school classroom", "family kitchen", "park"],
+  keyFeatures: [
+    "Rounded soft shapes",
+    "Warm safe lighting",
+    "Clear foreground separation",
+    "Emotion-first storytelling spaces",
   ],
+};
 
-  islamicValues: [
-    "Saying Alhamdulillah with gratitude",
-    "Sharing is a form of sadaqah",
-    "Kindness to animals is rewarded by Allah",
-    "Listening to parents and grandparents",
-    "Saying Bismillah before eating and starting tasks",
-    "Helping others makes Allah happy",
-    "Smiling at others is sadaqah",
-    "Saying Salaam to spread peace",
+const BASE_MIDDLE_GRADE_BACKGROUND: KBAgeGroupBackground = {
+  tone: "cinematic, adventurous, emotionally warm",
+  colorStyle: "rich warm tones, jewel accents, storybook contrast",
+  lightingStyle: "golden hour and soft dusk lighting with layered depth",
+  timeOfDay: "golden-hour",
+  cameraHint: "wide",
+  locations: ["library", "courtyard", "market street", "forest trail", "hilltop"],
+  keyFeatures: [
+    "Three-layer depth",
+    "Clear story movement through space",
+    "Inviting scale for chapter-book scenes",
+    "Texture and atmosphere without clutter",
   ],
+};
 
-  duas: [
-    {
-      arabic: "بِسْمِ اللَّهِ",
-      transliteration: "Bismillah",
-      meaning: "In the name of Allah",
-      context: "Before eating, drinking, or starting activities",
-    },
-    {
-      arabic: "الْحَمْدُ لِلَّهِ",
-      transliteration: "Alhamdulillah",
-      meaning: "All praise is for Allah",
-      context: "Expressing gratitude after meals or blessings",
-    },
-    {
-      arabic: "سُبْحَانَ اللَّهِ",
-      transliteration: "SubhanAllah",
-      meaning: "Glory be to Allah",
-      context: "When seeing something beautiful in nature",
-    },
-    {
-      arabic: "اللَّهُمَّ بَارِكْ لَنَا",
-      transliteration: "Allahumma barik lana",
-      meaning: "O Allah, bless us",
-      context: "Asking for blessings before important moments",
-    },
-  ],
+const BASE_UNDER_SIX_VALUES = [
+  "Saying Alhamdulillah with gratitude",
+  "Sharing is a form of kindness",
+  "Listening to parents and grandparents",
+  "Helping others makes Allah happy",
+  "Saying Salaam to spread peace",
+  "Caring for animals gently",
+];
 
-  avoidTopics: [
-    "Violence or scary content",
-    "Adult relationships or romance",
-    "Death described graphically",
-    "Complex theology or abstract doctrine",
-    "Frightening animals or monsters",
-    "Conflict without resolution",
-  ],
+const BASE_MIDDLE_GRADE_VALUES = [
+  "Sabr (patience) in the face of difficulty",
+  "Tawakkul (trust in Allah) after doing your best",
+  "Honesty even when it is costly",
+  "Courage comes from faith, not fearlessness",
+  "Seeking knowledge is an act of worship",
+  "Speaking up for justice with wisdom",
+];
 
-  backgroundSettings: {
-    junior: {
-      // Exact values that match the visual picker options in KBBackgroundSettings.tsx
-      tone: "bright, safe, familiar, cheerful",
-      colorStyle: "vibrant, saturated, primary colors with warm accents",
-      lightingStyle: "soft diffused daylight, even illumination, crisp and clear",
-      timeOfDay: "afternoon",
-      cameraHint: "medium",
-      locations: [
-        "bedroom",
-        "masjid",
-        "garden",
-        "school classroom",
-        "kitchen",
-      ],
-      keyFeatures: [
-        "Rounded soft shapes",
-        "Warm safe lighting",
-        "Clear foreground separation",
-        "Islamic motifs woven naturally",
-      ],
-    },
-    avoidBackgrounds: [
-      "Dark or shadowy environments",
-      "Crowded complex scenes",
-      "Abstract or confusing backgrounds",
-    ],
-    universalRules:
-      "Every scene must feel handcrafted and safe. Backgrounds should be simple enough that a 3-year-old understands the space immediately.",
+const BASE_UNDER_SIX_DUAS: KBDua[] = [
+  {
+    arabic: "Bismillah",
+    transliteration: "Bismillah",
+    meaning: "In the name of Allah",
+    context: "Before starting an activity",
   },
+  {
+    arabic: "Alhamdulillah",
+    transliteration: "Alhamdulillah",
+    meaning: "All praise is for Allah",
+    context: "After receiving a blessing",
+  },
+  {
+    arabic: "Allahumma barik lana",
+    transliteration: "Allahumma barik lana",
+    meaning: "O Allah, bless us",
+    context: "Before important or joyful moments",
+  },
+];
 
+const BASE_MIDDLE_GRADE_DUAS: KBDua[] = [
+  {
+    transliteration: "Hasbunallahu wa ni'mal wakeel",
+    meaning: "Allah is sufficient for us and He is the best disposer of affairs",
+    context: "When facing something difficult or uncertain",
+  },
+  {
+    transliteration: "Rabbi ishrah li sadri",
+    meaning: "My Lord, expand my chest with ease",
+    context: "Before a challenge or important conversation",
+  },
+  {
+    transliteration: "Allahumma inni as'aluka ath-thabat",
+    meaning: "O Allah, I ask You for steadfastness",
+    context: "Before a moment that requires courage",
+  },
+];
+
+const BASE_UNDER_SIX_AVOID = [
+  "Violence or scary content",
+  "Adult relationships or romance",
+  "Death described graphically",
+  "Complex abstract doctrine",
+  "Frightening monsters or horror tone",
+];
+
+const BASE_MIDDLE_GRADE_AVOID = [
+  "Graphic violence or gore",
+  "Profanity or adult language",
+  "Hopeless or nihilistic endings",
+  "Romance beyond age-appropriate friendship",
+  "Mockery of Islamic practices or scholars",
+];
+
+const COMMON_UNDER_SIX_DESIGN = {
+  maxWordsPerSpread: 12,
+  readingType: "parent-read",
+  pageLayout: "Full-page illustration with short text blocks and clear breathing room",
+  fontStyle: "Rounded, large, high-contrast, dyslexia-friendly",
+};
+
+function createUnderSixTemplate(
+  template: Omit<
+    KBStarterTemplate,
+    | "ageGroup"
+    | "ageRange"
+    | "bookFormatting"
+    | "underSixDesign"
+  > & {
+    bookFormatting?: KBStarterTemplate["bookFormatting"];
+    underSixDesign?: KBStarterTemplate["underSixDesign"];
+  }
+): KBStarterTemplate {
+  return {
+    ageGroup: "under-six",
+    ageRange: "Ages 3-6",
+    bookFormatting: {
+      junior: {
+        wordCount: "500-1,500",
+        pageCount: "24-32 pages",
+        segmentCount: "4-6 segments",
+      },
+      ...template.bookFormatting,
+    },
+    underSixDesign: template.underSixDesign ?? COMMON_UNDER_SIX_DESIGN,
+    ...template,
+  };
+}
+
+function createMiddleGradeTemplate(
+  template: Omit<KBStarterTemplate, "ageGroup" | "ageRange" | "bookFormatting"> & {
+    bookFormatting?: KBStarterTemplate["bookFormatting"];
+  }
+): KBStarterTemplate {
+  return {
+    ageGroup: "middle-grade",
+    ageRange: "Ages 8-14",
+    bookFormatting: {
+      middleGrade: {
+        wordCount: "20,000-35,000",
+        chapterRange: "8-12 chapters",
+        sceneLength: "500-800 words per scene",
+      },
+      ...template.bookFormatting,
+    },
+    ...template,
+  };
+}
+
+const universalUnderSix = createUnderSixTemplate({
+  id: "kbt_universal_under_six",
+  name: "Universal Wholesome - Under Six",
+  flavour: "universal",
+  flavourLabel: "Universal",
+  theme: "wholesome-everyday",
+  themeLabel: "Wholesome Everyday",
+  tagline: "Safe, bright, and full of everyday wonder",
+  description:
+    "A gentle universal picture-book starter for family warmth, friendship, curiosity, and simple values without overt faith-coded framing.",
+  previewImage: "/kb-templates/5.png",
+  previewPrompt:
+    "Children's book banner, cozy family reading corner at sunrise, child age 4 with expressive eyes reading beside a parent, warm gold and teal palette, soft cushions, books, window light, playful shapes, no text, premium storybook illustration, wholesome universal atmosphere",
+  palette: ["#F7C948", "#76C7C0", "#F49D37", "#FFF2CC"],
+  highlightBadges: [
+    "Universal flagship",
+    "Ages 3-6 picture book",
+    "Parent read-aloud",
+    "Everyday family warmth",
+    "Editable after apply",
+  ],
+  islamicValues: BASE_UNDER_SIX_VALUES,
+  duas: BASE_UNDER_SIX_DUAS,
+  avoidTopics: BASE_UNDER_SIX_AVOID,
+  backgroundSettings: {
+    junior: BASE_JUNIOR_BACKGROUND,
+    avoidBackgrounds: ["Dark shadowy rooms", "Chaotic crowded scenes", "Visually confusing layouts"],
+    universalRules:
+      "Scenes should feel warm, understandable, and emotionally safe within a second of viewing.",
+  },
   coverDesign: {
     selectedCoverTemplate: "ct_classic_children",
-    // Exact values matching cover picker options in KBCoverDesign.tsx
-    moodTheme: "Bright, joyful, children's adventure — safe and exciting",
-    colorStyle: "Vibrant warm yellows, oranges, sky blue — high saturation",
-    lightingEffects: "Warm amber golden-hour glow, long shadows, warm sunlight",
-    typographyTitle: "Bold rounded — Fredoka One, Baloo Bhaijaan",
+    moodTheme: "Warm, welcoming, and gentle storybook wonder",
+    colorStyle: "Sunny yellows, soft teals, coral accents, creamy neutrals",
+    lightingEffects: "Morning glow with soft bloom and gentle contrast",
     atmosphere: {
-      junior: "Bright joyful sunshine, warm golden light, safe and exciting",
+      junior: "Cheerful, safe, and emotionally reassuring",
     },
     typography: {
-      junior: "Bold rounded — Fredoka One, Baloo Bhaijaan",
+      junior: "Bold rounded display with soft friendly curves",
+    },
+    islamicMotifs: ["Stars", "Subtle geometric shapes"],
+    characterComposition: [
+      "Main child character in lower center",
+      "Clear focal point and open negative space",
+      "Friendly eye contact or engaged activity",
+    ],
+    avoidCover: ["Photo-realism", "Busy multi-character clutter", "Dark moody grading"],
+    titlePlacement: "top-center",
+  },
+});
+
+const universalMiddleGrade = createMiddleGradeTemplate({
+  id: "kbt_universal_middle_grade",
+  name: "Universal Wholesome - Ages 8-14",
+  flavour: "universal",
+  flavourLabel: "Universal",
+  theme: "wholesome-everyday",
+  themeLabel: "Wholesome Everyday",
+  tagline: "Character-led stories with courage, humour, and heart",
+  description:
+    "A universal chapter-book starter for friendship, discovery, family life, and coming-of-age stories with broad appeal and clean values.",
+  previewImage: "/kb-templates/6.png",
+  previewPrompt:
+    "Cinematic storybook banner, child age 11 standing on a rooftop at sunset looking across a lively old city, glowing sky, adventurous but grounded, warm oranges and deep blue, premium illustrated cover art, no text, universal middle-grade energy",
+  palette: ["#1F3C88", "#F7B267", "#5DA9E9", "#F4845F"],
+  highlightBadges: [
+    "Universal flagship",
+    "Ages 8-14 chapter book",
+    "Friendship and growth",
+    "Adventure-ready pacing",
+    "Editable after apply",
+  ],
+  islamicValues: BASE_MIDDLE_GRADE_VALUES,
+  duas: BASE_MIDDLE_GRADE_DUAS,
+  avoidTopics: BASE_MIDDLE_GRADE_AVOID,
+  backgroundSettings: {
+    middleGrade: BASE_MIDDLE_GRADE_BACKGROUND,
+    avoidBackgrounds: ["Flat empty locations", "Overly modern sterile scenes", "Low-contrast muddy color"],
+    universalRules:
+      "Environments should feel story-rich and inviting, with room for emotional stakes and wonder.",
+  },
+  coverDesign: {
+    selectedCoverTemplate: "ct_epic_cinematic",
+    moodTheme: "Big-hearted middle-grade adventure with emotional warmth",
+    colorStyle: "Sunset oranges, twilight blue, brass highlights, grounded neutrals",
+    lightingEffects: "Layered cinematic dusk with rim light and atmospheric depth",
+    atmosphere: {
+      middleGrade: "Hopeful, expansive, and full of possibility",
+    },
+    typography: {
+      middleGrade: "Bold serif or sturdy display title with strong silhouette",
+    },
+    islamicMotifs: ["Architectural pattern detail", "Skyline rhythm", "Decorative star geometry"],
+    characterComposition: [
+      "Hero figure facing the next challenge",
+      "Landscape occupies upper half",
+      "Readable silhouette with strong mood lighting",
+    ],
+    avoidCover: ["Flat cartoon minimalism", "Grimdark tone", "Cluttered collage"],
+    titlePlacement: "top-center",
+  },
+});
+
+const universalAdventure = createMiddleGradeTemplate({
+  id: "kbt_universal_adventure_discovery",
+  name: "Adventure & Discovery",
+  flavour: "universal",
+  flavourLabel: "Universal",
+  theme: "adventure-discovery",
+  themeLabel: "Adventure & Discovery",
+  tagline: "Journeys, quests, clues, and brave first steps",
+  description:
+    "Built for travel, mysteries, hidden maps, daring rescues, and discovery-driven plotting while staying wholesome and age-appropriate.",
+  previewImage: "/kb-templates/3.png",
+  previewPrompt:
+    "Wide children's book banner, two young explorers with lantern and satchel entering a glowing canyon path at golden hour, map edges, wind, discovery, cinematic illustration, premium middle-grade adventure style, no text",
+  palette: ["#E76F51", "#264653", "#E9C46A", "#2A9D8F"],
+  highlightBadges: [
+    "Universal",
+    "Adventure theme",
+    "Quest-ready pacing",
+    "Maps and mystery hooks",
+    "Ages 8-14",
+  ],
+  islamicValues: [
+    ...BASE_MIDDLE_GRADE_VALUES,
+    "Curiosity can be a path to wisdom",
+    "Teamwork multiplies courage",
+  ],
+  duas: BASE_MIDDLE_GRADE_DUAS,
+  avoidTopics: [...BASE_MIDDLE_GRADE_AVOID, "Meaningless peril without purpose"],
+  backgroundSettings: {
+    middleGrade: {
+      ...BASE_MIDDLE_GRADE_BACKGROUND,
+      locations: ["desert pass", "forest trail", "ruined observatory", "seaside port", "hidden library"],
+      keyFeatures: [
+        "Travel energy and forward motion",
+        "Clear path or destination cue",
+        "Environmental mystery",
+        "Large-scale sense of journey",
+      ],
+    },
+    avoidBackgrounds: ["Static indoor-only repetition", "Confusing action staging"],
+    universalRules:
+      "Every scene should suggest movement, purpose, and an invitation to keep turning pages.",
+  },
+  coverDesign: {
+    selectedCoverTemplate: "ct_epic_cinematic",
+    moodTheme: "Quest energy, discovery, courage, and wonder",
+    colorStyle: "Burnt orange, deep teal, brass, and storm-blue contrast",
+    lightingEffects: "Directional light, glowing horizon, atmospheric dust",
+    atmosphere: {
+      middleGrade: "Restless, brave, and exciting without becoming frightening",
+    },
+    typography: {
+      middleGrade: "Bold high-contrast title with adventurous silhouette",
+    },
+    islamicMotifs: ["Compass-like geometry", "Decorative stars", "Architectural arches in the distance"],
+    characterComposition: [
+      "Characters moving toward a destination",
+      "Foreground prop like map, lantern, or satchel",
+      "Strong horizon line and sense of scale",
+    ],
+    avoidCover: ["Passive standing pose", "Flat white background", "Photographic realism"],
+    titlePlacement: "top-center",
+  },
+});
+
+const universalAnimals = createUnderSixTemplate({
+  id: "kbt_universal_animals_nature",
+  name: "Animals & Nature",
+  flavour: "universal",
+  flavourLabel: "Universal",
+  theme: "animals-nature",
+  themeLabel: "Animals & Nature",
+  tagline: "Tender animal stories, gardens, rain, and outdoor wonder",
+  description:
+    "A universal under-six starter for creature friends, nature walks, gentle discovery, and calm emotional learning through the outdoors.",
+  previewImage: "/kb-templates/4.png",
+  previewPrompt:
+    "Children's book banner, joyful child in a garden with a robin, rabbit, and butterflies, morning dew, soft sunlight through leaves, lush greens, premium illustrated style, no text, safe nature wonder for ages 3 to 6",
+  palette: ["#6FBF73", "#A7D676", "#F4D35E", "#4EA8DE"],
+  highlightBadges: [
+    "Universal",
+    "Animals and nature",
+    "Ages 3-6",
+    "Outdoor wonder",
+    "Gentle learning moments",
+  ],
+  islamicValues: [
+    "Kindness to animals matters",
+    "The natural world invites gratitude",
+    "Wonder can lead to thankfulness",
+    "Gentle behaviour keeps others safe",
+    "Caring for small things builds mercy",
+  ],
+  duas: BASE_UNDER_SIX_DUAS,
+  avoidTopics: [...BASE_UNDER_SIX_AVOID, "Predator-prey fear framing"],
+  backgroundSettings: {
+    junior: {
+      ...BASE_JUNIOR_BACKGROUND,
+      locations: ["garden", "meadow", "orchard", "pond edge", "backyard"],
+      keyFeatures: [
+        "Friendly animal companions",
+        "Fresh greens and floral accents",
+        "Simple readable landscape shapes",
+        "Nature details scaled for young readers",
+      ],
+    },
+    avoidBackgrounds: ["Harsh storms", "Dangerous wilderness"],
+    universalRules:
+      "Nature should feel magical, accessible, and calm enough for repeated bedtime reading.",
+  },
+  coverDesign: {
+    selectedCoverTemplate: "ct_classic_children",
+    moodTheme: "Fresh, joyful, and full of soft natural wonder",
+    colorStyle: "Leafy greens, sky blue, butter yellow, and berry accents",
+    lightingEffects: "Crisp morning light with soft leaf shadows",
+    atmosphere: {
+      junior: "Calm, curious, and gently playful",
+    },
+    typography: {
+      junior: "Rounded playful display with organic rhythm",
+    },
+    islamicMotifs: ["Subtle stars", "Petal-like geometric shapes"],
+    characterComposition: [
+      "Child and animal companion on one focal plane",
+      "Clear nature framing around the title area",
+      "Open space and cheerful expressions",
+    ],
+    avoidCover: ["Dark forest horror cues", "Busy wildlife swarms"],
+    titlePlacement: "top-center",
+  },
+});
+
+const islamicUnderSix = createUnderSixTemplate({
+  id: "kbt_islamic_under_six",
+  name: "Islamic-Forward - Under Six",
+  flavour: "islamic-forward",
+  flavourLabel: "Islamic-Forward",
+  theme: "wholesome-everyday",
+  themeLabel: "Wholesome Everyday",
+  tagline: "Gentle faith habits for the very young",
+  description:
+    "A polished under-six template with explicit Islamic family language, simple du'as, and warm home-and-masjid scenes for early childhood stories.",
+  previewImage: "/kb-templates/1.png",
+  previewPrompt:
+    "Children's book banner, cozy Muslim family home, child in cream hijab reading near star cushions and warm lantern light, pastel teal and honey gold, premium 3D storybook illustration, no text, gentle Islamic-forward under-six mood",
+  palette: ["#D4A373", "#5CA4A9", "#F6E7CB", "#E9C46A"],
+  highlightBadges: [
+    "Islamic-Forward",
+    "Ages 3-6 picture book",
+    "Simple du'as",
+    "Home and masjid scenes",
+    "Faith-labelled template",
+  ],
+  islamicValues: [
+    "Saying Bismillah before eating and starting tasks",
+    "Saying Alhamdulillah with gratitude",
+    "Smiling at others is sadaqah",
+    "Helping others makes Allah happy",
+    "Listening to parents and grandparents",
+    "Saying Salaam to spread peace",
+  ],
+  duas: [
+    ...BASE_UNDER_SIX_DUAS,
+    {
+      transliteration: "SubhanAllah",
+      meaning: "Glory be to Allah",
+      context: "When seeing something beautiful",
+    },
+  ],
+  avoidTopics: BASE_UNDER_SIX_AVOID,
+  backgroundSettings: {
+    junior: {
+      ...BASE_JUNIOR_BACKGROUND,
+      locations: ["bedroom", "family lounge", "masjid", "garden", "kitchen"],
+      keyFeatures: [
+        "Warm Islamic home details",
+        "Simple geometric motifs",
+        "Safe devotional atmosphere",
+        "Clarity for young readers",
+      ],
+    },
+    avoidBackgrounds: ["Heavy ornament overload", "Dark interiors"],
+    universalRules:
+      "Faith details should feel natural, warm, and child-accessible rather than formal or intimidating.",
+  },
+  coverDesign: {
+    selectedCoverTemplate: "ct_classic_children",
+    moodTheme: "Warm family faith, safety, and bright childlike wonder",
+    colorStyle: "Honey gold, sage, sky blue, and cream",
+    lightingEffects: "Lamplight plus soft morning glow",
+    atmosphere: {
+      junior: "Reassuring, spiritually warm, and welcoming",
+    },
+    typography: {
+      junior: "Rounded children’s title style with soft confidence",
     },
     islamicMotifs: ["Crescent moon", "Stars", "Simple geometric star patterns"],
     characterComposition: [
-      "Main character centered lower-half",
-      "Big expressive sky background",
-      "Character making eye contact with reader",
-      "Expression: happy, curious, or welcoming",
+      "Main child centered with a clear devotional or family activity",
+      "Readable props like book, prayer mat, or lantern",
+      "Open title area at top",
     ],
-    avoidCover: [
-      "Dark moody lighting",
-      "Complex multi-character scenes without clear focal point",
-      "Text-heavy design",
-      "Realistic or photo-realistic style",
-    ],
+    avoidCover: ["Photo realism", "Severe or austere mood"],
     titlePlacement: "top-center",
   },
+});
 
-  bookFormatting: {
-    junior: {
-      wordCount: "500–1,500",
-      pageCount: "24–32 pages",
-      segmentCount: "4–6 segments",
-    },
-  },
-
-  underSixDesign: {
-    maxWordsPerSpread: 12,
-    readingType: "parent-read",
-    pageLayout:
-      "Full-page illustration left, short text right — maximum 12 words per spread",
-    fontStyle:
-      "Rounded, large, high-contrast, dyslexia-friendly — minimum 24pt equivalent",
-  },
-};
-
-// ─── Template 2 — Middle Grade (Ages 8–14) ─────────────────────────────────────
-
-const middleGrade: KBStarterTemplate = {
-  id: "kbt_middle_grade",
-  name: "Ages 8–14",
-  ageGroup: "middle-grade",
-  ageRange: "Ages 8–14",
-  tagline: "Epic adventures rooted in faith",
+const islamicMiddleGrade = createMiddleGradeTemplate({
+  id: "kbt_islamic_middle_grade",
+  name: "Islamic-Forward - Ages 8-14",
+  flavour: "islamic-forward",
+  flavourLabel: "Islamic-Forward",
+  theme: "adventure-discovery",
+  themeLabel: "Adventure & Discovery",
+  tagline: "Epic stories where faith is named and tested through action",
   description:
-    "For chapter books and middle-grade adventures with complex characters, moral dilemmas, and faith tested through action. Cinematic storytelling with layered Islamic themes woven naturally.",
-  previewImage: "/kb-templates/middle-grade.png",
+    "An explicitly Islamic middle-grade template for courage, moral dilemmas, seerah-inspired atmospheres, and faith-forward adventure arcs.",
+  previewImage: "/kb-templates/2.png",
   previewPrompt:
-    "Cinematic children's book cover illustration, young Muslim boy aged 11 wearing a white thobe standing on a rocky cliff edge at golden hour, looking out over an ancient Islamic city with tall minarets and a crescent moon in the dramatic twilight sky, warm amber and deep purple atmosphere, volumetric clouds, epic scale, stylized 3D render quality, rim lighting on character, sense of adventure discovery and courage, rich deep colours #1A2456 and #C9A84C",
-  palette: ["#1A2456", "#C9A84C", "#2D6A4F", "#E94560"],
+    "Epic illustrated banner, determined Muslim child on a hill above a lantern-lit city with minarets, crescent moon, twilight sky, amber and indigo palette, premium cinematic middle-grade illustration, no text, Islamic-forward flagship energy",
+  palette: ["#14213D", "#C59D5F", "#7C9A92", "#FCA311"],
   highlightBadges: [
-    "Ages 8–14 chapter book",
-    "20,000–35,000 words",
-    "Cinematic epic cover style",
-    "Faith through action & moral dilemmas",
-    "Rich character voice & faith integration",
+    "Islamic-Forward",
+    "Ages 8-14 chapter book",
+    "Faith through action",
+    "Cinematic adventure tone",
+    "Explicitly labelled flavour",
   ],
-
   islamicValues: [
-    "Sabr (patience) in the face of difficulty",
-    "Tawakkul (trust in Allah) after doing your best",
-    "Honesty even when it is costly",
-    "Courage comes from faith, not fearlessness",
-    "Respecting knowledge and those who teach it",
-    "Speaking up for justice even when it is hard",
+    ...BASE_MIDDLE_GRADE_VALUES,
     "Brotherhood and sisterhood in Islam",
     "Gratitude (shukr) as a daily practice",
-    "Seeking knowledge is an act of worship",
   ],
-
-  duas: [
-    {
-      arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
-      transliteration: "Hasbunallahu wa ni'mal wakeel",
-      meaning: "Allah is sufficient for us and He is the best disposer of affairs",
-      context: "When facing overwhelming odds, fear, or injustice",
-    },
-    {
-      arabic: "رَبِّ اشْرَحْ لِي صَدْرِي",
-      transliteration: "Rabbi ishrah li sadri",
-      meaning: "My Lord, expand my chest with ease",
-      context: "Before a challenge, difficult conversation, or important decision",
-    },
-    {
-      arabic:
-        "لَا إِلَهَ إِلَّا أَنتَ سُبْحَانَكَ إِنِّي كُنتُ مِنَ الظَّالِمِينَ",
-      transliteration:
-        "La ilaha illa anta subhanaka inni kuntu minaz-zalimin",
-      meaning:
-        "There is no god but You, glory be to You — I was among the wrongdoers",
-      context: "When the character realises they made a serious mistake",
-    },
-    {
-      arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الثَّبَاتَ",
-      transliteration: "Allahumma inni as'aluka ath-thabat",
-      meaning: "O Allah, I ask You for steadfastness",
-      context: "Before a moment that requires courage and standing firm",
-    },
-  ],
-
-  avoidTopics: [
-    "Graphic violence or gore",
-    "Romance beyond age-appropriate friendship",
-    "Mockery of Islamic practices or scholars",
-    "Hopeless or nihilistic endings",
-    "Stereotyping of Muslims or other groups",
-    "Profanity or adult language",
-  ],
-
+  duas: BASE_MIDDLE_GRADE_DUAS,
+  avoidTopics: BASE_MIDDLE_GRADE_AVOID,
   backgroundSettings: {
     middleGrade: {
-      // Exact values that match the visual picker options in KBBackgroundSettings.tsx
-      tone: "cinematic, dramatic, adventurous with emotional warmth",
-      colorStyle: "rich warm tones, oranges, reds, ambers and burnt sienna",
-      lightingStyle: "golden hour warm light, long shadows, amber and copper tones",
-      timeOfDay: "golden-hour",
-      cameraHint: "wide",
-      locations: [
-        "masjid",
-        "desert dunes",
-        "forest",
-        "market souk",
-        "library",
-        "snowy mountain",
-      ],
+      ...BASE_MIDDLE_GRADE_BACKGROUND,
+      locations: ["masjid courtyard", "desert dunes", "mountain path", "historic market", "library"],
       keyFeatures: [
-        "Three-layer depth (foreground, mid, background)",
-        "Islamic architectural detail in environment",
-        "Epic scale and sense of journey",
-        "Emotional lighting that matches story tension",
+        "Islamic architectural detail in the environment",
+        "Epic scale with emotional warmth",
+        "History-inflected atmosphere",
+        "Faith-rich visual cues",
       ],
     },
-    avoidBackgrounds: [
-      "Flat or plain backgrounds",
-      "Modern Western urban environments without Islamic context",
-      "Cartoonishly simple scenes that undermine the epic tone",
-    ],
+    avoidBackgrounds: ["Context-free modern generic cityscapes", "Flattened low-stakes scenery"],
     universalRules:
-      "Every scene must have a sense of history, faith, and adventure. The environment should feel like a character in the story.",
+      "The world should feel like a living companion to the story’s faith, stakes, and sense of mission.",
   },
-
   coverDesign: {
     selectedCoverTemplate: "ct_epic_cinematic",
-    // Exact values matching cover picker options in KBCoverDesign.tsx
-    moodTheme: "Epic, dramatic, cinematic fantasy adventure",
-    colorStyle: "Dark midnight blue and deep purple with red accent glow",
-    lightingEffects: "Dramatic rim lighting, volumetric fog, cinematic purple dusk sky",
-    typographyTitle: "Bold condensed serif — Cinzel, Trajan, Bebas Neue",
+    moodTheme: "Faith-forward courage, discovery, and moral clarity",
+    colorStyle: "Midnight blue, brass gold, ember orange, and sage accents",
+    lightingEffects: "Cinematic twilight, rim lighting, and subtle atmospheric haze",
     atmosphere: {
-      middleGrade:
-        "Cinematic dramatic lighting, epic scale, sense of adventure and faith-driven discovery",
+      middleGrade: "Deep, heroic, and spiritually grounded",
     },
     typography: {
-      middleGrade: "Bold condensed serif — Cinzel, Trajan, Bebas Neue",
+      middleGrade: "Bold serif display with classic adventure authority",
     },
-    islamicMotifs: [
-      "Mosque silhouette against dramatic sky",
-      "Islamic geometric pattern in architecture or ground",
-      "Crescent moon in sky",
-    ],
+    islamicMotifs: ["Mosque silhouette", "Crescent moon", "Islamic geometry in architecture"],
     characterComposition: [
-      "Main character in dynamic pose — lower center",
-      "Character slightly turned, looking toward horizon or challenge",
-      "Expression shows determination and quiet faith",
-      "Epic landscape dominates the upper 50% of cover",
+      "Hero turned toward a challenge or destination",
+      "Large-scale skyline or landscape",
+      "Determined expression with quiet faith",
     ],
-    avoidCover: [
-      "Bright cheery children's colours",
-      "Flat 2D illustration style",
-      "Static front-facing character pose",
-      "Cluttered busy composition",
-    ],
+    avoidCover: ["Childish pastel treatment", "Edgy grimdark styling", "Crowded collage layout"],
     titlePlacement: "top-center",
   },
-
-  bookFormatting: {
-    middleGrade: {
-      wordCount: "20,000–35,000",
-      chapterRange: "8–12 chapters",
-      sceneLength: "500–800 words per scene",
-    },
-  },
-};
-
-// ─── Export ────────────────────────────────────────────────────────────────────
+});
 
 export const DEFAULT_KB_STARTER_TEMPLATES: KBStarterTemplate[] = [
-  underSix,
-  middleGrade,
+  universalUnderSix,
+  universalMiddleGrade,
+  universalAdventure,
+  universalAnimals,
+  islamicUnderSix,
+  islamicMiddleGrade,
 ];
 
-export type KBStarterTemplateId = "kbt_under_six" | "kbt_middle_grade";
+export const KB_TEMPLATE_ROADMAP_FLAVOURS: KBTemplateRoadmapFlavour[] = [
+  {
+    id: "roadmap_christian_forward",
+    label: "Christian-Forward",
+    description: "Parallel flavour family for values-led Christian storytelling.",
+    status: "coming-soon",
+  },
+  {
+    id: "roadmap_jewish_forward",
+    label: "Jewish-Forward",
+    description: "Parallel flavour family for Jewish values and heritage stories.",
+    status: "coming-soon",
+  },
+  {
+    id: "roadmap_secular_values_led",
+    label: "Secular-Values-Led",
+    description: "Parallel flavour family for broad moral themes without faith framing.",
+    status: "coming-soon",
+  },
+];
 
-/** Build the KB update payload from a starter template */
+export type KBStarterTemplateId = (typeof DEFAULT_KB_STARTER_TEMPLATES)[number]["id"];
+
 export function buildKBPayloadFromTemplate(
   tpl: KBStarterTemplate
 ): Record<string, unknown> {
@@ -397,4 +663,8 @@ export function buildKBPayloadFromTemplate(
     bookFormatting: tpl.bookFormatting,
     ...(tpl.underSixDesign ? { underSixDesign: tpl.underSixDesign } : {}),
   };
+}
+
+export function getKBStarterTemplateById(id: string | null | undefined) {
+  return DEFAULT_KB_STARTER_TEMPLATES.find((tpl) => tpl.id === id);
 }
