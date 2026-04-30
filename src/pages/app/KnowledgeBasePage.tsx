@@ -537,6 +537,8 @@ export default function KnowledgeBasePage() {
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
   const [newItem, setNewItem] = useState("");
   const [newValueHow, setNewValueHow] = useState("");
+  const [newAvoidTopic, setNewAvoidTopic] = useState("");
+  const [newAvoidSeverity, setNewAvoidSeverity] = useState<AvoidSeverity>("all");
   const [showDNAModal, setShowDNAModal] = useState(false);
   const [dnaModalPanel, setDnaModalPanel] = useState(0);
   useEffect(() => {
@@ -1135,17 +1137,155 @@ export default function KnowledgeBasePage() {
       }
 
       case "avoidTopics": {
-        const items = getArr<string>("avoidTopics");
+        const rawItems = getArr<any>("avoidTopics");
+        // Normalise: legacy strings become objects; new items are already objects
+        const avoidItems: AvoidRule[] = rawItems.map((item: any) =>
+          typeof item === "string"
+            ? { topic: item, severity: "all" as AvoidSeverity, category: "General" }
+            : item
+        );
+        const alreadyAdded = new Set(avoidItems.map(r => r.topic));
+
+        const removeAvoid = (idx: number) =>
+          save({ avoidTopics: avoidItems.filter((_, j) => j !== idx) });
+
+        const addFromStarter = (rule: AvoidRule) => {
+          if (alreadyAdded.has(rule.topic)) return;
+          save({ avoidTopics: [...avoidItems, rule] });
+        };
+
+        const addCustom = () => {
+          if (!newAvoidTopic.trim()) return;
+          save({ avoidTopics: [...avoidItems, { topic: newAvoidTopic.trim(), severity: newAvoidSeverity, category: "Custom" }] });
+          setNewAvoidTopic("");
+          setNewAvoidSeverity("all");
+        };
+
+        const groupedStarter: Record<string, AvoidRule[]> = {};
+        AVOID_STARTER.forEach(r => {
+          if (!groupedStarter[r.category]) groupedStarter[r.category] = [];
+          groupedStarter[r.category].push(r);
+        });
+
         return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Topics the AI must never include in text or illustrations across all stages.</p>
-            <ScrollArea className="h-52"><div className="space-y-2">
-              {items.map((v, i) => <ItemRow key={i} text={v} onRemove={() => save({ avoidTopics: items.filter((_, j) => j !== i) })} />)}
-              {!items.length && <p className="text-sm text-muted-foreground text-center py-6">No restrictions yet.</p>}
-            </div></ScrollArea>
-            <AddRow placeholder="e.g. Preachy narration, mockery of others, slang toward faith..." value={newItem} onChange={setNewItem}
-              onAdd={() => { if (!newItem.trim()) return; save({ avoidTopics: [...items, newItem.trim()] }); setNewItem(""); }}
-              loading={updateMutation.isPending} />
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Topics the AI must never include in text or illustrations. Add from the starter checklist or define your own.
+            </p>
+
+            {/* Starter checklist by category */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <SectionLabel>Starter Checklist — click to add</SectionLabel>
+                <span className="text-[11px] text-muted-foreground">
+                  {AVOID_STARTER.filter(r => alreadyAdded.has(r.topic)).length}/{AVOID_STARTER.length} added
+                </span>
+              </div>
+              {Object.entries(groupedStarter).map(([category, rules]) => (
+                <div key={category} className="space-y-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{category}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {rules.map(rule => {
+                      const added = alreadyAdded.has(rule.topic);
+                      const sev = SEVERITY_LABELS[rule.severity];
+                      return (
+                        <button
+                          key={rule.topic}
+                          type="button"
+                          disabled={added || updateMutation.isPending}
+                          onClick={() => addFromStarter(rule)}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all",
+                            added
+                              ? "border-emerald-300 bg-emerald-50/60 text-emerald-700 cursor-default opacity-70 dark:bg-emerald-950/20"
+                              : "border-border hover:border-red-300 hover:bg-red-50/40 cursor-pointer"
+                          )}
+                        >
+                          {added && <span className="text-emerald-500">✓</span>}
+                          <span className="leading-tight">{rule.topic}</span>
+                          <span className={cn("rounded-full px-1.5 py-px text-[9px] font-semibold ml-0.5", sev.color)}>
+                            {sev.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Added rules list */}
+            {avoidItems.length > 0 && (
+              <div className="space-y-2">
+                <SectionLabel>Your Rules ({avoidItems.length})</SectionLabel>
+                <div className="space-y-1.5">
+                  {avoidItems.map((rule, i) => {
+                    const sev = SEVERITY_LABELS[rule.severity as AvoidSeverity] ?? SEVERITY_LABELS["all"];
+                    return (
+                      <div key={i} className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50/40 dark:bg-red-950/10 px-3 py-2 group">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground leading-snug">{rule.topic}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={cn("rounded-full px-1.5 py-px text-[9px] font-semibold", sev.color)}>
+                              {sev.label}
+                            </span>
+                            {rule.category && rule.category !== "Custom" && (
+                              <span className="text-[9px] text-muted-foreground">{rule.category}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeAvoid(i)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {!avoidItems.length && (
+              <p className="text-sm text-muted-foreground text-center py-4">No restrictions added yet.</p>
+            )}
+
+            {/* Custom add form */}
+            <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
+              <SectionLabel>Add Custom Rule</SectionLabel>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Severity — who should this apply to?</Label>
+                <div className="flex gap-2">
+                  {(Object.entries(SEVERITY_LABELS) as [AvoidSeverity, { label: string; color: string }][]).map(([key, meta]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setNewAvoidSeverity(key)}
+                      className={cn(
+                        "flex-1 rounded-lg border-2 px-2 py-1.5 text-xs font-semibold transition-all",
+                        newAvoidSeverity === key
+                          ? cn("border-red-400", meta.color)
+                          : "border-border hover:border-red-300 bg-background"
+                      )}
+                    >
+                      {meta.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Preachy, lecture-style narration..."
+                  value={newAvoidTopic}
+                  onChange={e => setNewAvoidTopic(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+                  className="flex-1 text-sm"
+                />
+                <Button variant="outline" size="sm" disabled={!newAvoidTopic.trim() || updateMutation.isPending} onClick={addCustom}>
+                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                  Add
+                </Button>
+              </div>
+            </div>
           </div>
         );
       }

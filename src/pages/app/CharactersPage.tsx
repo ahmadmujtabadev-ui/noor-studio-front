@@ -197,7 +197,8 @@ export default function CharactersPage() {
             const approvedPoses = (char.approvedPoseKeys || []).length;
             const isPublished = !!char.publishedAsTemplateId || localPublished.has(charId);
             const isPublishing = publishingId === charId;
-            const canPublish = !!char.imageUrl;
+            const previewImage = (char as any).masterReferenceUrl || char.imageUrl;
+            const canPublish = !!previewImage;
 
             return (
               <div
@@ -206,9 +207,9 @@ export default function CharactersPage() {
                 onClick={() => navigate(`/app/characters/${charId}`)}
               >
                 <div className="aspect-square bg-gradient-subtle relative overflow-hidden">
-                  {char.imageUrl ? (
+                  {previewImage ? (
                     <img
-                      src={char.imageUrl}
+                      src={previewImage}
                       alt={char.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

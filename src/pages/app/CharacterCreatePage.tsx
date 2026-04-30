@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { characterTemplatesApi } from "@/lib/api/characterTemplates.api";
@@ -370,6 +370,64 @@ function ageLabel(age: number): string {
 }
 const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Mentor", "Sidekick", "Narrator", "Comic Relief", "Other", "Main"];
 
+// ─── Auto-suggest face details from age + face shape ─────────────────────────
+function suggestFaceDetails(ageLook: string, faceShape: string, gender: string) {
+  const a = ageLook.toLowerCase();
+  const isToddler    = /toddler|2-4/.test(a);
+  const isYoungChild = /5-7|young child/.test(a);
+  const isChild      = /8-12|^child/.test(a);
+  const isTeen       = /teen|13/.test(a);
+  const isAdult      = /adult/.test(a);
+  const isElder      = /elder|senior|elderly/.test(a);
+  const isGirl       = gender === "girl";
+
+  // ── Base recommendations by age ──
+  let eyebrow = "natural-full";
+  let nose    = "rounded-soft";
+  let cheek   = "soft-round";
+
+  if (isToddler || isYoungChild) {
+    eyebrow = "soft-rounded";
+    nose    = "button";
+    cheek   = "chubby-rosy";
+  } else if (isChild) {
+    eyebrow = "soft-rounded";
+    nose    = "button";
+    cheek   = "soft-round";
+  } else if (isTeen) {
+    eyebrow = isGirl ? "thick-arched" : "natural-full";
+    nose    = "straight-narrow";
+    cheek   = "soft-round";
+  } else if (isAdult) {
+    eyebrow = isGirl ? "thick-arched" : "natural-full";
+    nose    = "straight-narrow";
+    cheek   = isGirl ? "high-defined" : "flat-smooth";
+  } else if (isElder) {
+    eyebrow = isGirl ? "thin-straight" : "bushy-straight";
+    nose    = "broad-flat";
+    cheek   = "flat-smooth";
+  }
+
+  // ── Adjust by face shape ──
+  const shape = faceShape.toLowerCase();
+  if (shape.includes("round") && !isElder && !isAdult) {
+    cheek = "chubby-rosy";
+    if (isToddler || isYoungChild || isChild) nose = "button";
+  } else if (shape.includes("heart")) {
+    if (!isToddler && !isYoungChild) {
+      eyebrow = "thick-arched";
+      cheek   = "high-defined";
+    }
+  } else if (shape.includes("square")) {
+    if (!isToddler && !isYoungChild) eyebrow = "bushy-straight";
+    cheek = isElder || isAdult ? "flat-smooth" : cheek;
+  } else if (shape.includes("oval")) {
+    if (!isToddler && !isYoungChild && !isChild) nose = "straight-narrow";
+  }
+
+  return { eyebrow, nose, cheek };
+}
+
 const AGE_LOOK_CHIPS = [
   { label: "Toddler (2–4)", value: "2-4 year old toddler" },
   { label: "Young Child (5–7)", value: "5-7 year old young child" },
@@ -612,6 +670,24 @@ export default function CharacterCreatePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Auto-suggest eyebrow / nose / cheek from age + face shape ───────────
+  // Track the last values we auto-filled so we don't override manual changes
+  const lastSuggestion = useRef({ eyebrow: "", nose: "", cheek: "" });
+  useEffect(() => {
+    if (!form.ageLook || !form.faceShape) return;
+    const suggested = suggestFaceDetails(form.ageLook, form.faceShape, form.gender);
+    const prev = lastSuggestion.current;
+    setForm((f) => ({
+      ...f,
+      // Only overwrite a field if it is still empty OR still matches our last auto-suggestion
+      eyebrowStyle: f.eyebrowStyle === "" || f.eyebrowStyle === prev.eyebrow ? suggested.eyebrow : f.eyebrowStyle,
+      noseStyle:    f.noseStyle    === "" || f.noseStyle    === prev.nose    ? suggested.nose    : f.noseStyle,
+      cheekStyle:   f.cheekStyle   === "" || f.cheekStyle   === prev.cheek   ? suggested.cheek   : f.cheekStyle,
+    }));
+    lastSuggestion.current = suggested;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.ageLook, form.faceShape, form.gender]);
 
 
   const applyValuesMode = (mode: ValuesMode) => {
@@ -1427,7 +1503,11 @@ export default function CharacterCreatePage() {
                   <div className="rounded-xl border border-border overflow-hidden">
                     <button type="button" onClick={() => setShowAdvanced((v) => !v)}
                       className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground/80 hover:bg-muted/30 transition-colors">
-                      <span>🔬 Advanced Details <span className="font-normal text-muted-foreground">(eyebrows, nose, cheeks, facial hair)</span></span>
+                      <span>🔬 Advanced Details <span className="font-normal text-muted-foreground">(eyebrows, nose, cheeks, facial hair)</span>
+                        {(form.eyebrowStyle || form.noseStyle || form.cheekStyle) && form.ageLook && form.faceShape && (
+                          <span className="ml-2 text-[10px] font-medium text-sky-600 bg-sky-50 dark:bg-sky-950/30 px-1.5 py-0.5 rounded-full">✦ Auto-suggested</span>
+                        )}
+                      </span>
                       {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                     {showAdvanced && (
@@ -1499,20 +1579,17 @@ export default function CharacterCreatePage() {
                     {/* GIRL — HIJAB */}
                     {!isOther && form.gender === "girl" && form.wearHijab && (
                       <>
-                        <VisualPicker columns={4} iconSize="md" value={form.hijabStyle} onChange={(v) => updateForm("hijabStyle", v)}
+                        <VisualPicker columns={4} iconSize="xl" value={form.hijabStyle} onChange={(v) => updateForm("hijabStyle", v)}
                           options={[
-                            { value: "simple-white",   label: "White",        icon: <HijabSvg color="white" /> },
-                            { value: "simple-black",   label: "Black",        icon: <HijabSvg color="black" /> },
-                            { value: "simple-beige",   label: "Beige",        icon: <HijabSvg color="beige" /> },
-                            { value: "blue-solid",     label: "Blue",         icon: <HijabSvg color="blue" /> },
-                            { value: "pink-solid",     label: "Pink",         icon: <HijabSvg color="pink" /> },
-                            { value: "purple-solid",   label: "Purple",       icon: <HijabSvg color="purple" /> },
-                            { value: "al-amira-white", label: "Al-Amira",     icon: <HijabSvg color="white" /> },
-                            { value: "al-amira-black", label: "Al-Amira Blk", icon: <HijabSvg color="black" /> },
-                            { value: "shayla-drape",   label: "Shayla",       icon: <HijabSvg color="teal" /> },
-                            { value: "turban-style",   label: "Turban",       icon: <HijabSvg color="maroon" /> },
-                            { value: "khimar-long",    label: "Khimar",       icon: <HijabSvg color="navy" /> },
-                            { value: "pashmina-wrap",  label: "Pashmina",     icon: <HijabSvg color="gray" /> },
+                            { value: "simple-white",       label: "White",        icon: <img src="/hijab/white.png"        alt="White"        className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "simple-black",       label: "Black",        icon: <img src="/hijab/black.png"        alt="Black"        className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "blue-solid",         label: "Blue",         icon: <img src="/hijab/blue.png"         alt="Blue"         className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "dark-blue-solid",    label: "Dark Blue",    icon: <img src="/hijab/dark%20blue.png"  alt="Dark Blue"    className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "green-solid",        label: "Green",        icon: <img src="/hijab/green.png"        alt="Green"        className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "light-yellow-solid", label: "Light Yellow", icon: <img src="/hijab/light%20yellow.png" alt="Light Yellow" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "pink-solid",         label: "Pink",         icon: <img src="/hijab/pink.png"         alt="Pink"         className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "purple-solid",       label: "Purple",       icon: <img src="/hijab/purple.png"       alt="Purple"       className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "red-solid",          label: "Red",          icon: <img src="/hijab/red.png"          alt="Red"          className="w-full h-full object-contain" draggable={false} /> },
                           ]}
                         />
                         <Input placeholder="Hijab colour or custom description…" value={form.hijabColor}
@@ -1874,15 +1951,20 @@ export default function CharacterCreatePage() {
                   {isOther ? (
                     <>
                       <div className="space-y-2">
-                        <Label className="text-base font-bold">🐾 Size & Build</Label>
-                        <Input placeholder="e.g. small and round, large and fluffy, tiny fairy-sized, horse-sized..."
-                          value={form.bodyBuild} onChange={(e) => updateForm("bodyBuild", e.target.value)} />
-                        <p className="text-xs text-muted-foreground">Describe the creature's physical size and shape.</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-base font-bold">📐 Size Feel</Label>
-                        <Input placeholder="e.g. knee-height, towering, tiny enough to fit in a palm..."
-                          value={form.heightFeel} onChange={(e) => updateForm("heightFeel", e.target.value)} />
+                        <Label className="text-base font-bold">🐾 Body Proportions</Label>
+                        <VisualPicker columns={5} iconSize="xl" accent="blue" allowDeselect value={form.bodyBuild}
+                          onChange={(v) => updateForm("bodyBuild", v)}
+                          options={[
+                            { value: "slim animal body",     label: "Slim",     icon: <img src="/animal-body/slim.png"     alt="Slim"     className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "average animal body",  label: "Average",  icon: <img src="/animal-body/average.png"  alt="Average"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "chubby animal body",   label: "Chubby",   icon: <img src="/animal-body/chubby.png"   alt="Chubby"   className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "athletic animal body", label: "Athletic", icon: <img src="/animal-body/athletic.png" alt="Athletic"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "tall animal body",     label: "Tall",     icon: <img src="/animal-body/tall.png"     alt="Tall"     className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input placeholder="Or describe a custom build (e.g. tiny fairy-sized, horse-sized, large and fluffy)…"
+                          value={["slim animal body","average animal body","chubby animal body","athletic animal body","tall animal body"].includes(form.bodyBuild) ? "" : form.bodyBuild}
+                          onChange={(e) => updateForm("bodyBuild", e.target.value)} className="mt-1" />
                       </div>
                     </>
                   ) : (
