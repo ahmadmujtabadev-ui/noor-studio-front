@@ -1,9 +1,11 @@
 // steps/StoryStep.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles, RefreshCw, ArrowRight, Loader2, BookOpen,
   Globe, Library, AlertCircle, ChevronDown, ChevronUp, ExternalLink,
+  Lightbulb, X,
 } from "lucide-react";
+import { reviewApi } from "@/lib/api/review.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +21,33 @@ import { KBStrengthScore } from "@/components/kb/KBStrengthScore";
 const AGE_RANGES = [
   { value: "1-6",  label: "1-6 years (Picture book)" },
   { value: "8-14", label: "8-14 years (Chapter book)" },
+];
+
+const STORY_EXAMPLES = [
+  "A young boy named Bilal discovers that saying Alhamdulillah for small things — a sunny day, warm bread, a friend's smile — fills his heart with joy, even on difficult days.",
+  "Fatima is nervous about her first day at a new school, but her grandmother reminds her to say Bismillah before every new beginning. She learns that trust in Allah calms every worry.",
+  "When Omar finds a lost kitten, he must decide what to do. His journey to find its owner teaches him about honesty, kindness, and caring for Allah's creatures.",
+  "Layla wants the biggest toy at the market but has no money. Her father shows her that true happiness comes from giving, not having — and together they buy food for a neighbour in need.",
+];
+
+const TONE_OPTIONS = [
+  { value: "more playful",  label: "More playful" },
+  { value: "more gentle",   label: "More gentle" },
+  { value: "more dramatic", label: "More dramatic" },
+  { value: "more poetic",   label: "More poetic" },
+];
+
+const LENGTH_OPTIONS = [
+  { value: "make it shorter", label: "Make it shorter" },
+  { value: "expand it",       label: "Expand it" },
+  { value: "keep the length", label: "Keep the length" },
+];
+
+const FOCUS_OPTIONS = [
+  { value: "stronger Islamic moment",  label: "Stronger Islamic moment" },
+  { value: "more dialogue",            label: "More dialogue" },
+  { value: "stronger ending",          label: "Stronger ending" },
+  { value: "simpler vocabulary",       label: "Simpler vocabulary" },
 ];
 
 interface StoryStepProps {
@@ -96,9 +125,107 @@ function KBImpactPanel({ kb }: { kb: any }) {
   );
 }
 
+// Structured feedback panel used for full-story and per-paragraph regen
+interface FeedbackPanelProps {
+  onRegen: (opts: { tone?: string; focus?: string }) => void;
+  onClose: () => void;
+  loading: boolean;
+  label?: string;
+}
+function FeedbackPanel({ onRegen, onClose, loading, label = "Regenerate" }: FeedbackPanelProps) {
+  const [tone, setTone]   = useState("");
+  const [focus, setFocus] = useState("");
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-lg p-4 space-y-3 w-72">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">Regenerate options</p>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Tone</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {TONE_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => setTone(t => t === o.value ? "" : o.value)}
+              className={cn(
+                "text-[11px] font-medium px-2 py-1 rounded-full border transition-colors",
+                tone === o.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border hover:border-primary/40 text-muted-foreground"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Length</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {LENGTH_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => setFocus(f => f === o.value ? "" : o.value)}
+              className={cn(
+                "text-[11px] font-medium px-2 py-1 rounded-full border transition-colors",
+                focus === o.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border hover:border-primary/40 text-muted-foreground"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Focus</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {FOCUS_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              onClick={() => setFocus(f => f === o.value ? "" : o.value)}
+              className={cn(
+                "text-[11px] font-medium px-2 py-1 rounded-full border transition-colors",
+                focus === o.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border hover:border-primary/40 text-muted-foreground"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Button
+        size="sm"
+        className="w-full gap-1.5"
+        disabled={loading}
+        onClick={() => onRegen({ tone: tone || undefined, focus: focus || undefined })}
+      >
+        {loading
+          ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Regenerating…</>
+          : <><RefreshCw className="w-3.5 h-3.5" />{label}</>
+        }
+      </Button>
+    </div>
+  );
+}
+
 export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
-  const [regenerating, setRegenerating] = useState(false);
+  const [showExamples, setShowExamples]   = useState(false);
+  const [showFeedback, setShowFeedback]   = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  const [paraFeedbackIdx, setParaFeedbackIdx] = useState<number | null>(null);
+  const [regeningPara, setRegeningPara]   = useState<number | null>(null);
 
   const { data: allKBs = [] } = useKnowledgeBases(bb.universeId || undefined);
   const kbsForUniverse = bb.universeId
@@ -114,24 +241,85 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
     ? kbsForUniverse.find((kb: any) => (kb.id || kb._id) === bb.knowledgeBaseId)
     : null;
 
-  // Validation
+  // Auto-sync age range from selected universe
+  useEffect(() => {
+    if (!bb.universeId) return;
+    const u = universes.find((u) => (u.id || u._id) === bb.universeId) as any;
+    if (!u?.ageRange) return;
+    const raw = String(u.ageRange);
+    // Map universe ageRange to AGE_RANGES values
+    const matched = AGE_RANGES.find((r) => raw.startsWith(r.value) || r.value.startsWith(raw.split("-")[0]));
+    if (matched) bb.setAgeRange(matched.value);
+  }, [bb.universeId]);
+
   const missingUniverse = !bb.universeId;
-  const missingKB = !bb.knowledgeBaseId;
-  const canGenerate = !missingUniverse && !missingKB && !!bb.storyIdea.trim();
+  const missingKB       = !bb.knowledgeBaseId;
+  const canGenerate     = !missingUniverse && !missingKB && !!bb.storyIdea.trim();
 
   const handleGenerate = () => {
-    if (!canGenerate) {
-      setShowValidation(true);
-      return;
-    }
+    if (!canGenerate) { setShowValidation(true); return; }
     setShowValidation(false);
     bb.generateStory();
   };
 
-  const handleRegen = async () => {
-    setRegenerating(true);
-    await bb.regenerateStory();
-    setRegenerating(false);
+  const isRegen = bb.loadingKey === "story-regen";
+
+  const handleFullRegen = async (opts: { tone?: string; focus?: string }) => {
+    setShowFeedback(false);
+    await bb.regenerateStory(opts);
+  };
+
+  // Smart paragraph split: double-newline → single-newline → sentence groups
+  const parseParagraphs = (text: string): string[] => {
+    if (!text?.trim()) return [];
+
+    // Try double newline first
+    let parts = text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    if (parts.length > 1) return parts;
+
+    // Try single newline
+    parts = text.split(/\n/).map(p => p.trim()).filter(Boolean);
+    if (parts.length > 1) return parts;
+
+    // Fallback: group every 3 sentences into a paragraph
+    const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) || [text];
+    const groups: string[] = [];
+    for (let i = 0; i < sentences.length; i += 3) {
+      groups.push(sentences.slice(i, i + 3).join(" ").trim());
+    }
+    return groups.filter(Boolean);
+  };
+
+  const paragraphs: string[] = parseParagraphs(current?.storyText ?? "");
+
+  const handleParaRegen = async (idx: number, opts: { tone?: string; focus?: string }) => {
+    if (!bb.projectId) return;
+    setRegeningPara(idx);
+    setParaFeedbackIdx(null);
+    try {
+      const result = await reviewApi.rewriteParagraph(bb.projectId, {
+        paragraphText: paragraphs[idx],
+        prevParagraph: paragraphs[idx - 1] ?? "",
+        nextParagraph: paragraphs[idx + 1] ?? "",
+        tone: opts.tone,
+        focus: opts.focus,
+      });
+      if (result.rewrittenParagraph) {
+        const updated = [...paragraphs];
+        updated[idx] = result.rewrittenParagraph;
+        bb.updateStoryCurrent({ storyText: updated.join("\n\n") });
+      }
+    } catch (e) {
+      // silently fall back — user still has the original text
+    } finally {
+      setRegeningPara(null);
+    }
+  };
+
+  const updateParagraph = (idx: number, newText: string) => {
+    const updated = [...paragraphs];
+    updated[idx] = newText;
+    bb.updateStoryCurrent({ storyText: updated.join("\n\n") });
   };
 
   return (
@@ -150,9 +338,8 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
           </div>
         </div>
 
-        {/* Universe + KB — required, shown prominently first */}
+        {/* Universe + KB */}
         <div className="grid sm:grid-cols-2 gap-4">
-          {/* Universe — REQUIRED */}
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-muted-foreground" />
@@ -161,10 +348,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             </Label>
             <Select
               value={bb.universeId || ""}
-              onValueChange={(v) => {
-                bb.setUniverseId(v);
-                bb.setKnowledgeBaseId("");
-              }}
+              onValueChange={(v) => { bb.setUniverseId(v); bb.setKnowledgeBaseId(""); }}
               disabled={hasStory}
             >
               <SelectTrigger className={cn(
@@ -186,8 +370,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             </Select>
             {showValidation && missingUniverse && (
               <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Universe is required to shape illustrations and characters
+                <AlertCircle className="w-3 h-3" />Universe is required
               </p>
             )}
             {bb.universeId && (
@@ -201,7 +384,6 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             )}
           </div>
 
-          {/* Knowledge Base — REQUIRED */}
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <Library className="w-3.5 h-3.5 text-muted-foreground" />
@@ -235,13 +417,10 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
             </Select>
             {showValidation && missingKB && !missingUniverse && (
               <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Knowledge Base injects story rules, illustration styles & faith guidance
+                <AlertCircle className="w-3 h-3" />Knowledge Base is required
               </p>
             )}
-            {bb.knowledgeBaseId && selectedKBData && (
-              <KBImpactPanel kb={selectedKBData} />
-            )}
+            {bb.knowledgeBaseId && selectedKBData && <KBImpactPanel kb={selectedKBData} />}
             {bb.knowledgeBaseId && !selectedKBData && (
               <p className="text-xs text-emerald-600 font-medium">✓ KB rules applied to all AI generations</p>
             )}
@@ -255,20 +434,47 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="border-t border-border" />
 
         {/* Story idea */}
         <div className="space-y-2">
-          <Label>
-            Story idea
-            <span className="text-destructive font-bold ml-1">*</span>
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label>
+              Story idea
+              <span className="text-destructive font-bold ml-1">*</span>
+            </Label>
+            <button
+              type="button"
+              onClick={() => setShowExamples(o => !o)}
+              className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-800 transition-colors"
+            >
+              <Lightbulb className="w-3 h-3" />
+              {showExamples ? "Hide examples" : "See examples"}
+            </button>
+          </div>
+
+          {showExamples && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-violet-700">Story idea examples — click to use:</p>
+              {STORY_EXAMPLES.map((ex, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={hasStory}
+                  onClick={() => { bb.setStoryIdea(ex); setShowExamples(false); }}
+                  className="w-full text-left text-xs text-violet-800 bg-white/70 hover:bg-white border border-violet-100 rounded-lg px-3 py-2 transition-colors leading-relaxed"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          )}
+
           <Textarea
             value={bb.storyIdea}
             onChange={(e) => bb.setStoryIdea(e.target.value)}
             rows={4}
-            placeholder="e.g. A young girl named Hana learns the importance of saying Bismillah before everything she does…"
+            placeholder="e.g. A young girl named Hana learns the importance of saying Bismillah before everything she does. She discovers that this small act of remembrance turns even ordinary moments into blessings…"
             disabled={hasStory}
             className={cn(hasStory && "opacity-60")}
           />
@@ -277,7 +483,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
               <p className="text-[11px] text-muted-foreground">
                 {bb.storyIdea.trim()
                   ? `${bb.storyIdea.trim().split(/\s+/).filter(Boolean).length} words`
-                  : "2–4 sentences is plenty to get a great story"}
+                  : "2–4 sentences gives the AI enough to work with"}
               </p>
               {bb.storyIdea.trim().split(/\s+/).filter(Boolean).length > 0 &&
                bb.storyIdea.trim().split(/\s+/).filter(Boolean).length < 8 && (
@@ -287,10 +493,17 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
           )}
         </div>
 
-        {/* Age */}
+        {/* Age range — auto-synced from universe, still editable */}
         <div className="grid gap-4">
           <div className="space-y-2">
-            <Label>Age range</Label>
+            <Label className="flex items-center gap-1.5">
+              Age range
+              {bb.universeId && (
+                <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                  auto-synced from Universe
+                </span>
+              )}
+            </Label>
             <Select value={bb.ageRange} onValueChange={bb.setAgeRange} disabled={hasStory}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -324,7 +537,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                 <p className="text-sm text-destructive">
                   {missingUniverse
-                    ? "Please select a Universe before generating — it powers your character and illustration consistency."
+                    ? "Please select a Universe before generating."
                     : "Please select a Knowledge Base — it injects your Islamic story rules, illustration styles, and character voices."}
                 </p>
               </div>
@@ -348,6 +561,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
       {/* Review card */}
       {hasStory && current && (
         <div className="rounded-2xl border border-primary/30 bg-card p-8 space-y-5">
+          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-bold">Review Your Story</h3>
@@ -362,15 +576,35 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 {bb.storyReview?.status ?? "generated"}
               </Badge>
             </div>
-            <Button size="sm" variant="outline" disabled={regenerating} onClick={handleRegen}>
-              {regenerating
-                ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Regenerating</>
-                : <><RefreshCw className="w-3 h-3 mr-1.5" />Regenerate</>
-              }
-            </Button>
+
+            {/* Full-story regenerate with structured feedback */}
+            <div className="relative">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isRegen}
+                onClick={() => setShowFeedback(o => !o)}
+              >
+                {isRegen && regeningPara === null
+                  ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Regenerating</>
+                  : <><RefreshCw className="w-3 h-3 mr-1.5" />Regenerate</>
+                }
+              </Button>
+              {showFeedback && (
+                <div className="absolute right-0 top-full mt-2 z-20">
+                  <FeedbackPanel
+                    loading={isRegen && regeningPara === null}
+                    onRegen={handleFullRegen}
+                    onClose={() => setShowFeedback(false)}
+                    label="Regenerate full story"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-4">
+            {/* Book title */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Book Title</Label>
               <Input
@@ -381,6 +615,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
               />
             </div>
 
+            {/* Synopsis + moral */}
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Synopsis</Label>
@@ -402,17 +637,73 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full Story</Label>
-              <Textarea
-                value={current.storyText}
-                onChange={(e) => bb.updateStoryCurrent({ storyText: e.target.value })}
-                rows={16}
-                placeholder="Story text…"
-                className="font-serif leading-relaxed text-sm"
-              />
+            {/* Full story — paragraph-level editing */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Full Story
+                <span className="ml-2 font-normal normal-case text-muted-foreground">
+                  — click any paragraph to edit, or regenerate individual paragraphs
+                </span>
+              </Label>
+
+              {paragraphs.length > 0 ? (
+                <div className="space-y-3">
+                  {paragraphs.map((para, idx) => (
+                    <div key={idx} className="group relative rounded-xl border border-border bg-muted/20 overflow-visible">
+                      <Textarea
+                        value={para}
+                        onChange={(e) => updateParagraph(idx, e.target.value)}
+                        rows={Math.max(2, Math.ceil(para.length / 80))}
+                        className="border-0 bg-transparent font-serif leading-relaxed text-sm resize-none focus-visible:ring-1 focus-visible:ring-primary/50"
+                      />
+                      {/* Per-paragraph regen controls */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {regeningPara === idx ? (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Loader2 className="w-3 h-3 animate-spin" />Regenerating…
+                          </span>
+                        ) : (
+                          <div className="relative">
+                            <button
+                              onClick={() => setParaFeedbackIdx(i => i === idx ? null : idx)}
+                              className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-primary bg-background border border-border rounded-md px-2 py-1 shadow-sm transition-colors"
+                              title="Regenerate this paragraph"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              Regen ¶{idx + 1}
+                            </button>
+                            {paraFeedbackIdx === idx && (
+                              <div className="absolute right-0 top-full mt-1.5 z-20">
+                                <FeedbackPanel
+                                  loading={regeningPara === idx}
+                                  onRegen={(opts) => handleParaRegen(idx, opts)}
+                                  onClose={() => setParaFeedbackIdx(null)}
+                                  label={`Regenerate paragraph ${idx + 1}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Paragraph index label */}
+                      <div className="px-3 pb-1.5 flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground/50">¶ {idx + 1}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Textarea
+                  value={current.storyText}
+                  onChange={(e) => bb.updateStoryCurrent({ storyText: e.target.value })}
+                  rows={16}
+                  placeholder="Story text…"
+                  className="font-serif leading-relaxed text-sm"
+                />
+              )}
             </div>
 
+            {/* Dedication */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dedication</Label>
               <Input

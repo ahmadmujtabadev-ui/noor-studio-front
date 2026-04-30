@@ -1041,31 +1041,36 @@ export function ValueIkhlasSvg() {
   );
 }
 
+// ── Vocabulary card image helper ─────────────────────────────────────────────
+function VocabImg({ src, alt }: { src: string; alt: string }) {
+  return <img src={src} alt={alt} className="w-full h-full object-cover" draggable={false} />;
+}
+
 // Exported preset list for the Islamic Values visual picker
 export const ISLAMIC_VALUE_PRESETS = [
-  { value: "Sabr — patience in hardship and difficulty",                              label: "Sabr",        icon: <ValueSabrSvg /> },
-  { value: "Shukr — gratitude to Allah for all blessings",                            label: "Shukr",       icon: <ValueShukrSvg /> },
-  { value: "Sadaqah — giving generously to those in need",                             label: "Sadaqah",     icon: <ValueSadaqahSvg /> },
-  { value: "Sidq — honesty and truthfulness in all situations",                        label: "Honesty",     icon: <ValueHonestySvg /> },
-  { value: "Rahma — kindness and compassion toward all living things",                 label: "Kindness",    icon: <ValueKindnessSvg /> },
-  { value: "Tawakkul — trusting Allah after doing your best",                          label: "Tawakkul",    icon: <ValueTawakkulSvg /> },
-  { value: "Salah — establishing prayer as the anchor of every day",                   label: "Salah",       icon: <ValuePrayerSvg /> },
-  { value: "Respecting parents and elders with love and care",                         label: "Respect",     icon: <ValueRespectSvg /> },
-  { value: "Afw — forgiveness, letting go of anger for Allah's sake",                  label: "Forgiveness", icon: <ValueForgivenessSvg /> },
-  { value: "Saying Bismillah before every action",                                     label: "Bismillah",   icon: <ValueBismillahSvg /> },
-  { value: "Taharah — cleanliness of body, clothes, and space",                        label: "Cleanliness", icon: <ValueCleanlinesssvg /> },
-  { value: "Courage to do right even when it is difficult",                             label: "Courage",     icon: <ValueCourageSvg /> },
-  { value: "Ihsan — excellence; doing everything beautifully for Allah's sake",          label: "Ihsan",       icon: <ValueIhsanSvg /> },
-  { value: "Tawba — sincere repentance and turning back to Allah",                        label: "Tawba",       icon: <ValueTawbaSvg /> },
-  { value: "Barakah — divine blessing that increases goodness in all things",             label: "Barakah",     icon: <ValueBarakahSvg /> },
-  { value: "Adab — excellent manners and respectful etiquette in every interaction",      label: "Adab",        icon: <ValueAdabSvg /> },
+  { value: "Sabr — patience in hardship and difficulty",                              label: "Sabr",        icon: <VocabImg src="/vocabulary/sabar.png"       alt="Sabr" /> },
+  { value: "Shukr — gratitude to Allah for all blessings",                            label: "Shukr",       icon: <VocabImg src="/vocabulary/sukar.png"       alt="Shukr" /> },
+  { value: "Sadaqah — giving generously to those in need",                             label: "Sadaqah",     icon: <VocabImg src="/vocabulary/sadaqah.png"     alt="Sadaqah" /> },
+  { value: "Sidq — honesty and truthfulness in all situations",                        label: "Honesty",     icon: <VocabImg src="/vocabulary/honesty.png"     alt="Honesty" /> },
+  { value: "Rahma — kindness and compassion toward all living things",                 label: "Kindness",    icon: <VocabImg src="/vocabulary/kindness.png"    alt="Kindness" /> },
+  { value: "Tawakkul — trusting Allah after doing your best",                          label: "Tawakkul",    icon: <VocabImg src="/vocabulary/tawakkul.png"    alt="Tawakkul" /> },
+  { value: "Salah — establishing prayer as the anchor of every day",                   label: "Salah",       icon: <VocabImg src="/vocabulary/salah.png"       alt="Salah" /> },
+  { value: "Respecting parents and elders with love and care",                         label: "Respect",     icon: <VocabImg src="/vocabulary/respect.png"     alt="Respect" /> },
+  { value: "Afw — forgiveness, letting go of anger for Allah's sake",                  label: "Forgiveness", icon: <VocabImg src="/vocabulary/forgiveness.png"  alt="Forgiveness" /> },
+  { value: "Saying Bismillah before every action",                                     label: "Bismillah",   icon: <VocabImg src="/vocabulary/bismillah.png"   alt="Bismillah" /> },
+  { value: "Taharah — cleanliness of body, clothes, and space",                        label: "Taharah",     icon: <VocabImg src="/vocabulary/taharah.png"     alt="Taharah" /> },
+  { value: "Courage to do right even when it is difficult",                             label: "Courage",     icon: <VocabImg src="/vocabulary/courage.png"     alt="Courage" /> },
+  { value: "Ihsan — excellence; doing everything beautifully for Allah's sake",          label: "Ihsan",       icon: <VocabImg src="/vocabulary/ihsan.png"       alt="Ihsan" /> },
+  { value: "Tawba — sincere repentance and turning back to Allah",                        label: "Tawba",       icon: <VocabImg src="/vocabulary/touba.png"       alt="Tawba" /> },
+  { value: "Barakah — divine blessing that increases goodness in all things",             label: "Barakah",     icon: <VocabImg src="/vocabulary/barakah.png"     alt="Barakah" /> },
+  { value: "Adab — excellent manners and respectful etiquette in every interaction",      label: "Adab",        icon: <VocabImg src="/vocabulary/adab.png"        alt="Adab" /> },
   { value: "Birr al-Walidayn — dutifulness and deep respect for one's parents",          label: "Birr",        icon: <ValueBirrSvg /> },
-  { value: "Hayaa — modesty and dignified shyness as a quality of faith",                 label: "Hayaa",       icon: <ValueHayaaSvg /> },
-  { value: "Ukhuwwah — brotherhood and sisterhood; unity among believers",                label: "Ukhuwwah",    icon: <ValueUkhuwwahSvg /> },
+  { value: "Hayaa — modesty and dignified shyness as a quality of faith",                 label: "Hayaa",       icon: <VocabImg src="/vocabulary/haya.png"        alt="Hayaa" /> },
+  { value: "Ukhuwwah — brotherhood and sisterhood; unity among believers",                label: "Ukhuwwah",    icon: <VocabImg src="/vocabulary/akhuwah.png"     alt="Ukhuwwah" /> },
   { value: "Niyyah — sincerity of intention; every action begins with a pure purpose",   label: "Niyyah",      icon: <ValueNiyyahSvg /> },
-  { value: "Taqwa — God-consciousness; being aware of Allah in every moment",             label: "Taqwa",       icon: <ValueTaqwaSvg /> },
+  { value: "Taqwa — God-consciousness; being aware of Allah in every moment",             label: "Taqwa",       icon: <VocabImg src="/vocabulary/taqwa.png"       alt="Taqwa" /> },
   { value: "Wara' — God-fearing caution; avoiding anything doubtful",                     label: "Wara'",       icon: <ValueWaraSvg /> },
-  { value: "Ikhlas — purity of intention; doing deeds solely for Allah's pleasure",      label: "Ikhlas",      icon: <ValueIkhlasSvg /> },
+  { value: "Ikhlas — purity of intention; doing deeds solely for Allah's pleasure",      label: "Ikhlas",      icon: <VocabImg src="/vocabulary/ikhlas.png"      alt="Ikhlas" /> },
 ];
 
 // ══════════════════════════════════════════════════════════════════

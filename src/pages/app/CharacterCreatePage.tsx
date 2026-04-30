@@ -368,7 +368,7 @@ function ageLabel(age: number): string {
   if (age <= 50) return "Adult";
   return "Elder";
 }
-const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Other"];
+const ROLES = ["Protagonist", "Supporting", "Villain", "Elder", "Mentor", "Sidekick", "Narrator", "Comic Relief", "Other", "Main"];
 
 const AGE_LOOK_CHIPS = [
   { label: "Toddler (2–4)", value: "2-4 year old toddler" },
@@ -1309,16 +1309,24 @@ export default function CharacterCreatePage() {
                       <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a skin tone</p>
                     )}
                     {isOther ? (
-                      <VisualPicker columns={3} iconSize="xl" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
-                        options={[
-                          { value: "golden fur",      label: "Golden Fur",      icon: <img src="/fur-feather/golden%20fur.png"     alt="Golden Fur"      className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "brown fur",       label: "Brown Fur",       icon: <img src="/fur-feather/brown%20fur.png"      alt="Brown Fur"       className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "white feathers",  label: "White Feathers",  icon: <img src="/fur-feather/white%20feathers.png" alt="White Feathers"  className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "orange feathers", label: "Orange Feathers", icon: <img src="/fur-feather/orange%20features.png" alt="Orange Feathers" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "green scales",    label: "Green Scales",    icon: <img src="/fur-feather/green%20scales.png"   alt="Green Scales"    className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "blue scales",     label: "Blue Scales",     icon: <img src="/fur-feather/blue%20scales.png"    alt="Blue Scales"     className="w-full h-full object-contain" draggable={false} /> },
-                        ]}
-                      />
+                      <>
+                        <VisualPicker columns={3} iconSize="xl" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
+                          options={[
+                            { value: "golden fur",      label: "Golden Fur",      icon: <img src="/fur-feather/golden%20fur.png"     alt="Golden Fur"      className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "brown fur",       label: "Brown Fur",       icon: <img src="/fur-feather/brown%20fur.png"      alt="Brown Fur"       className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "white feathers",  label: "White Feathers",  icon: <img src="/fur-feather/white%20feathers.png" alt="White Feathers"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "orange feathers", label: "Orange Feathers", icon: <img src="/fur-feather/orange%20features.png" alt="Orange Feathers" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "green scales",    label: "Green Scales",    icon: <img src="/fur-feather/green%20scales.png"   alt="Green Scales"    className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "blue scales",     label: "Blue Scales",     icon: <img src="/fur-feather/blue%20scales.png"    alt="Blue Scales"     className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input
+                          placeholder="Or describe custom fur / feather / scale colour…"
+                          value={form.skinTone && !["golden fur","brown fur","white feathers","orange feathers","green scales","blue scales"].includes(form.skinTone) ? form.skinTone : ""}
+                          onChange={(e) => updateForm("skinTone", e.target.value)}
+                          className="mt-2"
+                        />
+                      </>
                     ) : (
                       <VisualPicker columns={6} iconSize="md" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
                         options={[
@@ -1374,18 +1382,26 @@ export default function CharacterCreatePage() {
                       <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a face shape</p>
                     )}
                     {isOther ? (
-                      <VisualPicker columns={4} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
-                        options={[
-                          { value: "round beak",          label: "Round Beak",     icon: <img src="/head-snout-shape/round%20beak.png"          alt="Round Beak"     className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "flat beak",           label: "Flat Beak",      icon: <img src="/head-snout-shape/flat%20beak.png"           alt="Flat Beak"      className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "short snout",         label: "Short Snout",    icon: <img src="/head-snout-shape/short%20snout.png"         alt="Short Snout"    className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "pointed snout",       label: "Pointed Snout",  icon: <img src="/head-snout-shape/pointed%20snout.png"       alt="Pointed Snout"  className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "wide muzzle",         label: "Wide Muzzle",    icon: <img src="/head-snout-shape/wide%20muzzle.png"         alt="Wide Muzzle"    className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "square muzzle",       label: "Square Muzzle",  icon: <img src="/head-snout-shape/square%20muzzle.png"       alt="Square Muzzle"  className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "big friendly muzzle", label: "Friendly Muzzle",icon: <img src="/head-snout-shape/big%20friendly%20muzzle.png" alt="Friendly Muzzle" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "soft rounded head",   label: "Rounded Head",   icon: <img src="/head-snout-shape/soft%20rounded%20head.png" alt="Rounded Head"   className="w-full h-full object-contain" draggable={false} /> },
-                        ]}
-                      />
+                      <>
+                        <VisualPicker columns={4} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
+                          options={[
+                            { value: "round beak",          label: "Round Beak",     icon: <img src="/head-snout-shape/round%20beak.png"          alt="Round Beak"     className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "flat beak",           label: "Flat Beak",      icon: <img src="/head-snout-shape/flat%20beak.png"           alt="Flat Beak"      className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "short snout",         label: "Short Snout",    icon: <img src="/head-snout-shape/short%20snout.png"         alt="Short Snout"    className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "pointed snout",       label: "Pointed Snout",  icon: <img src="/head-snout-shape/pointed%20snout.png"       alt="Pointed Snout"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "wide muzzle",         label: "Wide Muzzle",    icon: <img src="/head-snout-shape/wide%20muzzle.png"         alt="Wide Muzzle"    className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "square muzzle",       label: "Square Muzzle",  icon: <img src="/head-snout-shape/square%20muzzle.png"       alt="Square Muzzle"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "big friendly muzzle", label: "Friendly Muzzle",icon: <img src="/head-snout-shape/big%20friendly%20muzzle.png" alt="Friendly Muzzle" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "soft rounded head",   label: "Rounded Head",   icon: <img src="/head-snout-shape/soft%20rounded%20head.png" alt="Rounded Head"   className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input
+                          placeholder="Or describe custom head / snout shape…"
+                          value={form.faceShape && !["round beak","flat beak","short snout","pointed snout","wide muzzle","square muzzle","big friendly muzzle","soft rounded head"].includes(form.faceShape) ? form.faceShape : ""}
+                          onChange={(e) => updateForm("faceShape", e.target.value)}
+                          className="mt-2"
+                        />
+                      </>
                     ) : (
                       <VisualPicker columns={3} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
                         options={form.gender === "girl" ? [

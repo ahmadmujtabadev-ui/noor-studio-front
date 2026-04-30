@@ -201,7 +201,7 @@ export function usePatchStoryReview(id: string) {
 export function useRegenerateStory(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (storyIdea?: string) => reviewApi.regenerateStory(id, storyIdea),
+    mutationFn: (storyIdea?: string) => reviewApi.regenerateStory(id, storyIdea ? { storyIdea } : undefined),
     onSuccess:  async () => { await invalidateProjectFamily(qc, id); },
   });
 }

@@ -22,8 +22,9 @@ import {
   X,
   ChevronDown,
   Dna, ChevronRight as ChevronRightIcon,
+  Download, Upload, Copy,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useKbNavStore } from "@/lib/store/kbNavStore";
 import { useToast } from "@/hooks/use-toast";
@@ -131,6 +132,57 @@ const SECTIONS = [
 ] as const;
 
 type SectionId = typeof SECTIONS[number]["id"];
+
+// ─── Vocabulary starter library ───────────────────────────────────────────────
+const VOCAB_STARTER = [
+  { word: "Quran",        wrongTerm: "Koran",      type: "Arabic word",    definition: "The holy book of Islam, revealed to Prophet Muhammad ﷺ." },
+  { word: "Salah",        wrongTerm: "Namaz",      type: "Arabic word",    definition: "The five daily prayers obligatory for every Muslim." },
+  { word: "Masjid",       wrongTerm: "Mosque",     type: "Arabic word",    definition: "The place of worship for Muslims." },
+  { word: "Eid",          wrongTerm: "Eid festival",type: "Arabic word",   definition: "Two annual Islamic celebrations — Eid al-Fitr and Eid al-Adha." },
+  { word: "Du'a",         wrongTerm: "Dua",        type: "Arabic word",    definition: "A personal supplication or prayer made to Allah." },
+  { word: "Alhamdulillah",wrongTerm: "",           type: "expression",     definition: "All praise and thanks belong to Allah." },
+  { word: "Bismillah",    wrongTerm: "",           type: "expression",     definition: "In the name of Allah — said before beginning an action." },
+  { word: "Insha'Allah",  wrongTerm: "Inshallah",  type: "expression",    definition: "If Allah wills — said when speaking of future plans or hopes." },
+  { word: "Masha'Allah",  wrongTerm: "Mashallah",  type: "expression",    definition: "What Allah has willed — said to express admiration or gratitude." },
+  { word: "SubhanAllah",  wrongTerm: "",           type: "expression",     definition: "Glory be to Allah — said in praise, wonder, or surprise." },
+  { word: "Baba",         wrongTerm: "Dad / Father",type: "value word",   definition: "Affectionate Islamic term for father, used across many Muslim cultures." },
+  { word: "Mama",         wrongTerm: "Mom / Mum",  type: "value word",    definition: "Affectionate term for mother." },
+  { word: "Jiddo",        wrongTerm: "Grandpa",    type: "value word",    definition: "Grandfather — warm Arabic family term." },
+  { word: "Teta / Tata",  wrongTerm: "Grandma",    type: "value word",    definition: "Grandmother — warm Arabic family term." },
+  { word: "Khala",        wrongTerm: "Aunt",       type: "value word",    definition: "Maternal aunt — used respectfully in Muslim households." },
+  { word: "Ammo",         wrongTerm: "Uncle",      type: "value word",    definition: "Paternal uncle — affectionate respectful address." },
+  { word: "Sadaqah",      wrongTerm: "Charity",    type: "Arabic word",   definition: "Voluntary charitable giving for the sake of Allah." },
+  { word: "Hijab",        wrongTerm: "Headscarf",  type: "Arabic word",   definition: "The Islamic modest covering worn by Muslim women." },
+  { word: "Tasbih",       wrongTerm: "Prayer beads",type: "Arabic word",  definition: "Prayer beads used while doing dhikr (remembrance of Allah)." },
+  { word: "Dhikr",        wrongTerm: "",           type: "Arabic word",   definition: "Remembrance of Allah through repeated phrases and supplications." },
+];
+
+// ─── Avoid Topics starter checklist ──────────────────────────────────────────
+type AvoidSeverity = "all" | "under-12" | "under-6";
+interface AvoidRule { topic: string; severity: AvoidSeverity; category: string; }
+
+const AVOID_STARTER: AvoidRule[] = [
+  { topic: "Magic, spells, or witchcraft in the haram sense",          severity: "all",      category: "Faith" },
+  { topic: "Shirk (associating partners with Allah)",                  severity: "all",      category: "Faith" },
+  { topic: "Mocking or disrespecting religious practices",             severity: "all",      category: "Faith" },
+  { topic: "Romantic relationships or dating between pre-teens",       severity: "all",      category: "Appropriateness" },
+  { topic: "Physical violence or graphic harm",                        severity: "all",      category: "Safety" },
+  { topic: "Haram food content (pork, alcohol, intoxicants)",          severity: "all",      category: "Halal" },
+  { topic: "Halloween, Christmas, or non-Islamic celebrations as Islamic", severity: "all",  category: "Faith" },
+  { topic: "Inappropriate dress or immodest depictions",               severity: "all",      category: "Modesty" },
+  { topic: "Jump-scares, horror, or nightmare-inducing content",       severity: "under-6",  category: "Safety" },
+  { topic: "Death or grief described in graphic detail",               severity: "under-6",  category: "Safety" },
+  { topic: "Bullying shown without consequence or resolution",         severity: "under-6",  category: "Safety" },
+  { topic: "Preachy, lecture-style narration",                        severity: "all",      category: "Tone" },
+  { topic: "Stereotyping or cultural generalisation",                  severity: "all",      category: "Tone" },
+  { topic: "Conspiracy theories or divisive political content",        severity: "under-12", category: "Tone" },
+];
+
+const SEVERITY_LABELS: Record<AvoidSeverity, { label: string; color: string }> = {
+  "all":      { label: "All Ages",  color: "bg-red-100 text-red-700" },
+  "under-12": { label: "Under 12", color: "bg-amber-100 text-amber-700" },
+  "under-6":  { label: "Under 6",  color: "bg-blue-100 text-blue-700" },
+};
 
 // ─── Workflow tabs ────────────────────────────────────────────────────────────
 const WORKFLOWS = [
@@ -530,6 +582,83 @@ export default function KnowledgeBasePage() {
   const [showDelete, setShowDelete] = useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
+  // ─── Export / Import / Duplicate state ────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showDuplicate, setShowDuplicate] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [dupForm, setDupForm] = useState({ name: "", universeId: "" });
+
+  const handleExport = async () => {
+    if (!selectedKB) return;
+    const id = selectedKB.id || (selectedKB as any)._id;
+    setExporting(true);
+    try {
+      const data = await knowledgeBasesApi.exportKB(id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kb-${selectedKB.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "KB exported" });
+    } catch (err) {
+      toast({ title: "Export failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      // Prompt for name + universe via a simple approach: use selectedKB's universe or first universe
+      const targetUniverseId = (selectedKB as any)?.universeId || universes[0]?.id || universes[0]?._id || "";
+      if (!targetUniverseId) {
+        toast({ title: "Please create a Universe first before importing", variant: "destructive" });
+        return;
+      }
+      const baseName = data.name || file.name.replace(/\.json$/i, "");
+      const kb = await knowledgeBasesApi.importKB({
+        universeId: targetUniverseId,
+        name: `${baseName} (imported)`,
+        data,
+      });
+      setSelectedKB(kb as any);
+      toast({ title: `"${kb.name}" imported successfully` });
+    } catch (err) {
+      toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!selectedKB) return;
+    const id = selectedKB.id || (selectedKB as any)._id;
+    setDuplicating(true);
+    try {
+      const kb = await knowledgeBasesApi.duplicateKB(id, {
+        name: dupForm.name.trim() || undefined,
+        universeId: dupForm.universeId && dupForm.universeId !== "__same__" ? dupForm.universeId : undefined,
+      });
+      setSelectedKB(kb as any);
+      setShowDuplicate(false);
+      setDupForm({ name: "", universeId: "" });
+      toast({ title: `"${kb.name}" duplicated` });
+    } catch (err) {
+      toast({ title: "Duplicate failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   useEffect(() => {
     const shouldOpenCreate = searchParams.get("create") === "1";
     if (!shouldOpenCreate) return;
@@ -693,7 +822,7 @@ export default function KnowledgeBasePage() {
             )}
 
             {/* Visual preset tiles */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {ISLAMIC_VALUE_PRESETS.map(preset => {
                 const isSelected = items.includes(preset.value);
                 return (
@@ -707,22 +836,26 @@ export default function KnowledgeBasePage() {
                       save({ islamicValues: next });
                     }}
                     className={cn(
-                      "relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
+                      "relative w-full aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all hover:shadow-md hover:scale-[1.02]",
                       isSelected
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 shadow-sm"
-                        : "border-border hover:border-violet-300 bg-background"
+                        ? "border-violet-500 shadow-md ring-2 ring-violet-300/50"
+                        : "border-border hover:border-violet-300"
                     )}
                   >
-                    <div className="w-11 h-11">{preset.icon}</div>
-                    <span className={cn(
-                      "text-[10px] font-semibold leading-tight",
-                      isSelected ? "text-violet-700 dark:text-violet-400" : "text-foreground"
-                    )}>
-                      {preset.label}
-                    </span>
+                    {/* Image fills entire card */}
+                    <div className="absolute inset-0">
+                      {preset.icon}
+                    </div>
+                    {/* Label gradient overlay at bottom */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-center">
+                      <span className="text-[11px] font-bold text-white drop-shadow-sm leading-tight">
+                        {preset.label}
+                      </span>
+                    </div>
+                    {/* Selected checkmark */}
                     {isSelected && (
-                      <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center shadow-md">
+                        <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </span>
@@ -878,50 +1011,92 @@ export default function KnowledgeBasePage() {
       case "vocabulary": {
         const vocab = getArr<any>("vocabulary");
         const vocabType = (newVocab as any).type || "";
+        const alreadyAdded = new Set(vocab.map((v: any) => v.word));
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Islamic/Arabic vocabulary. AI uses these correctly in prose and they appear in glossary pages.</p>
+          <div className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Preferred Islamic terms with wrong-term pairs. AI uses these correctly in prose and they appear in glossary pages.
+            </p>
 
-            {/* Visual word cards */}
-            {vocab.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {vocab.map((v: any, i: number) => {
-                  const typeOpt = VOCAB_TYPE_OPTIONS.find(o => o.value === v.type);
+            {/* Starter library */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <SectionLabel>Starter Library — tap to add</SectionLabel>
+                <span className="text-[11px] text-muted-foreground">{VOCAB_STARTER.filter(s => alreadyAdded.has(s.word)).length}/{VOCAB_STARTER.length} added</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {VOCAB_STARTER.map(s => {
+                  const added = alreadyAdded.has(s.word);
                   return (
-                    <div key={i} className="relative rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-4 group">
-                      <button
-                        onClick={() => save({ vocabulary: vocab.filter((_: any, j: number) => j !== i) })}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="flex items-start gap-3">
-                        {typeOpt && <div className="w-10 h-10 shrink-0">{typeOpt.icon}</div>}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base font-bold text-orange-900 dark:text-orange-200">{v.word}</p>
-                          <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">{v.definition}</p>
-                          {v.example && (
-                            <p className="text-[10px] text-muted-foreground mt-1 italic">e.g. {v.example}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <button
+                      key={s.word}
+                      type="button"
+                      disabled={added || updateMutation.isPending}
+                      onClick={() => save({ vocabulary: [...vocab, { word: s.word, wrongTerm: s.wrongTerm, type: s.type, definition: s.definition, example: "" }] })}
+                      className={cn(
+                        "relative text-left rounded-xl border-2 p-3 transition-all",
+                        added
+                          ? "border-emerald-300 bg-emerald-50/60 opacity-70 cursor-default dark:bg-emerald-950/20"
+                          : "border-border hover:border-orange-300 hover:bg-orange-50/40 cursor-pointer"
+                      )}
+                    >
+                      {added && <span className="absolute top-2 right-2 text-emerald-500 text-xs">✓</span>}
+                      <p className="text-sm font-bold text-orange-900 dark:text-orange-200 leading-tight">{s.word}</p>
+                      {s.wrongTerm && (
+                        <p className="text-[10px] mt-0.5 flex items-center gap-1">
+                          <span className="line-through text-red-400">{s.wrongTerm}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="text-emerald-700 font-medium">{s.word}</span>
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 leading-snug">{s.definition}</p>
+                    </button>
                   );
                 })}
               </div>
-            )}
-            {!vocab.length && (
-              <div className="text-center py-8 border-2 border-dashed border-orange-100 rounded-xl">
-                <p className="text-sm text-muted-foreground">No vocabulary yet — add the first word below</p>
+            </div>
+
+            {/* Added vocabulary cards */}
+            {vocab.length > 0 && (
+              <div className="space-y-2">
+                <SectionLabel>Your Vocabulary ({vocab.length})</SectionLabel>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {vocab.map((v: any, i: number) => {
+                    const typeOpt = VOCAB_TYPE_OPTIONS.find(o => o.value === v.type);
+                    return (
+                      <div key={i} className="relative rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 p-4 group">
+                        <button
+                          onClick={() => save({ vocabulary: vocab.filter((_: any, j: number) => j !== i) })}
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex items-start gap-3">
+                          {typeOpt && <div className="w-10 h-10 shrink-0">{typeOpt.icon}</div>}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-bold text-orange-900 dark:text-orange-200">{v.word}</p>
+                            {v.wrongTerm && (
+                              <p className="text-[11px] mt-0.5 flex items-center gap-1 flex-wrap">
+                                <span className="line-through text-red-400 bg-red-50 px-1 rounded">{v.wrongTerm}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="text-emerald-700 font-semibold">{v.word}</span>
+                              </p>
+                            )}
+                            <p className="text-xs text-orange-700 dark:text-orange-400 mt-1">{v.definition}</p>
+                            {v.example && <p className="text-[10px] text-muted-foreground mt-1 italic">e.g. {v.example}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Add word form */}
+            {/* Add custom word form */}
             <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
-              <SectionLabel>Add Word</SectionLabel>
-
-              {/* Word type visual picker */}
+              <SectionLabel>Add Custom Word</SectionLabel>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Word Type (tap to pick)</Label>
+                <Label className="text-xs font-semibold">Word Type</Label>
                 <div className="grid grid-cols-5 gap-2">
                   {VOCAB_TYPE_OPTIONS.map(opt => {
                     const isSel = vocabType === opt.value;
@@ -939,14 +1114,15 @@ export default function KnowledgeBasePage() {
                   })}
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-2">
-                <div><Label className="text-xs">Word *</Label>
-                  <Input placeholder="Alhamdulillah" value={newVocab.word} onChange={e => setNewVocab({ ...newVocab, word: e.target.value })} /></div>
+                <div><Label className="text-xs">Correct Word *</Label>
+                  <Input placeholder="Masjid" value={newVocab.word} onChange={e => setNewVocab({ ...newVocab, word: e.target.value })} /></div>
+                <div><Label className="text-xs">Wrong Term to Avoid</Label>
+                  <Input placeholder="Mosque" value={(newVocab as any).wrongTerm || ""} onChange={e => setNewVocab({ ...newVocab, wrongTerm: e.target.value } as any)} /></div>
                 <div><Label className="text-xs">Definition *</Label>
-                  <Input placeholder="All praise is for Allah" value={newVocab.definition} onChange={e => setNewVocab({ ...newVocab, definition: e.target.value })} /></div>
-                <div className="col-span-2"><Label className="text-xs">Story Example (shows AI how to use it naturally)</Label>
-                  <Input placeholder='"Alhamdulillah!" said Zahra, hugging her mama.' value={newVocab.example} onChange={e => setNewVocab({ ...newVocab, example: e.target.value })} /></div>
+                  <Input placeholder="Place of Islamic worship" value={newVocab.definition} onChange={e => setNewVocab({ ...newVocab, definition: e.target.value })} /></div>
+                <div><Label className="text-xs">Story Example</Label>
+                  <Input placeholder='"Let us go to the masjid," said Baba.' value={newVocab.example} onChange={e => setNewVocab({ ...newVocab, example: e.target.value })} /></div>
               </div>
               <Button variant="outline" size="sm" disabled={!newVocab.word || !newVocab.definition || updateMutation.isPending}
                 onClick={() => { save({ vocabulary: [...vocab, { ...newVocab }] }); setNewVocab({ word: "", definition: "", example: "", type: "" }); }}>
@@ -1315,17 +1491,78 @@ export default function KnowledgeBasePage() {
           )}
         </div>
 
-        {/* Delete selected KB */}
+        {/* KB actions: Export · Import · Duplicate · Delete */}
         {selectedKB && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive gap-1.5 shrink-0"
-            onClick={() => setShowDelete(selectedKB.id || (selectedKB as any)._id)}
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+              disabled={exporting}
+              onClick={handleExport}
+              title="Export KB as JSON"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              Export
+            </Button>
+
+            <label
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors"
+              title="Import KB from JSON file"
+            >
+              {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              Import
+              <input
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                onChange={handleImportFile}
+                disabled={importing}
+              />
+            </label>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+              onClick={() => {
+                setDupForm({ name: `${selectedKB.name} (copy)`, universeId: "__same__" });
+                setShowDuplicate(true);
+              }}
+              title="Duplicate this KB"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Duplicate
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive gap-1.5"
+              onClick={() => setShowDelete(selectedKB.id || (selectedKB as any)._id)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </Button>
+          </div>
+        )}
+
+        {/* Hidden import trigger for KB list (no selected KB) */}
+        {!selectedKB && (
+          <label
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors border border-border"
+            title="Import KB from JSON file"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete
-          </Button>
+            {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            Import KB
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="sr-only"
+              onChange={handleImportFile}
+              disabled={importing}
+            />
+          </label>
         )}
       </div>
 
@@ -1605,7 +1842,7 @@ export default function KnowledgeBasePage() {
                 const tpl = getKBStarterTemplateById(form.starterTemplateId);
                 return tpl ? (
                   <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{tpl.flavourLabel} � {tpl.name}</span> - {tpl.description}
+                    <span className="font-medium text-foreground">{tpl.flavourLabel} � {tpl.name}</span> - {tpl.description}
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {tpl.islamicValues?.slice(0, 3).map((v: string) => (
                         <span key={v} className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-[10px]">{v}</span>
@@ -1683,6 +1920,50 @@ export default function KnowledgeBasePage() {
             <Button variant="ghost" onClick={() => setShowDelete(null)}>Cancel</Button>
             <Button variant="destructive" onClick={() => showDelete && handleDelete(showDelete)} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate KB dialog */}
+      <Dialog open={showDuplicate} onOpenChange={open => !open && setShowDuplicate(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Knowledge Base</DialogTitle>
+            <DialogDescription>Creates a full copy of this KB that you can customise independently.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>New name</Label>
+              <Input
+                value={dupForm.name}
+                onChange={e => setDupForm(f => ({ ...f, name: e.target.value }))}
+                placeholder={`${selectedKB?.name} (copy)`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Target Universe <span className="text-xs text-muted-foreground">(optional — leave to keep the same)</span></Label>
+              <Select
+                value={dupForm.universeId}
+                onValueChange={v => setDupForm(f => ({ ...f, universeId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Same as current universe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__same__">Same as current universe</SelectItem>
+                  {universes.map((u: any) => (
+                    <SelectItem key={u.id || u._id} value={u.id || u._id}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowDuplicate(false)}>Cancel</Button>
+            <Button onClick={handleDuplicate} disabled={duplicating} className="gap-1.5">
+              {duplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+              Duplicate
             </Button>
           </DialogFooter>
         </DialogContent>

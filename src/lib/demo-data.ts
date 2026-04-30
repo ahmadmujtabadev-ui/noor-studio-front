@@ -25,7 +25,7 @@ export const demoCharacters = [
   {
     id: 'demo-3',
     name: 'Fatima',
-    role: 'Mentor',
+    role: 'Protagonist',
     ageRange: 'Adult',
     status: 'approved' as const,
     imageUrl: '/demo/characters/fatima.png',
@@ -55,7 +55,7 @@ export const demoCharacters = [
   {
     id: 'demo-6',
     name: 'Ibrahim',
-    role: 'Mentor',
+    role: 'Protagonist',
     ageRange: 'Adult',
     status: 'locked' as const,
     imageUrl: '/demo/characters/ibrahim.png',

@@ -229,11 +229,18 @@ export function useBookBuilder() {
     []
   );
 
-  const regenerateStory = useCallback(async (ideaOverride?: string) => {
+  const regenerateStory = useCallback(async (opts?: {
+    storyIdea?: string;
+    tone?: string;
+    focus?: string;
+    paragraphIndex?: number;
+    paragraphText?: string;
+    paragraphFeedback?: string;
+  }) => {
     const pid = getPid();
     setLoadingKey("story-regen");
     try {
-      await reviewApi.regenerateStory(pid, ideaOverride || storyIdea);
+      await reviewApi.regenerateStory(pid, { storyIdea: opts?.storyIdea || storyIdea, ...opts });
       await refreshReview();
       toast({ title: "Story regenerated ✓" });
     } catch (err) {

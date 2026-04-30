@@ -36,9 +36,24 @@ export const reviewApi = {
   }>) =>
     api.patch(`/api/projects/${pid}/review/story`, body),
 
-  regenerateStory: (pid: string, storyIdea?: string) =>
-    api.post(`/api/projects/${pid}/review/story/regenerate`,
-      storyIdea ? { storyIdea } : {}),
+  regenerateStory: (pid: string, opts?: {
+    storyIdea?: string;
+    tone?: string;
+    focus?: string;
+    paragraphIndex?: number;
+    paragraphText?: string;
+    paragraphFeedback?: string;
+  }) =>
+    api.post(`/api/projects/${pid}/review/story/regenerate`, opts ?? {}),
+
+  rewriteParagraph: (pid: string, body: {
+    paragraphText: string;
+    prevParagraph?: string;
+    nextParagraph?: string;
+    tone?: string;
+    focus?: string;
+  }): Promise<{ rewrittenParagraph: string }> =>
+    api.post(`/api/projects/${pid}/review/story/rewrite-paragraph`, body),
 
   approveStory: (pid: string) =>
     api.post(`/api/projects/${pid}/review/story/approve`, {}),

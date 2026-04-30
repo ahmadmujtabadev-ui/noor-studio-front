@@ -22,7 +22,7 @@ import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal
 import { tokenStorage } from "@/lib/api/client";
 import { reviewApi } from "@/lib/api/review.api";
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9002";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9007";
 
 const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   v: "select", V: "select", t: "text", T: "text",

@@ -54,15 +54,26 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
               onClick={() => toggle(tile.value)}
               disabled={isSaving}
               className={cn(
-                "relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg",
+                "relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.99] hover:shadow-lg",
                 isSelected
                   ? `${tile.bg} ${tile.ring} ring-2 ring-offset-2 shadow-md border-transparent`
                   : "bg-white border-gray-100 hover:border-gray-300 shadow-sm"
               )}
             >
-              {/* Large icon */}
-              <div className="w-16 h-16">
-                <Icon />
+              {/* Large image/icon */}
+              <div className="w-24 sm:w-28 aspect-[3/4] rounded-2xl overflow-hidden bg-white/90 shadow-sm flex items-center justify-center">
+                {tile.image ? (
+                  <img
+                    src={tile.image}
+                    alt={tile.label}
+                    className="w-full h-full object-cover object-top"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-20 h-20">
+                    <Icon />
+                  </div>
+                )}
               </div>
               {/* Label */}
               <span className={cn(

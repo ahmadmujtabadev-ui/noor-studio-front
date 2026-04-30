@@ -27,6 +27,15 @@ export const knowledgeBasesApi = {
   delete: (id: string) =>
     api.delete<{ message: string }>(`/api/knowledge-bases/${id}`),
 
+  exportKB: (id: string): Promise<Record<string, unknown>> =>
+    api.get(`/api/knowledge-bases/${id}/export`),
+
+  importKB: (body: { universeId: string; name: string; data: Record<string, unknown> }): Promise<KnowledgeBase> =>
+    api.post('/api/knowledge-bases/import', body),
+
+  duplicateKB: (id: string, body: { name?: string; universeId?: string }): Promise<KnowledgeBase> =>
+    api.post(`/api/knowledge-bases/${id}/duplicate`, body),
+
   getByUniverse: (universeId: string) =>
     api.get<KnowledgeBase[]>('/api/knowledge-bases', { params: { universeId } }),
 
