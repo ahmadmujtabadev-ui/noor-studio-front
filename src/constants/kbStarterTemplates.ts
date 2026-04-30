@@ -5,7 +5,7 @@
  */
 
 export interface KBDua {
-  arabic?: string;
+  arabic: string;
   transliteration: string;
   meaning: string;
   context?: string;
@@ -135,19 +135,19 @@ const BASE_MIDDLE_GRADE_VALUES = [
 
 const BASE_UNDER_SIX_DUAS: KBDua[] = [
   {
-    arabic: "Bismillah",
+    arabic: "بِسْمِ اللَّهِ",
     transliteration: "Bismillah",
     meaning: "In the name of Allah",
     context: "Before starting an activity",
   },
   {
-    arabic: "Alhamdulillah",
+    arabic: "الْحَمْدُ لِلَّهِ",
     transliteration: "Alhamdulillah",
     meaning: "All praise is for Allah",
     context: "After receiving a blessing",
   },
   {
-    arabic: "Allahumma barik lana",
+    arabic: "اللَّهُمَّ بَارِكْ لَنَا",
     transliteration: "Allahumma barik lana",
     meaning: "O Allah, bless us",
     context: "Before important or joyful moments",
@@ -156,16 +156,19 @@ const BASE_UNDER_SIX_DUAS: KBDua[] = [
 
 const BASE_MIDDLE_GRADE_DUAS: KBDua[] = [
   {
+    arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ",
     transliteration: "Hasbunallahu wa ni'mal wakeel",
     meaning: "Allah is sufficient for us and He is the best disposer of affairs",
     context: "When facing something difficult or uncertain",
   },
   {
+    arabic: "رَبِّ اشْرَحْ لِي صَدْرِي",
     transliteration: "Rabbi ishrah li sadri",
     meaning: "My Lord, expand my chest with ease",
     context: "Before a challenge or important conversation",
   },
   {
+    arabic: "اللَّهُمَّ إِنِّي أَسْأَلُكَ الثَّبَاتَ",
     transliteration: "Allahumma inni as'aluka ath-thabat",
     meaning: "O Allah, I ask You for steadfastness",
     context: "Before a moment that requires courage",
@@ -511,6 +514,7 @@ const islamicUnderSix = createUnderSixTemplate({
   duas: [
     ...BASE_UNDER_SIX_DUAS,
     {
+      arabic: "سُبْحَانَ اللَّهِ",
       transliteration: "SubhanAllah",
       meaning: "Glory be to Allah",
       context: "When seeing something beautiful",

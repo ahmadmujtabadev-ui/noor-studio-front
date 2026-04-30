@@ -18,7 +18,15 @@ type PrimaryFilterId =
   | "fantasy"
   | "adventure";
 
-type SecondaryFilterId = CharacterTemplate["category"] | "all";
+type AnimalSpeciesFilterId =
+  | "rabbit"
+  | "cat"
+  | "hedgehog"
+  | "owl"
+  | "fox"
+  | "turtle";
+
+type SecondaryFilterId = CharacterTemplate["category"] | "all" | AnimalSpeciesFilterId;
 
 const STORAGE_KEYS = {
   primary: "ns.characterTemplates.primaryFilter",
@@ -53,6 +61,20 @@ const SECONDARY_FILTERS: Array<{
   { value: "elder-female", label: "Nana / Elder", emoji: "👵" },
   { value: "elder-male", label: "Baba / Elder", emoji: "👴" },
   { value: "animal", label: "Animal / Pet", emoji: "🐦" },
+];
+
+const ANIMAL_SECONDARY_FILTERS: Array<{
+  value: SecondaryFilterId;
+  label: string;
+  emoji: string;
+}> = [
+  { value: "all", label: "All animals", emoji: "\u{1F43E}" },
+  { value: "rabbit", label: "Rabbit", emoji: "\u{1F430}" },
+  { value: "cat", label: "Cat", emoji: "\u{1F431}" },
+  { value: "hedgehog", label: "Hedgehog", emoji: "\u{1F994}" },
+  { value: "owl", label: "Owl", emoji: "\u{1F989}" },
+  { value: "fox", label: "Fox", emoji: "\u{1F98A}" },
+  { value: "turtle", label: "Turtle", emoji: "\u{1F422}" },
 ];
 
 const HUMAN_CATEGORIES = new Set<CharacterTemplate["category"]>([
@@ -122,6 +144,200 @@ const ADVENTURE_KEYWORDS = [
   "discovery",
 ];
 
+const BUILT_IN_ANIMAL_TEMPLATES: CharacterTemplate[] = [
+  {
+    _id: "builtin-animal-rabbit-safa",
+    name: "Safa - Gentle Rabbit",
+    description: "A kind rabbit protagonist for cozy woodland stories and friendship adventures.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "rabbit", "woodland", "gentle", "universal"],
+    isDefault: true,
+    isPublic: true,
+    role: "main",
+    ageRange: "6-8",
+    traits: ["gentle", "curious", "kind"],
+    visualDNA: {
+      style: "storybook",
+      gender: "animal",
+      ageLook: "small rabbit child",
+      skinTone: "cream fur with soft beige ears",
+      eyeColor: "brown",
+      hairStyle: "fur",
+      hairColor: "cream",
+      topGarmentType: "cozy cardigan",
+      topGarmentColor: "sage green",
+      bottomGarmentType: "short overalls",
+      bottomGarmentColor: "warm beige",
+      shoeType: "none",
+      bodyBuild: "small and soft",
+      heightFeel: "small",
+      paletteNotes: "Cream, sage, and warm woodland neutrals",
+      accessories: ["tiny satchel"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#F7E7CE", secondary: "#8FAF88", accent: "#C8A97B" },
+  },
+  {
+    _id: "builtin-animal-cat-luna",
+    name: "Luna - White Cat",
+    description: "A polished cat character suited for modern family stories and school-day books.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "cat", "pet", "school", "universal"],
+    isDefault: true,
+    isPublic: true,
+    role: "main",
+    ageRange: "7-9",
+    traits: ["clever", "playful", "caring"],
+    visualDNA: {
+      style: "pixar-3d",
+      gender: "animal",
+      ageLook: "young white cat",
+      skinTone: "snow white fur with peach ears",
+      eyeColor: "hazel",
+      hairStyle: "fur",
+      hairColor: "white",
+      topGarmentType: "hoodie",
+      topGarmentColor: "coral pink",
+      bottomGarmentType: "soft trousers",
+      bottomGarmentColor: "cream",
+      shoeType: "sneakers",
+      shoeColor: "white",
+      bodyBuild: "small and lean",
+      heightFeel: "small",
+      paletteNotes: "Soft white, coral, and warm cream",
+      accessories: ["school backpack"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#FAF9F6", secondary: "#F59E8B", accent: "#F4E1C1" },
+  },
+  {
+    _id: "builtin-animal-hedgehog-theo",
+    name: "Theo - Hedgehog",
+    description: "A tiny hedgehog companion for forest stories, bedtime tales, and quiet courage arcs.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "hedgehog", "forest", "supporting", "universal"],
+    isDefault: true,
+    isPublic: true,
+    role: "supporting",
+    ageRange: "5-7",
+    traits: ["brave", "tiny", "loyal"],
+    visualDNA: {
+      style: "storybook",
+      gender: "animal",
+      ageLook: "tiny hedgehog child",
+      skinTone: "forest brown fur with cream face",
+      eyeColor: "brown",
+      hairStyle: "spikes on head",
+      hairColor: "brown",
+      topGarmentType: "knit scarf",
+      topGarmentColor: "forest green",
+      bodyBuild: "tiny and round",
+      heightFeel: "very small",
+      paletteNotes: "Forest green, chestnut brown, and soft cream",
+      accessories: ["leaf satchel"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#7B4020", secondary: "#4CAF50", accent: "#F5E6C8" },
+  },
+  {
+    _id: "builtin-animal-owl-nur",
+    name: "Nur - Wise Owl",
+    description: "An observant owl mentor for thoughtful stories, nighttime scenes, and knowledge themes.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "owl", "mentor", "night", "knowledge"],
+    isDefault: true,
+    isPublic: true,
+    role: "mentor",
+    ageRange: "n/a",
+    traits: ["wise", "calm", "observant"],
+    visualDNA: {
+      style: "watercolor",
+      gender: "animal",
+      ageLook: "gentle storybook owl",
+      skinTone: "warm brown feathers with cream chest",
+      eyeColor: "amber",
+      hairStyle: "feathered crest on head",
+      hairColor: "brown",
+      topGarmentType: "scholar cape",
+      topGarmentColor: "deep teal",
+      bodyBuild: "small and fluffy",
+      heightFeel: "small",
+      paletteNotes: "Brown feathers, cream highlights, deep teal accents",
+      accessories: ["tiny lantern"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#8B5E3C", secondary: "#0F766E", accent: "#F3E7CF" },
+  },
+  {
+    _id: "builtin-animal-fox-zayd",
+    name: "Zayd - Clever Fox",
+    description: "A bright fox adventurer for travel stories, mysteries, and playful outdoor quests.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "fox", "adventure", "clever", "outdoors"],
+    isDefault: true,
+    isPublic: true,
+    role: "main",
+    ageRange: "8-10",
+    traits: ["clever", "quick", "adventurous"],
+    visualDNA: {
+      style: "flat-illustration",
+      gender: "animal",
+      ageLook: "young fox explorer",
+      skinTone: "rust orange fur with white chest",
+      eyeColor: "green",
+      hairStyle: "fur",
+      hairColor: "orange",
+      topGarmentType: "explorer vest",
+      topGarmentColor: "mustard yellow",
+      bottomGarmentType: "adventure shorts",
+      bottomGarmentColor: "brown",
+      shoeType: "boots",
+      shoeColor: "brown",
+      bodyBuild: "small and athletic",
+      heightFeel: "small",
+      paletteNotes: "Rust orange, mustard, and bark brown",
+      accessories: ["compass pouch"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#D97706", secondary: "#FACC15", accent: "#7B4020" },
+  },
+  {
+    _id: "builtin-animal-turtle-sabr",
+    name: "Sabr - Patient Turtle",
+    description: "A steady turtle friend for value-led stories about patience, kindness, and gentle growth.",
+    category: "animal",
+    thumbnailUrl: "",
+    tags: ["animals", "turtle", "patience", "garden", "universal"],
+    isDefault: true,
+    isPublic: true,
+    role: "supporting",
+    ageRange: "6-8",
+    traits: ["patient", "steady", "kind"],
+    visualDNA: {
+      style: "storybook",
+      gender: "animal",
+      ageLook: "small turtle child",
+      skinTone: "soft green shell creature with tan shell",
+      eyeColor: "dark-brown",
+      hairStyle: "none",
+      hairColor: "green",
+      topGarmentType: "light scarf",
+      topGarmentColor: "sunny yellow",
+      bodyBuild: "small and round",
+      heightFeel: "very small",
+      paletteNotes: "Soft green, shell tan, and sunny yellow",
+      accessories: ["garden satchel"],
+    },
+    modestyRules: {},
+    palettePreview: { primary: "#7FB77E", secondary: "#C8A97B", accent: "#FACC15" },
+  },
+];
+
 function readStoredFilter<T extends string>(key: string, fallback: T, allowedValues: readonly T[]) {
   if (typeof window === "undefined") return fallback;
   try {
@@ -146,6 +362,10 @@ function writeStoredFilter(key: string, value: string) {
 
 function normalizeText(value?: string | null) {
   return (value || "").toLowerCase().trim();
+}
+
+function normalizeTemplateName(value: string) {
+  return normalizeText(value).replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function collectTemplateTokens(template: CharacterTemplate) {
@@ -176,8 +396,23 @@ function hasAnyKeyword(tokens: string[], keywords: string[]) {
   return keywords.some((keyword) => tokens.some((token) => token.includes(keyword)));
 }
 
-function isAnimalTemplate(template: CharacterTemplate, tokens: string[]) {
-  return template.category === "animal" || hasAnyKeyword(tokens, ["animal", "pet", "rabbit", "cat", "hedgehog", "owl", "fox", "turtle", "bird"]);
+function isAnimalTemplate(template: CharacterTemplate) {
+  return template.category === "animal";
+}
+
+function getAnimalSpecies(template: CharacterTemplate): AnimalSpeciesFilterId | null {
+  if (!isAnimalTemplate(template)) return null;
+  const tokens = collectTemplateTokens(template);
+  const species: AnimalSpeciesFilterId[] = ["rabbit", "cat", "hedgehog", "owl", "fox", "turtle"];
+  return species.find((entry) => tokens.some((token) => token.includes(entry))) || null;
+}
+
+function mergeTemplatesWithBuiltIns(templates: CharacterTemplate[]) {
+  const seen = new Set(templates.map((template) => normalizeTemplateName(template.name)));
+  const extras = BUILT_IN_ANIMAL_TEMPLATES.filter(
+    (template) => !seen.has(normalizeTemplateName(template.name)),
+  );
+  return [...templates, ...extras];
 }
 
 function isMuslimTemplate(template: CharacterTemplate, tokens: string[]) {
@@ -191,15 +426,18 @@ function isMuslimTemplate(template: CharacterTemplate, tokens: string[]) {
 }
 
 function isUniversalTemplate(template: CharacterTemplate, tokens: string[]) {
-  if (isAnimalTemplate(template, tokens)) return false;
+  if (isAnimalTemplate(template)) return false;
   if (hasAnyKeyword(tokens, UNIVERSAL_KEYWORDS)) return true;
-  if (hasAnyKeyword(tokens, FANTASY_KEYWORDS)) return true;
-  if (hasAnyKeyword(tokens, ADVENTURE_KEYWORDS)) return true;
+  const tagTokens = (template.tags || []).map((t) => normalizeText(t));
+  if (hasAnyKeyword(tagTokens, FANTASY_KEYWORDS)) return true;
+  if (hasAnyKeyword(tagTokens, ADVENTURE_KEYWORDS)) return true;
   return HUMAN_CATEGORIES.has(template.category) && !isMuslimTemplate(template, tokens);
 }
 
 function matchesPrimaryFilter(template: CharacterTemplate, filter: PrimaryFilterId) {
   const tokens = collectTemplateTokens(template);
+  // For Fantasy and Adventure, only match on tags — not descriptions — to avoid false positives
+  const tagTokens = (template.tags || []).map((t) => normalizeText(t));
 
   switch (filter) {
     case "all":
@@ -209,11 +447,11 @@ function matchesPrimaryFilter(template: CharacterTemplate, filter: PrimaryFilter
     case "universal":
       return isUniversalTemplate(template, tokens);
     case "animals":
-      return isAnimalTemplate(template, tokens);
+      return isAnimalTemplate(template);
     case "fantasy":
-      return hasAnyKeyword(tokens, FANTASY_KEYWORDS);
+      return !isAnimalTemplate(template) && hasAnyKeyword(tagTokens, FANTASY_KEYWORDS);
     case "adventure":
-      return hasAnyKeyword(tokens, ADVENTURE_KEYWORDS);
+      return !isAnimalTemplate(template) && hasAnyKeyword(tagTokens, ADVENTURE_KEYWORDS);
     default:
       return true;
   }
@@ -230,7 +468,7 @@ function rankTemplateForDefaultView(template: CharacterTemplate) {
   const tokens = collectTemplateTokens(template);
   if (isUniversalTemplate(template, tokens)) return 0;
   if (isMuslimTemplate(template, tokens)) return 1;
-  if (isAnimalTemplate(template, tokens)) return 2;
+  if (isAnimalTemplate(template)) return 2;
   return 3;
 }
 
@@ -279,7 +517,7 @@ export default function CharacterTemplatesPage() {
     readStoredFilter(
       STORAGE_KEYS.secondary,
       "all",
-      SECONDARY_FILTERS.map((filter) => filter.value) as readonly SecondaryFilterId[],
+      [...SECONDARY_FILTERS, ...ANIMAL_SECONDARY_FILTERS].map((filter) => filter.value) as readonly SecondaryFilterId[],
     ),
   );
   const [search, setSearch] = useState("");
@@ -289,6 +527,16 @@ export default function CharacterTemplatesPage() {
     queryKey: ["character-templates"],
     queryFn: () => characterTemplatesApi.list(),
   });
+
+  const allTemplates = useMemo(() => mergeTemplatesWithBuiltIns(templates), [templates]);
+  const activeSecondaryFilters = primaryFilter === "animals" ? ANIMAL_SECONDARY_FILTERS : SECONDARY_FILTERS;
+
+  useEffect(() => {
+    const allowedValues = new Set(activeSecondaryFilters.map((filter) => filter.value));
+    if (!allowedValues.has(secondaryFilter)) {
+      setSecondaryFilter("all");
+    }
+  }, [activeSecondaryFilters, secondaryFilter]);
 
   useEffect(() => {
     writeStoredFilter(STORAGE_KEYS.primary, primaryFilter);
@@ -301,10 +549,13 @@ export default function CharacterTemplatesPage() {
   const activePrimaryMeta = PRIMARY_FILTERS.find((filter) => filter.value === primaryFilter) || PRIMARY_FILTERS[0];
 
   const filtered = useMemo(() => {
-    const narrowed = templates.filter((template) => {
+    const narrowed = allTemplates.filter((template) => {
       const matchesPrimary = matchesPrimaryFilter(template, primaryFilter);
-      const matchesSecondary =
-        secondaryFilter === "all" || template.category === secondaryFilter;
+      const matchesSecondary = (() => {
+        if (secondaryFilter === "all") return true;
+        if (primaryFilter === "animals") return getAnimalSpecies(template) === secondaryFilter;
+        return template.category === secondaryFilter;
+      })();
       return matchesPrimary && matchesSecondary && matchesSearch(template, search);
     });
 
@@ -313,7 +564,7 @@ export default function CharacterTemplatesPage() {
     }
 
     return [...narrowed].sort((a, b) => a.name.localeCompare(b.name));
-  }, [primaryFilter, secondaryFilter, search, templates]);
+  }, [allTemplates, primaryFilter, secondaryFilter, search]);
 
   return (
     <AppLayout>
@@ -391,7 +642,7 @@ export default function CharacterTemplatesPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {SECONDARY_FILTERS.map((filter) => (
+              {activeSecondaryFilters.map((filter) => (
                 <button
                   key={filter.value}
                   onClick={() => setSecondaryFilter(filter.value)}

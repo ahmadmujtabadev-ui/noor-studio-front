@@ -320,6 +320,9 @@ const SHOE_PRESETS = [
   "khussa",
   "balgha slippers",
   "open-toe sandals",
+  "ballerina flats",
+  "heels",
+  "pumps",
 ];
 
 const ACCESSORIES_PRESETS = [
@@ -655,7 +658,7 @@ export default function CharacterCreatePage() {
     if (currentStep === 1) {
       const errors = new Set<string>();
       if (!form.skinTone) errors.add("skinTone");
-      if (!form.eyeColor) errors.add("eyeColor");
+      if (!form.eyeColor && form.gender !== "animal" && form.gender !== "other") errors.add("eyeColor");
       if (!form.faceShape) errors.add("faceShape");
       if (errors.size > 0) { setValidationErrors(errors); return; }
     }
@@ -953,7 +956,7 @@ export default function CharacterCreatePage() {
         <GeneratingOverlay register="neutral" label="Generating pose sheet" />
       )}
 
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto w-full max-w-[1400px]">
         {/* Colorful step indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -1037,7 +1040,7 @@ export default function CharacterCreatePage() {
           </div>
         )}
 
-        <div className="card-glow p-8 space-y-6 rounded-3xl border-2 border-border">
+        <div className="card-glow space-y-6 rounded-[32px] border border-border/70 bg-background/95 p-4 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] sm:p-6 xl:p-8">
           {currentStep === 0 && (
             <div className="space-y-5">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🧑 Persona</h2>
@@ -1151,15 +1154,15 @@ export default function CharacterCreatePage() {
           )}
 
           {currentStep === 1 && (
-            <div className="grid lg:grid-cols-[1fr_256px] gap-6 items-start">
-            <div className="space-y-6">
+            <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0 space-y-6">
               <h2 className="text-2xl font-extrabold flex items-center gap-2">🎨 Visual DNA</h2>
 
               {/* ── Tab bar ─────────────────────────────────────────────────── */}
               <DNATabs active={dnaTab} onChange={(t) => { setDnaTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
 
               {/* ── Mobile avatar strip ─────────────────────────────────────── */}
-              <div className="lg:hidden flex items-center gap-4 rounded-2xl border border-border bg-card overflow-hidden p-3">
+              <div className="xl:hidden flex items-center gap-4 rounded-2xl border border-border bg-card overflow-hidden p-3">
                 <div className="w-20 h-24 shrink-0 rounded-xl bg-gradient-to-b from-amber-50 to-stone-100 dark:from-stone-900/50 dark:to-stone-800/30 flex items-center justify-center">
                   <CharacterAvatarPreview
                     form={{
@@ -1306,16 +1309,38 @@ export default function CharacterCreatePage() {
                       <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a skin tone</p>
                     )}
                     {isOther ? (
-                      <Input placeholder="e.g. bright golden-yellow feathers, orange wingtips"
-                        value={form.skinTone} onChange={(e) => updateForm("skinTone", e.target.value)} />
+                      <VisualPicker columns={3} iconSize="xl" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
+                        options={[
+                          { value: "golden fur",      label: "Golden Fur",      icon: <img src="/fur-feather/golden%20fur.png"     alt="Golden Fur"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "brown fur",       label: "Brown Fur",       icon: <img src="/fur-feather/brown%20fur.png"      alt="Brown Fur"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "white feathers",  label: "White Feathers",  icon: <img src="/fur-feather/white%20feathers.png" alt="White Feathers"  className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "orange feathers", label: "Orange Feathers", icon: <img src="/fur-feather/orange%20features.png" alt="Orange Feathers" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "green scales",    label: "Green Scales",    icon: <img src="/fur-feather/green%20scales.png"   alt="Green Scales"    className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "blue scales",     label: "Blue Scales",     icon: <img src="/fur-feather/blue%20scales.png"    alt="Blue Scales"     className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
+                      />
                     ) : (
-                      <VisualPicker columns={7} iconSize="md" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
-                        options={Object.entries(SKIN_TONE_COLORS).map(([value, { label }]) => ({ value, label, icon: <SkinToneSwatch color={value} /> }))}
+                      <VisualPicker columns={6} iconSize="md" value={form.skinTone} onChange={(v) => updateForm("skinTone", v)}
+                        options={[
+                          { value: "porcelain",    label: "Porcelain",   icon: <img src="/colors/porcelain.png"          alt="Porcelain"   className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "fair",         label: "Fair",        icon: <img src="/colors/fair.png"               alt="Fair"        className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "light-beige",  label: "Light Beige", icon: <img src="/colors/light-beige.png"        alt="Light Beige" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "beige",        label: "Beige",       icon: <img src="/colors/beige.png"              alt="Beige"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "olive",        label: "Olive",       icon: <img src="/colors/olive.png"              alt="Olive"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "warm-olive",   label: "Warm Olive",  icon: <img src="/colors/warm%20olive.png"       alt="Warm Olive"  className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "golden",       label: "Golden",      icon: <img src="/colors/golden.png"             alt="Golden"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "tan",          label: "Tan",         icon: <img src="/colors/tan.png"                alt="Tan"         className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "caramel",      label: "Caramel",     icon: <img src="/colors/caramel.png"            alt="Caramel"     className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "medium-brown", label: "Med Brown",   icon: <img src="/colors/medium%20brown.png"    alt="Med Brown"   className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "brown",        label: "Brown",       icon: <img src="/colors/brown.png"              alt="Brown"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "dark-brown",   label: "Deep Brown",  icon: <img src="/colors/deep%20brown.png"      alt="Deep Brown"  className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
                       />
                     )}
                   </div>
 
                   {/* Eye Color */}
+                  {!isOther && (
                   <div className="space-y-3">
                     <Label className="text-lg font-bold">
                       👁️ Eye Color *
@@ -1337,33 +1362,49 @@ export default function CharacterCreatePage() {
                       ]}
                     />
                   </div>
+                  )}
 
                   {/* Face Shape */}
                   <div className="space-y-3">
                     <Label className="text-lg font-bold">
-                      😊 Face Shape *
+                      {isOther ? "🐾 Head / Snout Shape" : "😊 Face Shape *"}
                       <span className="ml-2 text-xs font-normal text-muted-foreground">Locks in every illustration</span>
                     </Label>
-                    {validationErrors.has("faceShape") && (
+                    {!isOther && validationErrors.has("faceShape") && (
                       <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Please select a face shape</p>
                     )}
-                    <VisualPicker columns={3} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
-                      options={form.gender === "girl" ? [
-                        { value: "round-friendly",    label: "Round",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "oval-gentle",        label: "Oval Gentle", icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval%20gentle.png" alt="Oval Gentle" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "heart-creative",     label: "Heart",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/heart.png" alt="Heart" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "square-determined",  label: "Square",      icon: <img src="/girls%20E.%20Face%20Shape%20Cards/square.png" alt="Square" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "oval-balanced",      label: "Oval",        icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval.png" alt="Oval" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "round-youthful",     label: "Round Soft",  icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round%20soft.png" alt="Round Soft" className="w-full h-full object-contain" draggable={false} /> },
-                      ] : [
-                        { value: "round-friendly",    label: "Round",      icon: <RoundFaceSvg /> },
-                        { value: "oval-gentle",        label: "Oval Gentle",icon: <OvalFaceSvg /> },
-                        { value: "heart-creative",     label: "Heart",      icon: <HeartFaceSvg /> },
-                        { value: "square-determined",  label: "Square",     icon: <SquareFaceSvg /> },
-                        { value: "oval-balanced",      label: "Oval",       icon: <OvalBalancedFaceSvg /> },
-                        { value: "round-youthful",     label: "Round Soft", icon: <RoundYouthfulFaceSvg /> },
-                      ]}
-                    />
+                    {isOther ? (
+                      <VisualPicker columns={4} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
+                        options={[
+                          { value: "round beak",          label: "Round Beak",     icon: <img src="/head-snout-shape/round%20beak.png"          alt="Round Beak"     className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "flat beak",           label: "Flat Beak",      icon: <img src="/head-snout-shape/flat%20beak.png"           alt="Flat Beak"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "short snout",         label: "Short Snout",    icon: <img src="/head-snout-shape/short%20snout.png"         alt="Short Snout"    className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "pointed snout",       label: "Pointed Snout",  icon: <img src="/head-snout-shape/pointed%20snout.png"       alt="Pointed Snout"  className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "wide muzzle",         label: "Wide Muzzle",    icon: <img src="/head-snout-shape/wide%20muzzle.png"         alt="Wide Muzzle"    className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "square muzzle",       label: "Square Muzzle",  icon: <img src="/head-snout-shape/square%20muzzle.png"       alt="Square Muzzle"  className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "big friendly muzzle", label: "Friendly Muzzle",icon: <img src="/head-snout-shape/big%20friendly%20muzzle.png" alt="Friendly Muzzle" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "soft rounded head",   label: "Rounded Head",   icon: <img src="/head-snout-shape/soft%20rounded%20head.png" alt="Rounded Head"   className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
+                      />
+                    ) : (
+                      <VisualPicker columns={3} iconSize="xl" value={form.faceShape} onChange={(v) => updateForm("faceShape", v)}
+                        options={form.gender === "girl" ? [
+                          { value: "round-friendly",    label: "Round",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "oval-gentle",        label: "Oval Gentle", icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval%20gentle.png" alt="Oval Gentle" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "heart-creative",     label: "Heart",       icon: <img src="/girls%20E.%20Face%20Shape%20Cards/heart.png" alt="Heart" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "square-determined",  label: "Square",      icon: <img src="/girls%20E.%20Face%20Shape%20Cards/square.png" alt="Square" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "oval-balanced",      label: "Oval",        icon: <img src="/girls%20E.%20Face%20Shape%20Cards/oval.png" alt="Oval" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "round-youthful",     label: "Round Soft",  icon: <img src="/girls%20E.%20Face%20Shape%20Cards/round%20soft.png" alt="Round Soft" className="w-full h-full object-contain" draggable={false} /> },
+                        ] : [
+                          { value: "round-friendly",   label: "Round",      icon: <img src="/boy-face/round.png"          alt="Round"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "oval-gentle",       label: "Oval Gentle",icon: <img src="/boy-face/oval%20gentle.png" alt="Oval Gentle" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "heart-creative",    label: "Heart",      icon: <img src="/boy-face/heart.png"         alt="Heart"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "square-determined", label: "Square",     icon: <img src="/boy-face/square.png"        alt="Square"     className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "oval-balanced",     label: "Oval",       icon: <img src="/boy-face/oval.png"          alt="Oval"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "round-youthful",    label: "Round Soft", icon: <img src="/boy-face/round%20soft.png" alt="Round Soft" className="w-full h-full object-contain" draggable={false} /> },
+                        ]}
+                      />
+                    )}
                   </div>
 
                   {/* Advanced Details */}
@@ -1522,14 +1563,15 @@ export default function CharacterCreatePage() {
                     {/* OTHER / CREATURE */}
                     {isOther && (
                       <>
-                        <VisualPicker columns={3} iconSize="xl" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
+                        <VisualPicker columns={4} iconSize="xl" value={form.hairStyle} onChange={(v) => updateForm("hairStyle", v)}
                           options={[
-                            { value: "feathered crest on head", label: "Feather Crest", icon: <img src="/animal%20and%20fantasy%20hairs/feather%20crest.png" alt="Feather Crest" className="w-full h-full object-contain" draggable={false} /> },
-                            { value: "no hair (feathers)",      label: "Feathers",       icon: <img src="/animal%20and%20fantasy%20hairs/feathers.png" alt="Feathers" className="w-full h-full object-contain" draggable={false} /> },
-                            { value: "no hair (fur)",           label: "Fur",            icon: <img src="/animal%20and%20fantasy%20hairs/fur.png" alt="Fur" className="w-full h-full object-contain" draggable={false} /> },
-                            { value: "mane",                    label: "Mane",           icon: <img src="/animal%20and%20fantasy%20hairs/mane.png" alt="Mane" className="w-full h-full object-contain" draggable={false} /> },
-                            { value: "spikes on head",          label: "Spikes",         icon: <img src="/animal%20and%20fantasy%20hairs/spikes.png" alt="Spikes" className="w-full h-full object-contain" draggable={false} /> },
-                            { value: "none",                    label: "None / N/A",     icon: <BaldSvg /> },
+                            { value: "feathered crest on head", label: "Feather Crest", icon: <img src="/head-texture/feather%20crest.png" alt="Feather Crest" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "no hair (feathers)",      label: "Feathers",       icon: <img src="/head-texture/feathers.png"       alt="Feathers"       className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "frill crest",             label: "Frill Crest",    icon: <img src="/head-texture/frill%20crest.png"  alt="Frill Crest"    className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "no hair (fur)",           label: "Fur",            icon: <img src="/head-texture/fur.png"            alt="Fur"            className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "mane",                    label: "Mane",           icon: <img src="/head-texture/mane.png"           alt="Mane"           className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "spikes on head",          label: "Spikes",         icon: <img src="/head-texture/spikes.png"         alt="Spikes"         className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "none",                    label: "None / N/A",     icon: <img src="/head-texture/none.png"           alt="None"           className="w-full h-full object-contain" draggable={false} /> },
                           ]}
                         />
                         <Input placeholder="Crest / texture colour (e.g. orange crest)…" value={form.hairColor}
@@ -1562,6 +1604,51 @@ export default function CharacterCreatePage() {
               ═══════════════════════════════════════════════════════════════ */}
               {dnaTab === "outfit" && (
                 <div className="space-y-6">
+                  {isOther ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-base font-bold">🐾 Outfit / Accessories</Label>
+                        <VisualPicker columns={4} iconSize="xl" allowDeselect value={form.topGarmentType} onChange={(v) => updateForm("topGarmentType", v)}
+                          options={[
+                            { value: "red cape",      label: "Red Cape",     icon: <img src="/outfit-accesories/red%20cape.png"      alt="Red Cape"     className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "small backpack",label: "Backpack",     icon: <img src="/outfit-accesories/small%20backpack.png" alt="Backpack"     className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "flower crown",  label: "Flower Crown", icon: <img src="/outfit-accesories/flower%20crown.png"  alt="Flower Crown" className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "simple vest",   label: "Simple Vest",  icon: <img src="/outfit-accesories/simple%20vest.png"   alt="Simple Vest"  className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "scarf",         label: "Scarf",        icon: <img src="/outfit-accesories/scarf.png"           alt="Scarf"        className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "bow tie",       label: "Bow Tie",      icon: <img src="/outfit-accesories/bow%20tie.png"       alt="Bow Tie"      className="w-full h-full object-contain" draggable={false} /> },
+                            { value: "none",          label: "None",         icon: <img src="/outfit-accesories/none.png"            alt="None"         className="w-full h-full object-contain" draggable={false} /> },
+                          ]}
+                        />
+                        <Input placeholder="Or describe custom accessories…"
+                          value={["red cape","small backpack","flower crown","simple vest","scarf","bow tie","none"].includes(form.topGarmentType) ? "" : form.topGarmentType}
+                          onChange={(e) => updateForm("topGarmentType", e.target.value)} className="mt-1" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold">Colour Theme</Label>
+                        <ColorScrollRow>
+                          {OUTFIT_COLORS.map((c) => {
+                            const isSel = form.topGarmentColor === c.name;
+                            return (
+                              <button key={c.name} type="button" title={c.name}
+                                onClick={() => updateForm("topGarmentColor", isSel ? "" : c.name)}
+                                className={cn("w-11 h-11 sm:w-8 sm:h-8 flex-shrink-0 rounded-full border-2 transition-all hover:scale-110",
+                                  isSel ? "border-amber-500 scale-110 ring-2 ring-amber-300" : "border-border")}
+                                style={{ backgroundColor: c.hex }} />
+                            );
+                          })}
+                        </ColorScrollRow>
+                        <Input placeholder="Or type a custom colour theme…"
+                          value={OUTFIT_COLORS.some((c) => c.name === form.topGarmentColor) ? "" : form.topGarmentColor}
+                          onChange={(e) => updateForm("topGarmentColor", e.target.value)} className="mt-1" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Outfit Rules <span className="text-xs text-muted-foreground">(extra locking rules for AI)</span></Label>
+                        <Textarea rows={2} placeholder="e.g. always wears the cape, never changes accessories"
+                          value={form.outfitRules} onChange={(e) => updateForm("outfitRules", e.target.value)} />
+                      </div>
+                    </>
+                  ) : (
+                  <>
                   {/* Top Garment */}
                   <div className="space-y-2">
                     <Label className="text-base font-bold">👕 Top Garment</Label>
@@ -1582,14 +1669,14 @@ export default function CharacterCreatePage() {
                       <VisualPicker accent="amber" columns={4} iconSize="xl" allowDeselect value={form.topGarmentType}
                         onChange={(v) => updateForm("topGarmentType", v)}
                         options={[
-                          { value: "t-shirt",           label: "T-Shirt",    icon: <TShirtSvg /> },
-                          { value: "long-sleeve shirt", label: "Long Sleeve",icon: <LongSleeveShirtSvg /> },
-                          { value: "collared shirt",    label: "Collar",     icon: <CollarShirtSvg /> },
-                          { value: "hoodie",            label: "Hoodie",     icon: <HoodieSvg /> },
-                          { value: "thobe",             label: "Thobe",      icon: <ThobeSvg /> },
-                          { value: "jalabiya",          label: "Jalabiya",   icon: <JalabiyaSvg /> },
-                          { value: "kurta",             label: "Kurta",      icon: <KurtaSvg /> },
-                          { value: "jacket",            label: "Jacket",     icon: <JacketSvg /> },
+                          { value: "t-shirt",           label: "T-Shirt",    icon: <img src="/male%20dress/t-shirt.png"     alt="T-Shirt"     className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "long-sleeve shirt", label: "Long Sleeve",icon: <img src="/male%20dress/long-sleeve.png" alt="Long Sleeve" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "collared shirt",    label: "Collar",     icon: <img src="/male%20dress/collar.png"      alt="Collar"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "hoodie",            label: "Hoodie",     icon: <img src="/male%20dress/hoodie.png"      alt="Hoodie"      className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "thobe",             label: "Thobe",      icon: <img src="/male%20dress/thobe.png"       alt="Thobe"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "jalabiya",          label: "Jalabiya",   icon: <img src="/male%20dress/jalabiya.png"   alt="Jalabiya"    className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "kurta",             label: "Kurta",      icon: <img src="/male%20dress/kurta.png"       alt="Kurta"       className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "jacket",            label: "Jacket",     icon: <img src="/male%20dress/jacket.png"      alt="Jacket"      className="w-full h-full object-contain" draggable={false} /> },
                         ]}
                       />
                     )}
@@ -1689,9 +1776,12 @@ export default function CharacterCreatePage() {
                         { value: "boots",            label: "Boots",     icon: <img src="/shoes/boots.png" alt="Boots" className="w-full h-full object-contain" draggable={false} /> },
                         { value: "slippers",         label: "Slippers",  icon: <img src="/shoes/slippers.png" alt="Slippers" className="w-full h-full object-contain" draggable={false} /> },
                         { value: "oxford shoes",     label: "Oxford",    icon: <img src="/shoes/oxford.png" alt="Oxford" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "khussa",           label: "Khussa",    icon: <img src="/shoes/khussa.png" alt="Khussa" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "balgha slippers",  label: "Balgha",    icon: <img src="/shoes/balga.png" alt="Balgha" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "open-toe sandals", label: "Open-Toe",  icon: <img src="/shoes/open-toe.png" alt="Open-Toe" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "khussa",           label: "Khussa",    icon: <img src="/shoes/khussa.png"    alt="Khussa"    className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "balgha slippers",  label: "Balgha",    icon: <img src="/shoes/balga.png"     alt="Balgha"    className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "open-toe sandals", label: "Open-Toe",  icon: <img src="/shoes/open-toe.png"  alt="Open-Toe"  className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "ballerina flats",  label: "Ballerina", icon: <img src="/shoes/balleria.png"  alt="Ballerina" className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "heels",            label: "Heels",     icon: <img src="/shoes/heels.png"     alt="Heels"     className="w-full h-full object-contain" draggable={false} /> },
+                        { value: "pumps",            label: "Pumps",     icon: <img src="/shoes/pumps.png"     alt="Pumps"     className="w-full h-full object-contain" draggable={false} /> },
                       ]}
                     />
                     <Input placeholder="Or type a custom shoe type…"
@@ -1756,6 +1846,7 @@ export default function CharacterCreatePage() {
                     <Textarea rows={2} placeholder="e.g. always wears the same uniform, no random color changes"
                       value={form.outfitRules} onChange={(e) => updateForm("outfitRules", e.target.value)} />
                   </div>
+                  </>)}
                 </div>
               )}
 
@@ -1764,6 +1855,22 @@ export default function CharacterCreatePage() {
               ═══════════════════════════════════════════════════════════════ */}
               {dnaTab === "body" && (
                 <div className="space-y-6">
+                  {isOther ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label className="text-base font-bold">🐾 Size & Build</Label>
+                        <Input placeholder="e.g. small and round, large and fluffy, tiny fairy-sized, horse-sized..."
+                          value={form.bodyBuild} onChange={(e) => updateForm("bodyBuild", e.target.value)} />
+                        <p className="text-xs text-muted-foreground">Describe the creature's physical size and shape.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-base font-bold">📐 Size Feel</Label>
+                        <Input placeholder="e.g. knee-height, towering, tiny enough to fit in a palm..."
+                          value={form.heightFeel} onChange={(e) => updateForm("heightFeel", e.target.value)} />
+                      </div>
+                    </>
+                  ) : (
+                  <>
                   {/* Body Build */}
                   <div className="space-y-2">
                     <Label className="text-base font-bold">🧍 Body Build</Label>
@@ -1828,6 +1935,7 @@ export default function CharacterCreatePage() {
                       </div>
                     </div>
                   </details>
+                  </>)}
                 </div>
               )}
 
@@ -1888,7 +1996,7 @@ export default function CharacterCreatePage() {
             </div>
 
             {/* ── Live Avatar Preview — sticky right column ───────────── */}
-            <div className="lg:sticky lg:top-4 space-y-3 hidden lg:block">
+            <div className="hidden space-y-3 xl:sticky xl:top-24 xl:block">
               <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-lg">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-border/60 bg-gradient-to-r from-card to-muted/20">
@@ -2289,7 +2397,7 @@ export default function CharacterCreatePage() {
             </div>
           )}
 
-          <div className="flex justify-between items-center pt-3 pb-3 mt-4 border-t border-border sticky bottom-0 bg-background/95 backdrop-blur-sm z-10">
+          <div className="-mx-4 sticky bottom-0 z-10 mt-4 flex items-center justify-between border-t border-border bg-background/95 px-4 pb-3 pt-3 backdrop-blur-sm sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8">
             <Button
               variant="outline"
               onClick={() => {

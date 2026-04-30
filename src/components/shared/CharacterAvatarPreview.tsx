@@ -1,4 +1,5 @@
-// Image maps — mirrors the picker options in CharacterCreatePage
+// ── Image maps (mirrors picker options) ──────────────────────────────────────
+
 const GENDER_IMG: Record<string, string> = {
   girl:   "/characters/girl.png",
   boy:    "/characters/boy.png",
@@ -55,11 +56,43 @@ const BOY_HAIR_IMG: Record<string, string> = {
 };
 
 const CREATURE_HAIR_IMG: Record<string, string> = {
-  "feathered crest on head": "/animal and fantasy hairs/feather crest.png",
-  "no hair (feathers)":      "/animal and fantasy hairs/feathers.png",
-  "no hair (fur)":           "/animal and fantasy hairs/fur.png",
-  "mane":                    "/animal and fantasy hairs/mane.png",
-  "spikes on head":          "/animal and fantasy hairs/spikes.png",
+  "feathered crest on head": "/head-texture/feather crest.png",
+  "no hair (feathers)":      "/head-texture/feathers.png",
+  "frill crest":             "/head-texture/frill crest.png",
+  "no hair (fur)":           "/head-texture/fur.png",
+  "mane":                    "/head-texture/mane.png",
+  "spikes on head":          "/head-texture/spikes.png",
+  "none":                    "/head-texture/none.png",
+};
+
+const FUR_FEATHER_IMG: Record<string, string> = {
+  "golden fur":      "/fur-feather/golden fur.png",
+  "brown fur":       "/fur-feather/brown fur.png",
+  "white feathers":  "/fur-feather/white feathers.png",
+  "orange feathers": "/fur-feather/orange features.png",
+  "green scales":    "/fur-feather/green scales.png",
+  "blue scales":     "/fur-feather/blue scales.png",
+};
+
+const HEAD_SNOUT_IMG: Record<string, string> = {
+  "round beak":          "/head-snout-shape/round beak.png",
+  "flat beak":           "/head-snout-shape/flat beak.png",
+  "short snout":         "/head-snout-shape/short snout.png",
+  "pointed snout":       "/head-snout-shape/pointed snout.png",
+  "wide muzzle":         "/head-snout-shape/wide muzzle.png",
+  "square muzzle":       "/head-snout-shape/square muzzle.png",
+  "big friendly muzzle": "/head-snout-shape/big friendly muzzle.png",
+  "soft rounded head":   "/head-snout-shape/soft rounded head.png",
+};
+
+const OUTFIT_ACC_IMG: Record<string, string> = {
+  "red cape":       "/outfit-accesories/red cape.png",
+  "small backpack": "/outfit-accesories/small backpack.png",
+  "flower crown":   "/outfit-accesories/flower crown.png",
+  "simple vest":    "/outfit-accesories/simple vest.png",
+  "scarf":          "/outfit-accesories/scarf.png",
+  "bow tie":        "/outfit-accesories/bow tie.png",
+  "none":           "/outfit-accesories/none.png",
 };
 
 const GIRL_TOP_IMG: Record<string, string> = {
@@ -81,8 +114,8 @@ const GIRL_BOTTOM_IMG: Record<string, string> = {
 };
 
 const BOY_BOTTOM_IMG: Record<string, string> = {
-  jeans:   "/trousers/jeans.png",
-  shorts:  "/trousers/shorts.png",
+  jeans:  "/trousers/jeans.png",
+  shorts: "/trousers/shorts.png",
 };
 
 const SHOE_IMG: Record<string, string> = {
@@ -97,6 +130,9 @@ const SHOE_IMG: Record<string, string> = {
   "khussa":           "/shoes/khussa.png",
   "balgha slippers":  "/shoes/balga.png",
   "open-toe sandals": "/shoes/open-toe.png",
+  "ballerina flats":  "/shoes/balleria.png",
+  "heels":            "/shoes/heels.png",
+  "pumps":            "/shoes/pumps.png",
 };
 
 const BODY_IMG: Record<string, string> = {
@@ -109,6 +145,8 @@ const BODY_IMG: Record<string, string> = {
   "small toddler round tummy": "/weight feel card/toddler.png",
   "round and full":            "/weight feel card/round.png",
 };
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AvatarForm {
   gender: "girl" | "boy" | "animal" | "other";
@@ -130,144 +168,184 @@ interface AvatarForm {
   name?: string;
 }
 
-interface FeatureTile {
-  src: string;
-  label: string;
-}
+// ── Small attribute cell ───────────────────────────────────────────────────────
 
-function ImgTile({ src, label, large }: { src: string; label: string; large?: boolean }) {
+function AttrCell({
+  src,
+  label,
+  empty,
+}: {
+  src?: string;
+  label: string;
+  empty?: boolean;
+}) {
   return (
-    <div className={`flex flex-col items-center gap-0.5 ${large ? "flex-1" : ""}`}>
-      <div
-        className={`overflow-hidden rounded-xl border border-black/8 bg-gradient-to-b from-[#FFF8F0] to-[#F5EDE0] shadow-sm ${
-          large ? "w-full aspect-[3/4]" : "w-full aspect-square"
-        }`}
-      >
-        <img src={src} alt={label} className="w-full h-full object-contain" draggable={false} />
+    <div className="flex flex-col items-center gap-1">
+      <div className="w-full aspect-square rounded-xl overflow-hidden border border-border/40 bg-gradient-to-b from-[#FFF8F2] to-[#F5EBE0] flex items-center justify-center">
+        {src ? (
+          <img src={src} alt={label} className="w-full h-full object-contain" draggable={false} />
+        ) : (
+          <span className="text-xl opacity-20 select-none">{empty ? "—" : "?"}</span>
+        )}
       </div>
-      <span className="text-[10px] font-semibold text-muted-foreground leading-none">{label}</span>
+      <span className="text-[10px] font-semibold text-muted-foreground leading-none text-center truncate w-full">
+        {label}
+      </span>
     </div>
   );
 }
 
+// ── Chip helper ───────────────────────────────────────────────────────────────
+
+function Chip({ label, color = "slate" }: { label: string; color?: string }) {
+  const colors: Record<string, string> = {
+    slate:   "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    blue:    "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+    orange:  "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+    purple:  "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+    amber:   "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  };
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${colors[color] ?? colors.slate}`}>
+      {label}
+    </span>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function CharacterAvatarPreview({ form }: { form: AvatarForm }) {
-  const isGirl    = form.gender === "girl";
-  const isBoy     = form.gender === "boy";
-  const isOther   = form.gender === "animal" || form.gender === "other";
+  const isGirl  = form.gender === "girl";
+  const isBoy   = form.gender === "boy";
+  const isOther = form.gender === "animal" || form.gender === "other";
 
-  // ── Main "hero" image — most descriptive available ──────────────────────────
-  let heroSrc: string | null = null;
-  let heroLabel = "";
+  // Gender base image — always the stable hero
+  const genderSrc = GENDER_IMG[form.gender] ?? GENDER_IMG.girl;
 
-  // 1. Hair has head+face context — best for face/hair stage
-  if (!form.wearHijab && form.hairStyle) {
-    if (isGirl  && GIRL_HAIR_IMG[form.hairStyle])     { heroSrc = GIRL_HAIR_IMG[form.hairStyle];     heroLabel = "Hair"; }
-    else if (isBoy   && BOY_HAIR_IMG[form.hairStyle]) { heroSrc = BOY_HAIR_IMG[form.hairStyle];      heroLabel = "Hair"; }
-    else if (isOther && CREATURE_HAIR_IMG[form.hairStyle]) { heroSrc = CREATURE_HAIR_IMG[form.hairStyle]; heroLabel = "Texture"; }
-  }
+  // Derive attribute images
+  const faceImg = isOther
+    ? HEAD_SNOUT_IMG[form.faceShape]
+    : isGirl && form.faceShape ? GIRL_FACE_IMG[form.faceShape] : undefined;
 
-  // 2. Face shape card (girl only) if no hair chosen yet
-  if (!heroSrc && isGirl && form.faceShape && GIRL_FACE_IMG[form.faceShape]) {
-    heroSrc   = GIRL_FACE_IMG[form.faceShape];
-    heroLabel = "Face Shape";
-  }
+  const hairImg = !form.wearHijab && form.hairStyle
+    ? isGirl  ? GIRL_HAIR_IMG[form.hairStyle]
+    : isBoy   ? BOY_HAIR_IMG[form.hairStyle]
+    : isOther ? CREATURE_HAIR_IMG[form.hairStyle]
+    : undefined
+    : undefined;
 
-  // 3. Gender character as fallback
-  if (!heroSrc && GENDER_IMG[form.gender]) {
-    heroSrc   = GENDER_IMG[form.gender];
-    heroLabel = form.gender.charAt(0).toUpperCase() + form.gender.slice(1);
-  }
-
-  // ── Feature tiles ────────────────────────────────────────────────────────────
-  const tiles: FeatureTile[] = [];
-
-  // Eyes
-  if (form.eyeColor && EYE_IMG[form.eyeColor])
-    tiles.push({ src: EYE_IMG[form.eyeColor], label: "Eyes" });
-
-  // Top garment
-  const topSrc = isGirl ? GIRL_TOP_IMG[form.topGarmentType] : null;
-  if (topSrc) tiles.push({ src: topSrc, label: "Top" });
-
-  // Bottom garment
-  const bottomSrc = isGirl
+  const eyeImg    = !isOther && form.eyeColor ? EYE_IMG[form.eyeColor] : undefined;
+  const furImg    = isOther && form.skinTone  ? FUR_FEATHER_IMG[form.skinTone] : undefined;
+  const topImg    = isOther
+    ? OUTFIT_ACC_IMG[form.topGarmentType]
+    : isGirl ? GIRL_TOP_IMG[form.topGarmentType] : undefined;
+  const bottomImg = isGirl
     ? GIRL_BOTTOM_IMG[form.bottomGarmentType]
     : BOY_BOTTOM_IMG[form.bottomGarmentType];
-  if (bottomSrc) tiles.push({ src: bottomSrc, label: "Bottom" });
+  const shoeImg  = form.shoeType      ? SHOE_IMG[form.shoeType]         : undefined;
+  const bodyImg  = form.bodyBuild     ? BODY_IMG[form.bodyBuild]        : undefined;
 
-  // Shoes
-  if (form.shoeType && SHOE_IMG[form.shoeType])
-    tiles.push({ src: SHOE_IMG[form.shoeType], label: "Shoes" });
+  // Chips for the info strip
+  const chips: Array<{ label: string; color: string }> = [];
+  if (form.gender)         chips.push({ label: form.gender,                       color: "blue" });
+  if (form.skinTone)       chips.push({ label: form.skinTone.replace(/-/g, " "),  color: "orange" });
+  if (form.wearHijab)      chips.push({ label: "Hijab",                           color: "emerald" });
+  if (form.topGarmentType) chips.push({ label: form.topGarmentType,               color: "purple" });
+  if (form.longSleeves !== undefined && (form as any).longSleeves)
+                           chips.push({ label: "Long sleeves",                    color: "emerald" });
+  if (form.bodyBuild)      chips.push({ label: form.bodyBuild.replace(/ and /gi, " & "), color: "amber" });
 
-  // Body build (only if < 4 tiles so far)
-  if (form.bodyBuild && BODY_IMG[form.bodyBuild] && tiles.length < 4)
-    tiles.push({ src: BODY_IMG[form.bodyBuild], label: "Build" });
-
-  const hasSelections = !!heroSrc && heroLabel !== form.gender.charAt(0).toUpperCase() + form.gender.slice(1);
+  const anySelected = !!(form.skinTone || form.eyeColor || form.faceShape || form.hairStyle || form.topGarmentType);
 
   return (
-    <div className="w-full h-full flex flex-col gap-2 p-1">
-      {/* ── Hero image ─────────────────────────────────────────────────────── */}
-      <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden bg-gradient-to-b from-[#FFF8F0] via-[#FFF0E5] to-[#F5E8D8] border border-black/8 shadow-sm">
-        {heroSrc ? (
-          <img
-            src={heroSrc}
-            alt="character preview"
-            className="w-full h-full object-contain transition-all duration-300"
-            draggable={false}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-muted-foreground/30">
-            <svg viewBox="0 0 64 80" className="w-16 h-20 opacity-30" fill="currentColor">
-              <ellipse cx="32" cy="20" rx="14" ry="16" />
-              <rect x="16" y="36" width="32" height="30" rx="8" />
-              <rect x="8"  y="38" width="10" height="22" rx="5" />
-              <rect x="46" y="38" width="10" height="22" rx="5" />
-            </svg>
-            <span className="text-xs font-medium">Select options to preview</span>
-          </div>
-        )}
+    <div className="w-full h-full flex flex-col gap-0 overflow-hidden">
 
-        {/* Name badge at top */}
+      {/* ── CHARACTER PORTRAIT ─────────────────────────────────────────────── */}
+      <div className="relative flex-1 min-h-0 bg-gradient-to-b from-amber-50 via-orange-50/60 to-stone-100/80 dark:from-stone-900/60 dark:to-stone-800/40 flex items-center justify-center">
+
+        {/* Soft radial glow behind character */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-3/4 h-3/4 rounded-full bg-amber-100/60 dark:bg-amber-900/10 blur-2xl" />
+        </div>
+
+        <img
+          src={genderSrc}
+          alt={form.gender}
+          className="relative z-10 h-full w-full object-contain drop-shadow-md transition-all duration-300"
+          draggable={false}
+        />
+
+        {/* Name badge */}
         {form.name && (
-          <div className="absolute top-2 left-2 right-2 bg-black/55 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-bold text-center truncate shadow">
-            {form.name}
+          <div className="absolute top-2 left-2 right-2 z-20 flex justify-center">
+            <div className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full max-w-[90%] truncate shadow">
+              {form.name}
+            </div>
           </div>
         )}
 
-        {/* Stage badge bottom-left */}
-        {heroSrc && (
-          <div className="absolute bottom-2 left-2 bg-black/45 backdrop-blur-sm text-white text-[10px] px-2.5 py-1 rounded-full font-semibold">
-            {heroLabel}
+        {/* Age look badge */}
+        {form.ageLook && (
+          <div className="absolute bottom-2 right-2 z-20 bg-white/80 dark:bg-black/50 backdrop-blur-sm text-foreground dark:text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow border border-white/40 capitalize">
+            {form.ageLook.split(" ").slice(0, 3).join(" ")}
           </div>
         )}
 
-        {/* Age/gender chip bottom-right */}
-        {(form.ageLook || form.gender) && (
-          <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm text-foreground text-[10px] px-2.5 py-1 rounded-full font-semibold shadow-sm border border-white/50 capitalize">
-            {form.ageLook
-              ? form.ageLook.split(" ").slice(0, 2).join(" ")
-              : form.gender}
+        {/* "No selections" hint */}
+        {!anySelected && (
+          <div className="absolute inset-x-0 bottom-2 flex justify-center z-20">
+            <span className="text-[10px] text-muted-foreground/60 bg-white/70 dark:bg-black/40 px-3 py-1 rounded-full">
+              Select options to customise
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── Feature tile strip ───────────────────────────────────────────────── */}
-      {tiles.length > 0 ? (
-        <div className="flex gap-1.5 flex-shrink-0">
-          {tiles.slice(0, 4).map((t) => (
-            <ImgTile key={t.label} src={t.src} label={t.label} />
-          ))}
-          {/* Fill empties so the row stays stable */}
-          {tiles.length < 4 && Array.from({ length: 4 - tiles.length }).map((_, i) => (
-            <div key={`empty-${i}`} className="flex-1" />
-          ))}
+      {/* ── DESIGN SUMMARY ─────────────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-t border-border/60 bg-card">
+
+        {/* Section title */}
+        <div className="flex items-center gap-2 px-3 pt-2 pb-1.5">
+          <div className="flex-1 h-px bg-border/40" />
+          <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest whitespace-nowrap">
+            Design Summary
+          </span>
+          <div className="flex-1 h-px bg-border/40" />
         </div>
-      ) : (
-        <div className="flex-shrink-0 h-16 flex items-center justify-center rounded-xl border border-dashed border-border/40">
-          <span className="text-[10px] text-muted-foreground/50">outfit tiles appear here</span>
+
+        {/* Attribute grid — 3 columns × 2 rows */}
+        <div className="grid grid-cols-3 gap-1.5 px-2 pb-2">
+          {isOther ? (
+            <>
+              <AttrCell src={faceImg}  label="Snout"   empty={!faceImg} />
+              <AttrCell src={hairImg}  label="Texture"  empty={!hairImg} />
+              <AttrCell src={furImg}   label="Fur/Scale" empty={!furImg} />
+              <AttrCell src={topImg}   label="Outfit"   empty={!topImg} />
+              <AttrCell src={bodyImg}  label="Build"    empty={!bodyImg} />
+              <AttrCell src={undefined} label="" empty />
+            </>
+          ) : (
+            <>
+              <AttrCell src={faceImg}   label="Face"   empty={!faceImg} />
+              <AttrCell src={hairImg}   label="Hair"   empty={!hairImg} />
+              <AttrCell src={eyeImg}    label="Eyes"   empty={!eyeImg} />
+              <AttrCell src={topImg}    label="Top"    empty={!topImg} />
+              <AttrCell src={bottomImg} label="Bottom" empty={!bottomImg} />
+              <AttrCell src={shoeImg ?? bodyImg} label={shoeImg ? "Shoes" : bodyImg ? "Build" : "Shoes"} empty={!shoeImg && !bodyImg} />
+            </>
+          )}
         </div>
-      )}
+
+        {/* Attribute chips */}
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-1 px-2 pb-2.5">
+            {chips.slice(0, 5).map((c) => (
+              <Chip key={c.label} label={c.label} color={c.color} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
