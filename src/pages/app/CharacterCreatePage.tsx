@@ -2507,19 +2507,28 @@ export default function CharacterCreatePage() {
               {currentStep === 0 ? "Cancel" : "Previous"}
             </Button>
 
-            {currentStep < steps.length - 1 ? (
-              currentStep === 2 && !createdCharacter ? (
-                <span />
-              ) : (
+            {/* Step 2 (Generate): once character is created, go straight to details */}
+            {currentStep === 2 ? (
+              createdCharacter ? (
                 <Button
                   variant="hero"
-                  onClick={tryAdvance}
-                  disabled={!canProceed()}
+                  onClick={() => navigate(`/app/characters/${createdCharacter.id || createdCharacter._id}`)}
                 >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  <Check className="w-4 h-4 mr-2" />
+                  View Character
                 </Button>
+              ) : (
+                <span />
               )
+            ) : currentStep < steps.length - 1 ? (
+              <Button
+                variant="hero"
+                onClick={tryAdvance}
+                disabled={!canProceed()}
+              >
+                Next
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
             ) : (
               <Button
                 variant="hero"

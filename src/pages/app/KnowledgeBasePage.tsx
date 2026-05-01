@@ -27,6 +27,7 @@ import {
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useKbNavStore } from "@/lib/store/kbNavStore";
+import { useGlobalJourneyStore } from "@/lib/store/globalJourneyStore";
 import { useToast } from "@/hooks/use-toast";
 import {
   useKnowledgeBases, useCreateKnowledgeBase, useUpdateKnowledgeBase, useDeleteKnowledgeBase,
@@ -520,6 +521,8 @@ function CustomExprInput({ onAdd }: { onAdd: (v: string) => void }) {
 
 export default function KnowledgeBasePage() {
   const { toast } = useToast();
+  const { setKbVisited } = useGlobalJourneyStore();
+  useEffect(() => { setKbVisited(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: kbs = [], isLoading } = useKnowledgeBases();
   const createMutation = useCreateKnowledgeBase();
   const deleteMutation = useDeleteKnowledgeBase();

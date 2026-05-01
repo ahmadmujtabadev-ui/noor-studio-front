@@ -9,7 +9,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useLanguage } from "@/lib/i18n/useLanguage";
-import { Button } from "@/components/ui/button";
 import { useUser, useCredits, useAuthStore } from "@/hooks/useAuth";
 import { useBookBuilderNavStore } from "@/lib/store/bookBuilderNavStore";
 import { useKbNavStore } from "@/lib/store/kbNavStore";
@@ -52,6 +51,7 @@ export function AppSidebar() {
   const logout = useAuthStore((s) => s.logout);
   const { universes } = useUniverses();
   const hasUniverse = universes.length > 0;
+
   const bookNav = useBookBuilderNavStore();
   const isOnBookBuilder = location.pathname.startsWith('/app/books');
 

@@ -1064,12 +1064,9 @@ export const ISLAMIC_VALUE_PRESETS = [
   { value: "Tawba — sincere repentance and turning back to Allah",                        label: "Tawba",       icon: <VocabImg src="/vocabulary/touba.png"       alt="Tawba" /> },
   { value: "Barakah — divine blessing that increases goodness in all things",             label: "Barakah",     icon: <VocabImg src="/vocabulary/barakah.png"     alt="Barakah" /> },
   { value: "Adab — excellent manners and respectful etiquette in every interaction",      label: "Adab",        icon: <VocabImg src="/vocabulary/adab.png"        alt="Adab" /> },
-  { value: "Birr al-Walidayn — dutifulness and deep respect for one's parents",          label: "Birr",        icon: <ValueBirrSvg /> },
   { value: "Hayaa — modesty and dignified shyness as a quality of faith",                 label: "Hayaa",       icon: <VocabImg src="/vocabulary/haya.png"        alt="Hayaa" /> },
   { value: "Ukhuwwah — brotherhood and sisterhood; unity among believers",                label: "Ukhuwwah",    icon: <VocabImg src="/vocabulary/akhuwah.png"     alt="Ukhuwwah" /> },
-  { value: "Niyyah — sincerity of intention; every action begins with a pure purpose",   label: "Niyyah",      icon: <ValueNiyyahSvg /> },
   { value: "Taqwa — God-consciousness; being aware of Allah in every moment",             label: "Taqwa",       icon: <VocabImg src="/vocabulary/taqwa.png"       alt="Taqwa" /> },
-  { value: "Wara' — God-fearing caution; avoiding anything doubtful",                     label: "Wara'",       icon: <ValueWaraSvg /> },
   { value: "Ikhlas — purity of intention; doing deeds solely for Allah's pleasure",      label: "Ikhlas",      icon: <VocabImg src="/vocabulary/ikhlas.png"      alt="Ikhlas" /> },
 ];
 

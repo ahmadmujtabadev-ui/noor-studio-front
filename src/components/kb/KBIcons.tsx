@@ -1269,11 +1269,8 @@ export const ISLAMIC_VALUE_TILES = [
   { value: "Tawbah — turning back to Allah with sincere repentance",                label: "Tawbah",      icon: IconTawbah,      image: "/vocabulary/touba.png",       bg: "bg-lime-100",     ring: "ring-lime-500",    text: "text-lime-700"    },
   { value: "Barakah — seeking and recognising Allah's blessings in everything",     label: "Barakah",     icon: IconBarakah,     image: "/vocabulary/barakah.png",     bg: "bg-amber-100",    ring: "ring-amber-500",   text: "text-amber-700"   },
   { value: "Adab — good manners and respectful etiquette toward everyone",          label: "Adab",        icon: IconAdab,        image: "/vocabulary/adab.png",        bg: "bg-fuchsia-100",  ring: "ring-fuchsia-500", text: "text-fuchsia-700" },
-  { value: "Birr — righteousness and kindness especially toward parents",           label: "Birr",        icon: IconBirr,        bg: "bg-cyan-100",     ring: "ring-cyan-500",    text: "text-cyan-700"    },
   { value: "Haya' — modesty and a natural sense of goodness in behaviour",          label: "Haya'",       icon: IconHayaa,       image: "/vocabulary/haya.png",        bg: "bg-rose-100",     ring: "ring-rose-500",    text: "text-rose-700"    },
   { value: "Ukhuwwah — loving brotherhood and sisterhood for the sake of Allah",    label: "Ukhuwwah",    icon: IconUkhuwwah,    image: "/vocabulary/akhuwah.png",     bg: "bg-blue-100",     ring: "ring-blue-500",    text: "text-blue-700"    },
-  { value: "Niyyah — acting with pure and sincere intentions for Allah alone",      label: "Niyyah",      icon: IconNiyyah,      bg: "bg-purple-100",   ring: "ring-purple-500",  text: "text-purple-700"  },
   { value: "Taqwa — God-consciousness, always aware that Allah is watching",        label: "Taqwa",       icon: IconTaqwa,       image: "/vocabulary/taqwa.png",       bg: "bg-emerald-100",  ring: "ring-emerald-500", text: "text-emerald-700" },
-  { value: "Wara' — staying away from doubtful things to protect one's deen",       label: "Wara'",       icon: IconWara,        bg: "bg-orange-100",   ring: "ring-orange-500",  text: "text-orange-700"  },
   { value: "Ikhlas — sincere devotion with no desire for praise or recognition",    label: "Ikhlas",      icon: IconIkhlas,      image: "/vocabulary/ikhlas.png",      bg: "bg-sky-100",      ring: "ring-sky-500",     text: "text-sky-700"     },
 ];

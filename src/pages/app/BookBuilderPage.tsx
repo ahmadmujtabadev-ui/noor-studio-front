@@ -21,6 +21,7 @@ import { CoverStep } from "@/components/shared/CoverStep";
 import { EditorStep } from "@/components/shared/EditorStep";
 import { CreditConfirmModal } from "@/components/shared/CreditConfirmModal";
 import { GeneratingOverlay } from "@/components/shared/GeneratingOverlay";
+import { BookProgressBar } from "@/components/shared/BookProgressBar";
 
 // ─── Phase definitions ───────────────────────────────────────────────────────
 
@@ -148,6 +149,14 @@ export default function BookBuilderPage() {
         description={bb.confirmDialog.description}
         creditCost={bb.confirmDialog.cost}
         isLoading={bb.confirmDialog.isRunning}
+      />
+
+      {/* ── Persistent progress bar ── */}
+      <BookProgressBar
+        currentStep={bb.step}
+        completedSteps={bb.completedSteps}
+        isChapterBook={bb.isChapterBook}
+        onStepClick={(n) => { bb.setStep(n); window.scrollTo({ top: 0, behavior: "smooth" }); }}
       />
 
       <div className="w-full">
