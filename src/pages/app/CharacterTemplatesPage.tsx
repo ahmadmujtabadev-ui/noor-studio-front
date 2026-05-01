@@ -538,33 +538,34 @@ export default function CharacterTemplatesPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50">
-        <div className="sticky top-0 z-20 border-b border-orange-100 bg-white/90 px-4 py-4 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-h-screen bg-white">
+        <div className="border-b border-slate-200 bg-white px-6 py-5">
+          <div className="flex w-full flex-col gap-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => navigate("/app/characters")}
-                  className="rounded-full p-2 transition-colors hover:bg-orange-50"
+                  className="rounded-lg border border-transparent p-2 transition-colors hover:border-slate-200 hover:bg-slate-50"
+                  aria-label="Back to characters"
                 >
-                  <ArrowLeft className="h-5 w-5 text-orange-500" />
+                  <ArrowLeft className="h-5 w-5 text-slate-600" />
                 </button>
                 <div>
-                  <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-                    <Sparkles className="h-5 w-5 text-amber-500" />
+                  <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-950">
+                    <Sparkles className="h-5 w-5 text-primary" />
                     Character Templates
                   </h1>
-                  <p className="text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-slate-500">
                     Start from a polished library of Muslim, universal, animal, fantasy, and adventure characters
                   </p>
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                <div className="relative w-full sm:min-w-[260px] lg:w-72">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+                <div className="relative w-full sm:min-w-[340px] xl:w-[420px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
-                    className="rounded-full border-orange-200 bg-orange-50 pl-9"
+                    className="h-11 rounded-lg border-slate-200 bg-white pl-9 shadow-sm focus-visible:ring-primary/25"
                     placeholder="Search templates..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
@@ -574,24 +575,24 @@ export default function CharacterTemplatesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => navigate("/app/characters/new?scratch=1")}
-                  className="shrink-0 border-gray-300 text-gray-600 hover:bg-gray-50"
+                  className="h-11 shrink-0 rounded-lg border-slate-300 px-5 text-slate-700 hover:bg-slate-50"
                 >
                   Start from scratch
                 </Button>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-amber-50/90 to-white px-4 py-4 shadow-sm">
+            <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
               <div className="flex flex-wrap gap-2">
                 {PRIMARY_FILTERS.map((filter) => (
                   <button
                     key={filter.value}
                     onClick={() => setPrimaryFilter(filter.value)}
                     className={cn(
-                      "rounded-full border px-4 py-2 text-sm font-medium transition-all",
+                      "rounded-lg border px-4 py-2 text-sm font-semibold transition-all",
                       primaryFilter === filter.value
-                        ? "border-orange-500 bg-orange-500 text-white shadow-sm"
-                        : "border-orange-200 bg-white text-gray-700 hover:border-orange-300 hover:text-orange-600",
+                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-primary/35 hover:text-primary",
                     )}
                   >
                     <span className="mr-1.5">{filter.emoji}</span>
@@ -600,13 +601,13 @@ export default function CharacterTemplatesPage() {
                 ))}
               </div>
 
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-gray-900">{activePrimaryMeta.label}:</span>{" "}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-slate-600">
+                  <span className="font-semibold text-slate-950">{activePrimaryMeta.label}:</span>{" "}
                   {activePrimaryMeta.helper}
                 </p>
-                <p className="text-xs text-gray-500">
-                  Search works inside the active library filter and your selected view is remembered.
+                <p className="text-xs font-medium text-slate-500">
+                  {filtered.length} template{filtered.length !== 1 ? "s" : ""} available
                 </p>
               </div>
             </div>
@@ -617,10 +618,10 @@ export default function CharacterTemplatesPage() {
                   key={filter.value}
                   onClick={() => setSecondaryFilter(filter.value)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-sm font-medium transition-all",
+                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
                     secondaryFilter === filter.value
-                      ? "border-orange-400 bg-orange-100 text-orange-700"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-orange-200 hover:text-orange-600",
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-primary/30 hover:text-primary",
                   )}
                 >
                   <span className="mr-1.5">{filter.emoji}</span>
@@ -631,21 +632,21 @@ export default function CharacterTemplatesPage() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="w-full px-6 py-8">
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-72 rounded-2xl bg-white animate-pulse" />
+                <div key={i} className="h-80 rounded-lg border border-slate-200 bg-slate-50 animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-20 text-center text-gray-400">
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-20 text-center text-slate-400">
               <div className="mb-3 text-5xl">🔍</div>
               <p className="text-lg font-medium">No templates found</p>
               <p className="mt-1 text-sm">Try a different library filter, character type, or search term</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
               {filtered.map((template) => (
                 <TemplateCard
                   key={template._id}
@@ -655,10 +656,6 @@ export default function CharacterTemplatesPage() {
               ))}
             </div>
           )}
-
-          <p className="mt-8 text-center text-sm text-gray-400">
-            {filtered.length} template{filtered.length !== 1 ? "s" : ""} available
-          </p>
         </div>
       </div>
 

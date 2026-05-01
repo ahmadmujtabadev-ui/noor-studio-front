@@ -241,19 +241,19 @@ export function TemplateCard({ template: tpl, onClick }: Props) {
     <button
       onClick={onClick}
       className={cn(
-        "group relative bg-white rounded-2xl shadow-sm border border-orange-100 p-4",
-        "hover:shadow-md hover:border-orange-300 hover:-translate-y-0.5",
+        "group relative bg-white rounded-lg shadow-sm border border-slate-200 p-4",
+        "hover:shadow-md hover:border-primary/35 hover:-translate-y-0.5",
         "transition-all duration-200 text-left w-full"
       )}
     >
       {/* Thumbnail / placeholder */}
-      <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100 aspect-square mb-3 flex items-center justify-center">
+      <div className="relative mb-4 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-slate-100">
         {tpl.thumbnailUrl ? (
           <img src={tpl.thumbnailUrl} alt={tpl.name} className="w-full h-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-1">
             <span className="text-5xl">{CAT_EMOJI[tpl.category] || "✨"}</span>
-            <span className="text-[10px] text-orange-300 font-medium">No preview yet</span>
+            <span className="text-[10px] text-slate-400 font-medium">No preview yet</span>
           </div>
         )}
 
@@ -272,8 +272,8 @@ export function TemplateCard({ template: tpl, onClick }: Props) {
         )}
 
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-orange-500/0 group-hover:bg-orange-500/10 transition-colors rounded-xl flex items-center justify-center">
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-orange-500 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow">
+        <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors rounded-md flex items-center justify-center">
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-md shadow">
             View & Use →
           </span>
         </div>
@@ -288,7 +288,7 @@ export function TemplateCard({ template: tpl, onClick }: Props) {
           <span className="text-[10px] text-gray-400">Age {tpl.ageRange}</span>
         )}
         {tpl.role && (
-          <span className="text-[10px] text-orange-400 capitalize">{tpl.role}</span>
+          <span className="text-[10px] text-primary capitalize">{tpl.role}</span>
         )}
         {vd.style && <ArtStylePill style={vd.style} />}
       </div>
@@ -308,7 +308,7 @@ export function TemplateCard({ template: tpl, onClick }: Props) {
       {tpl.traits?.length > 0 && (
         <div className="flex gap-1 flex-wrap mt-2">
           {tpl.traits.slice(0, 3).map((t) => (
-            <span key={t} className="bg-orange-50 text-orange-500 text-[9px] font-medium px-1.5 py-0.5 rounded-full border border-orange-100">
+            <span key={t} className="bg-slate-50 text-slate-600 text-[9px] font-medium px-1.5 py-0.5 rounded-md border border-slate-200">
               {t}
             </span>
           ))}
