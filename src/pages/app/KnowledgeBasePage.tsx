@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Dna, ChevronRight as ChevronRightIcon,
   Download, Upload, Copy,
+  CheckCircle2, CircleAlert,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,6 @@ import {
   SPEAKING_STYLE_OPTIONS, FAITH_TONE_OPTIONS, LITERARY_ROLE_OPTIONS,
   PAGE_LAYOUT_OPTIONS, ILLUSTRATION_STYLE_OPTIONS, TITLE_PLACEMENT_OPTIONS,
   FAITH_EXPRESSION_PRESETS,
-  DUA_STYLE_OPTIONS,
   ISLAMIC_TRAIT_PRESETS,
 } from "@/components/shared/KBFieldIcons";
 import { VisualPicker } from "@/components/shared/VisualPicker";
@@ -114,7 +114,6 @@ interface CharacterGuide {
   literaryRole: string;
   faithTone: string;
   faithExpressions: string[];
-  duaStyle: string;
   islamicTraits: string[];
   faithExamples: string[];
 }
@@ -192,6 +191,7 @@ const WORKFLOWS = [
     label: "What the stories believe",
     sublabel: "Faith & Language",
     description: "Islamic values, du'as, vocabulary & topics to avoid",
+    icon: Moon,
     sections: ["islamicValues", "duas", "vocabulary", "avoidTopics"],
   },
   {
@@ -199,6 +199,7 @@ const WORKFLOWS = [
     label: "How the characters sound",
     sublabel: "Character Voice",
     description: "Per-character speaking style, background lore & faith integration",
+    icon: UserRound,
     sections: ["characterGuides"],
   },
   {
@@ -206,6 +207,7 @@ const WORKFLOWS = [
     label: "What the world looks like",
     sublabel: "Background",
     description: "Scene backgrounds, lighting, locations & visual style",
+    icon: TreePine,
     sections: ["backgroundSettings"],
   },
   {
@@ -213,6 +215,7 @@ const WORKFLOWS = [
     label: "How the books are shaped",
     sublabel: "Book Format",
     description: "Book pacing, word count & layout rules per age group",
+    icon: ListOrdered,
     sections: ["bookFormatting"],
   },
   {
@@ -220,6 +223,7 @@ const WORKFLOWS = [
     label: "How the covers are branded",
     sublabel: "Cover Design",
     description: "Front & back cover composition, atmosphere & typography",
+    icon: Frame,
     sections: ["coverDesign"],
   },
 ] as const;
@@ -544,6 +548,7 @@ export default function KnowledgeBasePage() {
   const [newAvoidSeverity, setNewAvoidSeverity] = useState<AvoidSeverity>("all");
   const [showDNAModal, setShowDNAModal] = useState(false);
   const [dnaModalPanel, setDnaModalPanel] = useState(0);
+  const [pendingWorkflow, setPendingWorkflow] = useState<WorkflowId | null>(null);
   useEffect(() => {
     if (!localStorage.getItem("ns_kb_dna_intro_seen")) {
       setShowDNAModal(true);
@@ -691,7 +696,7 @@ export default function KnowledgeBasePage() {
   const [newCharGuide, setNewCharGuide] = useState<CharacterGuide>({
     characterName: "", speakingStyle: "", dialogueExamples: [], moreInfo: "",
     personalityNotes: [], literaryRole: "", faithTone: "", faithExpressions: [],
-    duaStyle: "", islamicTraits: [], faithExamples: [],
+    islamicTraits: [], faithExamples: [],
   });
   const [selectedCharName, setSelectedCharName] = useState<string>("");
 
@@ -1481,8 +1486,8 @@ export default function KnowledgeBasePage() {
             guides={guides as any}
             isSaving={updateMutation.isPending}
             onSave={(guide) => {
-              const { faithTone, faithExpressions, duaStyle, islamicTraits, faithExamples, ...rest } = guide as any;
-              save({ characterGuides: [...guides.filter((g: CharacterGuide) => g.characterName !== guide.characterName), { ...rest, characterName: guide.characterName, faithGuide: { faithTone, faithExpressions, duaStyle, islamicTraits, faithExamples } }] } as any);
+              const { faithTone, faithExpressions, islamicTraits, faithExamples, ...rest } = guide as any;
+              save({ characterGuides: [...guides.filter((g: CharacterGuide) => g.characterName !== guide.characterName), { ...rest, characterName: guide.characterName, faithGuide: { faithTone, faithExpressions, islamicTraits, faithExamples } }] } as any);
             }}
             onDelete={(name) => {
               save({ characterGuides: guides.filter((g: CharacterGuide) => g.characterName !== name) } as any);
@@ -1501,6 +1506,54 @@ export default function KnowledgeBasePage() {
   const activeWorkflowDef = WORKFLOWS.find(w => w.id === activeWorkflow);
   const currentSections = SECTIONS.filter(s => activeWorkflowDef?.sections.includes(s.id as any));
   const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "coverDesign"]);
+  const dnaStats = selectedKB ? [
+    { label: "Values", value: selectedKB.islamicValues?.length || 0, tone: "text-primary" },
+    { label: "Du'as", value: selectedKB.duas?.length || 0, tone: "text-emerald-600" },
+    { label: "Vocab", value: selectedKB.vocabulary?.length || 0, tone: "text-secondary" },
+    { label: "Voices", value: (selectedKB as any).characterGuides?.length || 0, tone: "text-primary" },
+  ] : [];
+  const dnaRecommendations = selectedKB ? [
+    { label: "Add at least 5 values", ready: (selectedKB.islamicValues?.length || 0) >= 5, workflow: "faith" as WorkflowId },
+    { label: "Add at least 5 du'as", ready: (selectedKB.duas?.length || 0) >= 5, workflow: "faith" as WorkflowId },
+    { label: "Add 4 vocabulary terms", ready: (selectedKB.vocabulary?.length || 0) >= 4, workflow: "faith" as WorkflowId },
+    { label: "Set character voices", ready: ((selectedKB as any).characterGuides?.length || 0) > 0, workflow: "story" as WorkflowId },
+    { label: "Select background style", ready: getSectionCount("backgroundSettings") > 0, workflow: "visual" as WorkflowId },
+    { label: "Define book format", ready: getSectionCount("bookFormatting") > 0, workflow: "bookFormat" as WorkflowId },
+    { label: "Choose cover rules", ready: getSectionCount("coverDesign") > 0, workflow: "cover" as WorkflowId },
+  ] : [];
+  const completedSuggestionCount = dnaRecommendations.filter(item => item.ready).length;
+  const kbAny = selectedKB as any;
+  const voiceSummary = selectedKB ? (kbAny.characterGuides || []).slice(0, 4).map((g: any) =>
+    `${g.characterName}: ${g.speakingStyle || g.faithGuide?.faithTone || "voice guide"}`
+  ) : [];
+  const backgroundSummary = selectedKB ? [
+    kbAny.backgroundSettings?.junior?.tone && `Early tone: ${kbAny.backgroundSettings.junior.tone}`,
+    (kbAny.backgroundSettings?.junior?.locations?.length || 0) > 0 && `Early locations: ${kbAny.backgroundSettings.junior.locations.slice(0, 4).join(", ")}`,
+    kbAny.backgroundSettings?.middleGrade?.tone && `Middle tone: ${kbAny.backgroundSettings.middleGrade.tone}`,
+    (kbAny.backgroundSettings?.middleGrade?.locations?.length || 0) > 0 && `Middle locations: ${kbAny.backgroundSettings.middleGrade.locations.slice(0, 4).join(", ")}`,
+  ].filter(Boolean) as string[] : [];
+  const bookSummary = selectedKB ? [
+    kbAny.bookFormatting?.middleGrade?.chapterRange && `Chapters: ${kbAny.bookFormatting.middleGrade.chapterRange}`,
+    kbAny.bookFormatting?.middleGrade?.sceneLength && `Scenes: ${kbAny.bookFormatting.middleGrade.sceneLength}`,
+    kbAny.underSixDesign?.pageCount && `Under six pages: ${kbAny.underSixDesign.pageCount}`,
+    kbAny.underSixDesign?.maxWordsPerSpread && `Words/spread: ${kbAny.underSixDesign.maxWordsPerSpread}`,
+  ].filter(Boolean) as string[] : [];
+  const coverSummary = selectedKB ? [
+    kbAny.coverDesign?.selectedCoverTemplate && `Template: ${kbAny.coverDesign.selectedCoverTemplate}`,
+    ...(kbAny.coverDesign?.brandingRules || []).slice(0, 3),
+    ...(kbAny.coverDesign?.islamicMotifs || []).slice(0, 3),
+  ].filter(Boolean) as string[] : [];
+  const handleWorkflowRequest = (id: WorkflowId) => {
+    const currentIndex = WORKFLOWS.findIndex(w => w.id === activeWorkflow);
+    const targetIndex = WORKFLOWS.findIndex(w => w.id === id);
+    const isSkippingAhead = targetIndex > currentIndex && !kbNav.completedWorkflows.has(activeWorkflow);
+    const isWeak = completedSuggestionCount < Math.min(4, dnaRecommendations.length);
+    if (selectedKB && (isSkippingAhead || isWeak) && id !== activeWorkflow) {
+      setPendingWorkflow(id);
+      return;
+    }
+    setActiveWorkflow(id);
+  };
 
   return (
     <>
@@ -1512,6 +1565,44 @@ export default function KnowledgeBasePage() {
       usageInfo={{ used: usage.knowledgeBases, limit: limits.knowledgeBases, label: "knowledge bases" }}
     />
     {/* ── Book DNA first-use intro modal ─────────────────────────────────── */}
+    <Dialog open={!!pendingWorkflow} onOpenChange={(open) => !open && setPendingWorkflow(null)}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CircleAlert className="h-5 w-5 text-secondary" />
+            Book DNA needs more detail
+          </DialogTitle>
+          <DialogDescription>
+            Your setup is still light. Add the previous details for stronger book generation, or continue if you only want to review this section.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+          {dnaRecommendations.filter(item => !item.ready).slice(0, 5).map(item => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => { setPendingWorkflow(null); setActiveWorkflow(item.workflow); }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-background"
+            >
+              <CircleAlert className="h-4 w-4 shrink-0 text-secondary" />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPendingWorkflow(null)}>Stay here</Button>
+          <Button
+            onClick={() => {
+              if (pendingWorkflow) setActiveWorkflow(pendingWorkflow);
+              setPendingWorkflow(null);
+            }}
+          >
+            Continue anyway
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <Dialog open={showDNAModal} onOpenChange={(open) => { if (!open) { localStorage.setItem("ns_kb_dna_intro_seen", "1"); setShowDNAModal(false); setDnaModalPanel(0); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -1710,14 +1801,14 @@ export default function KnowledgeBasePage() {
       </div>
 
       {/* ── Book DNA persistent banner ──────────────────────────────────────── */}
-      <div className="flex items-center gap-3 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-violet-50 to-pink-50/60 dark:from-violet-950/30 dark:to-pink-950/20 border border-violet-200/60 dark:border-violet-800/40">
-        <Dna className="w-4 h-4 text-violet-500 shrink-0" />
-        <p className="text-xs text-violet-700 dark:text-violet-300 flex-1">
+      <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-4 py-2.5">
+        <Dna className="w-4 h-4 text-primary shrink-0" />
+        <p className="text-xs text-primary flex-1">
           <strong>Book DNA</strong> — fill this once and every book in your Universe inherits the right values, voices, and style automatically.
         </p>
         <button
           onClick={() => { setDnaModalPanel(0); setShowDNAModal(true); }}
-          className="shrink-0 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-800 underline underline-offset-2"
+          className="shrink-0 text-[10px] font-semibold text-primary hover:text-primary/80 underline underline-offset-2"
         >
           Learn more
         </button>
@@ -1748,8 +1839,8 @@ export default function KnowledgeBasePage() {
       {selectedKB && (
         <>
           {/* KB identity strip */}
-          <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl border bg-gradient-to-r from-primary/5 via-violet-50/30 to-pink-50/20 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-violet-200/60 flex items-center justify-center shadow-sm shrink-0">
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border bg-background px-5 py-3.5 shadow-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
               <BookMarked className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -1757,11 +1848,11 @@ export default function KnowledgeBasePage() {
               <p className="text-xs text-muted-foreground">Updated {new Date(selectedKB.updatedAt).toLocaleDateString()}</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-              <span className="font-semibold text-violet-600">{selectedKB.islamicValues.length}</span> values
+              <span className="font-semibold text-primary">{selectedKB.islamicValues.length}</span> values
               <span className="text-muted-foreground/40">·</span>
-              <span className="font-semibold text-blue-600">{selectedKB.duas.length}</span> du'as
+              <span className="font-semibold text-emerald-600">{selectedKB.duas.length}</span> du'as
               <span className="text-muted-foreground/40">·</span>
-              <span className="font-semibold text-orange-600">{selectedKB.vocabulary.length}</span> vocab
+              <span className="font-semibold text-secondary">{selectedKB.vocabulary.length}</span> vocab
               <span className="text-muted-foreground/40">·</span>
               <span className="font-semibold text-emerald-600">{(selectedKB as any).characterGuides?.length || 0}</span> voices
               <span className="text-muted-foreground/40">·</span>
@@ -1775,7 +1866,7 @@ export default function KnowledgeBasePage() {
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 gap-1.5 text-xs border-violet-300 text-violet-700 hover:bg-violet-50 hover:border-violet-400"
+              className="shrink-0 gap-1.5 border-primary/25 text-xs text-primary hover:border-primary/45 hover:bg-primary/5"
               onClick={() => navigate("/app/kb-templates")}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -1783,6 +1874,8 @@ export default function KnowledgeBasePage() {
             </Button>
           </div>
 
+          <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="min-w-0 space-y-4">
           {/* KB Strength Score */}
           <KBStrengthScore
             kb={selectedKB}
@@ -1790,40 +1883,77 @@ export default function KnowledgeBasePage() {
           />
 
           {/* Workflow tabs */}
-          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl mb-6 flex-wrap mt-5">
-            {WORKFLOWS.map(wf => {
-              const isDone = kbNav.completedWorkflows.has(wf.id);
-              return (
-                <button
-                  key={wf.id}
-                  title={wf.description}
-                  onClick={() => setActiveWorkflow(wf.id as WorkflowId)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all text-left",
-                    activeWorkflow === wf.id
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span
+          <div className="rounded-2xl border bg-background p-3 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Creation Map</p>
+                <p className="text-sm font-semibold text-foreground">Build the rules every book will inherit</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                {kbNav.completedWorkflows.size}/5 complete
+              </span>
+            </div>
+
+            <div className="grid gap-2 lg:grid-cols-5">
+              {WORKFLOWS.map((wf, index) => {
+                const isDone = kbNav.completedWorkflows.has(wf.id);
+                const active = activeWorkflow === wf.id;
+                const Icon = wf.icon;
+                return (
+                  <button
+                    key={wf.id}
+                    title={wf.description}
+                    onClick={() => handleWorkflowRequest(wf.id as WorkflowId)}
                     className={cn(
-                      "mt-0.5 h-2 w-2 shrink-0 rounded-full",
-                      isDone ? "bg-emerald-500" : "bg-muted-foreground/30"
+                      "group relative min-h-[112px] overflow-hidden rounded-xl border p-3 text-left transition-all",
+                      active
+                        ? "border-primary/30 bg-primary/10 shadow-sm ring-1 ring-primary/15"
+                        : "border-border bg-muted/20 hover:border-primary/25 hover:bg-primary/5"
                     )}
-                  />
-                  <span>
-                    <span className="block text-xs font-semibold leading-tight">{wf.label}</span>
-                    <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">{wf.sublabel}</span>
-                  </span>
-                </button>
-              );
-            })}
+                  >
+                    <span className={cn(
+                      "absolute inset-x-0 top-0 h-1 transition-colors",
+                      active ? "bg-primary" : isDone ? "bg-emerald-500" : "bg-transparent"
+                    )} />
+
+                    <span className="flex items-start justify-between gap-2">
+                      <span className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                        active ? "bg-primary text-primary-foreground" : isDone ? "bg-emerald-50 text-emerald-600" : "bg-background text-muted-foreground group-hover:text-primary"
+                      )}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className={cn(
+                        "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                        isDone ? "bg-emerald-100 text-emerald-700" : active ? "bg-secondary/20 text-secondary-foreground" : "bg-background text-muted-foreground"
+                      )}>
+                        {isDone ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
+                      </span>
+                    </span>
+
+                    <span className="mt-3 block">
+                      <span className={cn("block text-sm font-bold leading-tight", active ? "text-primary" : "text-foreground")}>{wf.sublabel}</span>
+                      <span className="mt-1 block text-xs leading-snug text-muted-foreground">{wf.label}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* ── Faith & Language → single stepper card ── */}
+          <div className="grid grid-cols-4 gap-2 rounded-2xl border bg-background p-2 shadow-sm 2xl:hidden">
+            {dnaStats.map(stat => (
+              <div key={stat.label} className="rounded-xl bg-muted/30 p-2 text-center">
+                <p className={cn("text-base font-extrabold leading-none", stat.tone)}>{stat.value}</p>
+                <p className="mt-1 text-[10px] font-medium text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
           {activeWorkflow === "faith" ? (
-            <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-              <div className="px-6 py-5">
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+              <div className="p-5">
                 <KBFaithLanguageStepper
                   kb={selectedKB}
                   onSave={async (update) => { await save(update as any); }}
@@ -1878,6 +2008,118 @@ export default function KnowledgeBasePage() {
               })}
             </div>
           )}
+            </div>
+
+            <aside className="hidden 2xl:block">
+              <div className="sticky top-24 space-y-4 rounded-2xl border bg-background p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                    <Dna className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Book DNA Summary</p>
+                    <p className="text-xs text-muted-foreground">{kbNav.completedWorkflows.size}/5 workflows complete</p>
+                  </div>
+                </div>
+
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${Math.max(8, (kbNav.completedWorkflows.size / 5) * 100)}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {dnaStats.map(stat => (
+                    <div key={stat.label} className="rounded-xl border bg-muted/20 p-3">
+                      <p className={cn("text-xl font-extrabold leading-none", stat.tone)}>{stat.value}</p>
+                      <p className="mt-1 text-[11px] font-medium text-muted-foreground">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Next best steps</p>
+                    <span className="text-[11px] font-semibold text-primary">{completedSuggestionCount}/{dnaRecommendations.length}</span>
+                  </div>
+                  {dnaRecommendations.map(item => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => handleWorkflowRequest(item.workflow)}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/60"
+                    >
+                      {item.ready ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                      ) : (
+                        <CircleAlert className="h-4 w-4 shrink-0 text-secondary" />
+                      )}
+                      <span className={cn("text-xs font-medium", item.ready ? "text-muted-foreground line-through decoration-muted-foreground/50" : "text-foreground")}>
+                        {item.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {(selectedKB.islamicValues?.length || 0) > 0 && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active values</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedKB.islamicValues.slice(0, 6).map(value => (
+                        <span key={value} className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                          {value.split(" - ")[0]}
+                        </span>
+                      ))}
+                      {selectedKB.islamicValues.length > 6 && (
+                        <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                          +{selectedKB.islamicValues.length - 6}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3 border-t pt-3">
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Character voice</p>
+                    {voiceSummary.length > 0 ? voiceSummary.map(item => (
+                      <p key={item} className="rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-foreground">{item}</p>
+                    )) : (
+                      <p className="text-[11px] text-muted-foreground">No character voice guides selected.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Selected background</p>
+                    {backgroundSummary.length > 0 ? backgroundSummary.map(item => (
+                      <p key={item} className="rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-foreground">{item}</p>
+                    )) : (
+                      <p className="text-[11px] text-muted-foreground">No background settings selected.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Book format</p>
+                    {bookSummary.length > 0 ? bookSummary.map(item => (
+                      <p key={item} className="rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-foreground">{item}</p>
+                    )) : (
+                      <p className="text-[11px] text-muted-foreground">No book format rules selected.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Cover</p>
+                    {coverSummary.length > 0 ? coverSummary.map(item => (
+                      <p key={item} className="rounded-lg bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-foreground">{item}</p>
+                    )) : (
+                      <p className="text-[11px] text-muted-foreground">No cover rules selected.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
         </>
       )}
 
@@ -2115,4 +2357,3 @@ export default function KnowledgeBasePage() {
     </>
   );
 }
-

@@ -30,7 +30,7 @@ export interface CharacterGuideData {
   dialogueExamples: string[];
   faithTone: string;
   faithExpressions: string[];
-  duaStyle: string;
+  duaStyle?: string;
   islamicTraits: string[];
   faithExamples: string[];
 }
@@ -67,13 +67,28 @@ const FAITH_EXAMPLES: Record<string, string> = {
   "Empathetic & caring — faith expressed through caring for others": `"Let me help. That's what we do."`,
 };
 
-const DUA_EXAMPLES: Record<string, string> = {
-  "Whispered quietly in solitude, private and intimate": "Quietly, eyes closed, very private",
-  "Recited warmly with family, communal and bonding": "Together after salah, as a family",
-  "Out loud and joyfully, with full heart and energy": `"Ya Allah, thank You!"`,
-  "In tears or hardship, sincere and desperate": "Crying softly, truly needing Allah",
-  "Quick and brief, woven naturally into actions": `"Bismillah!" and jumps right in`,
-  "Long and reflective, meditative and contemplative": "Sits quietly and takes their time",
+const SPEAKING_STYLE_IMAGES: Record<string, string> = {
+  "Fast & Buzzing": "/how they talk/fast and buzzing.png",
+  "Gentle & Calm": "/how they talk/gentle and calm.png",
+  "Wise & Measured": "/how they talk/wise and measured.png",
+  "Playful & Silly": "/how they talk/playful and silly.png",
+  "Formal & Dignified": "/how they talk/formal and diginified.png",
+  Reflective: "/faith style/reflective.png",
+};
+
+const FAITH_STYLE_IMAGES: Record<string, string> = {
+  Joyful: "/faith style/joyful.png",
+  Reflective: "/faith style/reflective.png",
+  Warm: "/faith style/warm.png",
+  Gentle: "/faith style/gentle.png",
+  Bold: "/faith style/bold.png",
+  Playful: "/faith style/playful.png",
+  Earnest: "/faith style/earnest.png",
+  Curious: "/faith style/curious.png",
+  Quiet: "/faith style/quiet.png",
+  Traditional: "/faith style/traditional.png",
+  Poetic: "/faith style/poetic.png",
+  Empathetic: "/faith style/empathetic.png",
 };
 
 const TRAIT_EMOJI: Record<string, string> = {
@@ -97,7 +112,6 @@ const EMPTY_GUIDE: CharacterGuideData = {
   dialogueExamples: [],
   faithTone: "",
   faithExpressions: [],
-  duaStyle: "",
   islamicTraits: [],
   faithExamples: [],
 };
@@ -113,12 +127,14 @@ const QUICK_QUOTES = [
 
 function VoiceCard({
   icon,
+  image,
   label,
   example,
   selected,
   onClick,
 }: {
   icon: React.ReactNode;
+  image?: string;
   label: string;
   example: string;
   selected: boolean;
@@ -129,17 +145,23 @@ function VoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex flex-col items-center gap-1.5 rounded-xl border-2 bg-white p-2.5 text-center transition-all duration-150 hover:scale-[1.02] hover:shadow-sm",
+        "relative flex flex-col items-center gap-2 rounded-xl border bg-white p-2.5 text-center transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm",
         selected
-          ? "border-emerald-500 bg-emerald-50 shadow-sm"
-          : "border-border hover:border-emerald-300"
+          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
+          : "border-border hover:border-primary/30"
       )}
     >
-      <div className="h-10 w-10 shrink-0">{icon}</div>
+      <div className="h-20 w-full overflow-hidden rounded-lg bg-muted">
+        {image ? (
+          <img src={image} alt={label} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="mx-auto h-12 w-12 pt-3">{icon}</div>
+        )}
+      </div>
       <span
         className={cn(
-          "text-[10px] font-bold leading-tight",
-          selected ? "text-emerald-700" : "text-foreground"
+          "text-xs font-bold leading-tight",
+          selected ? "text-primary" : "text-foreground"
         )}
       >
         {label}
@@ -148,8 +170,8 @@ function VoiceCard({
         {example}
       </span>
       {selected && (
-        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500">
-          <Check className="h-2.5 w-2.5 text-white" />
+        <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
+          <Check className="h-3 w-3 text-white" />
         </span>
       )}
     </button>
@@ -161,18 +183,21 @@ function ExpandableCardGrid({
   selected,
   onSelect,
   getExample,
+  getImage,
 }: {
   options: { value: string; label: string; icon: React.ReactNode }[];
   selected: string;
   onSelect: (v: string) => void;
   getExample: (v: string) => string;
+  getImage?: (label: string) => string | undefined;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
       {options.map((opt) => (
         <VoiceCard
           key={opt.value}
           icon={opt.icon}
+          image={getImage?.(opt.label)}
           label={opt.label}
           example={getExample(opt.value)}
           selected={selected === opt.value}
@@ -418,15 +443,13 @@ function LivePreview({
     "";
   const faithName =
     FAITH_TONE_OPTIONS.find((o) => o.value === guide.faithTone)?.label || "";
-  const duaName =
-    DUA_STYLE_OPTIONS.find((o) => o.value === guide.duaStyle)?.label || "";
+  const duaName = "";
   const topTraits = guide.islamicTraits.slice(0, 4);
   const exampleQuote = guide.faithExamples[0] || guide.dialogueExamples[0];
 
   const fields = [
     guide.speakingStyle,
     guide.faithTone,
-    guide.duaStyle,
     guide.islamicTraits.length > 0,
     guide.faithExamples.length > 0,
   ];
@@ -658,7 +681,7 @@ export function KBCharacterVoiceBuilder({
                 )?.label || existingGuide.faithTone}
               </span>
             )}
-            {existingGuide.duaStyle && (
+            {false && existingGuide.duaStyle && (
               <span>
                 🤲{" "}
                 {DUA_STYLE_OPTIONS.find(
@@ -693,6 +716,7 @@ export function KBCharacterVoiceBuilder({
                 selected={guide.speakingStyle}
                 onSelect={(v) => patch({ speakingStyle: v })}
                 getExample={(v) => VOICE_EXAMPLES[v] || ""}
+                getImage={(label) => SPEAKING_STYLE_IMAGES[label]}
               />
             </div>
 
@@ -703,7 +727,7 @@ export function KBCharacterVoiceBuilder({
                   Faith style
                 </h3>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Choose how faith appears naturally in their personality and du&apos;a.
+                  Choose how faith appears naturally in their personality.
                 </p>
               </div>
 
@@ -714,16 +738,7 @@ export function KBCharacterVoiceBuilder({
                   selected={guide.faithTone}
                   onSelect={(v) => patch({ faithTone: v })}
                   getExample={(v) => FAITH_EXAMPLES[v] || ""}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[12px] font-bold text-foreground">Du&apos;a style</p>
-                <ExpandableCardGrid
-                  options={DUA_STYLE_OPTIONS}
-                  selected={guide.duaStyle}
-                  onSelect={(v) => patch({ duaStyle: v })}
-                  getExample={(v) => DUA_EXAMPLES[v] || ""}
+                  getImage={(label) => FAITH_STYLE_IMAGES[label]}
                 />
               </div>
 

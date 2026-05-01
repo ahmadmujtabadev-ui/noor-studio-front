@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Moon, HandHeart, Languages, Ban, CheckCircle2 } from "lucide-react";
+import { Ban, CheckCircle2, ChevronLeft, ChevronRight, HandHeart, Languages, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { KBIslamicValuesStep } from "./KBIslamicValuesStep";
@@ -17,45 +17,41 @@ const STEPS = [
   {
     id: "islamicValues",
     label: "Islamic Values",
-    emoji: "🌙",
     icon: Moon,
-    color: "text-violet-600",
-    activeBg: "bg-violet-600",
-    activeRing: "ring-violet-400",
-    lightBg: "bg-violet-50",
+    color: "text-primary",
+    accent: "bg-primary",
+    soft: "bg-primary/5",
+    border: "border-primary/20",
     description: "Core values woven into every story",
   },
   {
     id: "duas",
     label: "Du'as",
-    emoji: "🤲",
     icon: HandHeart,
-    color: "text-blue-600",
-    activeBg: "bg-blue-600",
-    activeRing: "ring-blue-400",
-    lightBg: "bg-blue-50",
+    color: "text-emerald-700",
+    accent: "bg-emerald-600",
+    soft: "bg-emerald-50",
+    border: "border-emerald-200",
     description: "Prayers placed naturally in story moments",
   },
   {
     id: "vocabulary",
     label: "Vocabulary",
-    emoji: "📖",
     icon: Languages,
-    color: "text-orange-600",
-    activeBg: "bg-orange-500",
-    activeRing: "ring-orange-400",
-    lightBg: "bg-orange-50",
+    color: "text-secondary",
+    accent: "bg-secondary",
+    soft: "bg-secondary/10",
+    border: "border-secondary/25",
     description: "Islamic words used correctly in prose",
   },
   {
     id: "avoidTopics",
     label: "Avoid Topics",
-    emoji: "🚫",
     icon: Ban,
-    color: "text-red-600",
-    activeBg: "bg-red-500",
-    activeRing: "ring-red-400",
-    lightBg: "bg-red-50",
+    color: "text-destructive",
+    accent: "bg-destructive",
+    soft: "bg-destructive/5",
+    border: "border-destructive/20",
     description: "Content AI will never include",
   },
 ] as const;
@@ -75,94 +71,66 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
   const current = STEPS[step];
   const isFirst = step === 0;
   const isLast  = step === STEPS.length - 1;
+  const CurrentIcon = current.icon;
 
-  const saveValues    = (islamicValues: string[])  => onSave({ islamicValues });
-  const saveDuas      = (duas: any[])              => onSave({ duas });
-  const saveVocab     = (vocabulary: any[])        => onSave({ vocabulary });
-  const saveAvoid     = (avoidTopics: string[])    => onSave({ avoidTopics });
+  const saveValues = (islamicValues: string[]) => onSave({ islamicValues });
+  const saveDuas   = (duas: any[]) => onSave({ duas });
+  const saveVocab  = (vocabulary: any[]) => onSave({ vocabulary });
+  const saveAvoid  = (avoidTopics: string[]) => onSave({ avoidTopics });
 
   return (
-    <div className="flex flex-col min-h-[500px]">
-
-      {/* ── Step progress bar ── */}
-      <div className="flex items-center justify-between mb-8 px-2">
+    <div className="flex min-h-[500px] flex-col">
+      <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {STEPS.map((s, i) => {
-          const count  = getCount(kb, s.id);
-          const done   = count > 0;
+          const count = getCount(kb, s.id);
+          const done = count > 0;
           const active = i === step;
-          const past   = i < step;
+          const Icon = s.icon;
+
           return (
             <button
               key={s.id}
               type="button"
               onClick={() => setStep(i)}
-              className="flex flex-col items-center gap-1.5 group"
-              style={{ flex: 1 }}
-            >
-              {/* Circle */}
-              <div className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center text-xl border-2 transition-all duration-200 shadow-sm",
+              className={cn(
+                "group flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
                 active
-                  ? `${s.activeBg} border-transparent text-white ring-4 ${s.activeRing} ring-offset-2 scale-110`
-                  : done
-                    ? "bg-white border-green-400 text-green-600"
-                    : "bg-white border-gray-200 text-gray-400 group-hover:border-gray-400"
-              )}>
-                {done && !active ? (
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
-                ) : (
-                  <span className="text-lg">{s.emoji}</span>
-                )}
-              </div>
-              {/* Label + count */}
-              <div className="text-center">
-                <p className={cn(
-                  "text-[11px] font-bold leading-tight",
-                  active ? s.color : done ? "text-green-600" : "text-gray-400"
-                )}>
-                  {s.label}
-                </p>
-                {count > 0 && (
-                  <p className="text-[10px] text-muted-foreground">{count} added</p>
-                )}
-              </div>
-              {/* Connector line (not after last) */}
-              {i < STEPS.length - 1 && (
-                <div className="absolute hidden" />
+                  ? `${s.soft} ${s.border} shadow-sm`
+                  : "border-border bg-background hover:border-primary/30 hover:bg-muted/30"
               )}
+            >
+              <span className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                active ? `${s.accent} text-white` : done ? "bg-emerald-50 text-emerald-600" : "bg-muted text-muted-foreground"
+              )}>
+                {done && !active ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+              </span>
+              <span className="min-w-0">
+                <span className={cn("block truncate text-sm font-bold", active ? s.color : "text-foreground")}>{s.label}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {count > 0 ? `${count} added` : "Not started"}
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Connector lines between circles */}
-      <div className="flex items-center mb-6 px-8 -mt-10">
-        {STEPS.map((_, i) => i < STEPS.length - 1 && (
-          <div key={i} className="flex-1 flex items-center">
-            <div className="w-full mx-1" />
-            <div className={cn(
-              "h-0.5 flex-1 rounded-full transition-all duration-300",
-              i < step ? "bg-green-400" : "bg-gray-200"
-            )} />
-          </div>
-        ))}
-      </div>
-
-      {/* ── Active step header ── */}
-      <div className={cn("rounded-2xl p-4 mb-6 flex items-center gap-3", current.lightBg)}>
-        <span className="text-3xl">{current.emoji}</span>
-        <div>
-          <p className={cn("text-base font-bold", current.color)}>{current.label}</p>
+      <div className={cn("mb-6 flex items-center gap-3 rounded-xl border px-4 py-3", current.soft, current.border)}>
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white", current.accent)}>
+          <CurrentIcon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className={cn("text-sm font-bold", current.color)}>{current.label}</p>
           <p className="text-xs text-muted-foreground">{current.description}</p>
         </div>
         {getCount(kb, current.id) > 0 && (
-          <span className={cn("ml-auto text-xs font-bold px-3 py-1 rounded-full", current.lightBg, current.color, "border border-current")}>
-            {getCount(kb, current.id)} added ✓
+          <span className={cn("ml-auto shrink-0 rounded-full border bg-white/70 px-3 py-1 text-xs font-bold", current.border, current.color)}>
+            {getCount(kb, current.id)} added
           </span>
         )}
       </div>
 
-      {/* ── Step content ── */}
       <div className="flex-1">
         {step === 0 && (
           <KBIslamicValuesStep
@@ -194,15 +162,14 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
         )}
       </div>
 
-      {/* ── Navigation ── */}
-      <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
+      <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-5">
         <Button
           variant="outline"
-          onClick={() => setStep(s => s - 1)}
+          onClick={() => setStep((s) => s - 1)}
           disabled={isFirst}
           className="gap-2"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="h-4 w-4" />
           Previous
         </Button>
 
@@ -211,10 +178,11 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
             <button
               key={i}
               type="button"
+              aria-label={`Go to step ${i + 1}`}
               onClick={() => setStep(i)}
               className={cn(
-                "w-2 h-2 rounded-full transition-all duration-200",
-                i === step ? "w-6 bg-primary" : "bg-gray-200 hover:bg-gray-400"
+                "h-2 rounded-full transition-all duration-200",
+                i === step ? "w-7 bg-primary" : "w-2 bg-muted-foreground/25 hover:bg-muted-foreground/50"
               )}
             />
           ))}
@@ -222,12 +190,12 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
 
         <Button
           variant={isLast ? "outline" : "default"}
-          onClick={() => !isLast && setStep(s => s + 1)}
+          onClick={() => !isLast && setStep((s) => s + 1)}
           disabled={isLast}
           className="gap-2"
         >
-          {isLast ? "All Done ✓" : "Next"}
-          {!isLast && <ChevronRight className="w-4 h-4" />}
+          {isLast ? "All Done" : "Next"}
+          {!isLast && <ChevronRight className="h-4 w-4" />}
         </Button>
       </div>
     </div>

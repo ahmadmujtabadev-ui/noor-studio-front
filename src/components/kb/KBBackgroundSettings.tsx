@@ -114,11 +114,9 @@ const COLOR_STYLE_LIST = [
   { value: "soft pastel watercolor washes, translucent light effects", label: "Soft Pastels", icon: <Img src="/background/color-pastels.png" /> },
   { value: "rich warm tones, oranges, reds, ambers and burnt sienna", label: "Warm Tones", icon: <Img src="/background/color-warm.png" /> },
   { value: "cool blues, teals, and aquas, crisp and refreshing palette", label: "Cool Blues", icon: <Img src="/background/color-cool.png" /> },
-  { value: "earth tones, ochres, siennas, forest greens and warm browns", label: "Earth Tones", icon: <Img src="/background/color-earth-tones.png" /> },
 ];
 
 const LIGHTING_OPTIONS = [
-  { value: "golden hour warm light, long shadows, amber and copper tones", label: "Golden Hour", icon: <Img src="/background/lighting-golden-hour.png" /> },
   { value: "soft diffused daylight, even illumination, crisp and clear", label: "Soft Daylight", icon: <Img src="/background/lighting-soft-daylight.png" /> },
   { value: "dappled light through leaves, forest green with light patches", label: "Dappled", icon: <Img src="/background/lighting-dappled.png" /> },
   { value: "warm candlelight, intimate glow, flickering amber radiance", label: "Candlelight", icon: <Img src="/background/lighting-candle.png" /> },
@@ -127,26 +125,20 @@ const LIGHTING_OPTIONS = [
 ];
 
 const LOCATION_PRESETS = [
-  { value: "bedroom", label: "Bedroom", img: "/background/loc-bedroom.png" },
-  { value: "masjid", label: "Masjid", img: "/background/loc-masjid.png" },
-  { value: "garden", label: "Garden", img: "/background/loc-garden.png" },
-  { value: "school classroom", label: "Classroom", img: "/background/loc-classroom.png" },
-  { value: "kitchen", label: "Kitchen", img: "/background/loc-kitchen.png" },
-  { value: "forest", label: "Forest", img: "/background/loc-forest.png" },
-  { value: "seaside beach", label: "Beach", img: "/background/loc-beach.png" },
-  { value: "market souk", label: "Souk", img: "/background/loc-souk.png" },
-  { value: "rooftop", label: "Rooftop", img: "/background/loc-rooftop.png" },
-  { value: "library", label: "Library", img: "/background/loc-library.png" },
-  { value: "desert dunes", label: "Desert", img: "/background/loc-desert.png" },
-  { value: "snowy mountain", label: "Mountain", img: "/background/loc-mountain.png" },
-  { value: "madrasa", label: "Madrasa", img: "/background/loc-madrasa.png" },
-  { value: "Ramadan tent", label: "Ramadan Tent", img: "/background/loc-ramadan-tent.png" },
-  { value: "Eid venue", label: "Eid Venue", img: "/background/loc-eid-venue.png" },
-  { value: "hammam courtyard", label: "Hammam Courtyard", img: "/background/loc-hammam.png" },
-  { value: "farmyard", label: "Farmyard", img: "/background/loc-farmyard.png" },
-  { value: "river bank", label: "River", img: "/background/loc-river.png" },
-  { value: "oasis", label: "Oasis", img: "/background/loc-oasis.png" },
-  { value: "library madrasa", label: "Library Madrasa", img: "/background/loc-library-madrasa.png" },
+  { value: "bedroom", label: "Bedroom", img: "/locations/bedroom.png" },
+  { value: "masjid", label: "Masjid", img: "/locations/masjid.png" },
+  { value: "garden", label: "Garden", img: "/locations/garden.png" },
+  { value: "school classroom", label: "Classroom", img: "/locations/classroom.png" },
+  { value: "forest", label: "Forest", img: "/locations/forest.png" },
+  { value: "seaside beach", label: "Beach", img: "/locations/beach.png" },
+  { value: "rooftop", label: "Rooftop", img: "/locations/rooftop.png" },
+  { value: "library", label: "Library", img: "/locations/library.png" },
+  { value: "madrasa", label: "Madrassa", img: "/locations/madrassa.png" },
+  { value: "Ramadan tent", label: "Ramadan", img: "/locations/ramadan.png" },
+  { value: "Eid venue", label: "Eid", img: "/locations/eid.png" },
+  { value: "hammam courtyard", label: "Hammam Courtyard", img: "/locations/harmman courtyard.png" },
+  { value: "farmyard", label: "Farmyard", img: "/locations/farmyard.png" },
+  { value: "river bank", label: "River", img: "/locations/river.png" },
 ];
 
 function TagPills({
