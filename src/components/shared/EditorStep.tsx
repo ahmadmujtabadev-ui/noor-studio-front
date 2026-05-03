@@ -267,7 +267,7 @@ export function EditorStep({ bb, onBack }: EditorStepProps) {
     setExportLoading(true);
     setExportError(null);
     try {
-      await exportsApi.downloadPdf(bb.projectId);
+      await exportsApi.downloadPdf(bb.projectId, selectedPlatform);
     } catch (e) {
       setExportError((e as Error).message);
     } finally {
