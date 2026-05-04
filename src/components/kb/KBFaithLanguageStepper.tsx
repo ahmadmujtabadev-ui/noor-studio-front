@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ban, CheckCircle2, ChevronLeft, ChevronRight, HandHeart, Languages, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,8 @@ interface Props {
   kb: any;
   onSave: (update: object) => Promise<void>;
   isSaving: boolean;
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
 }
 
 const STEPS = [
@@ -66,7 +68,7 @@ function getCount(kb: any, stepId: string): number {
   }
 }
 
-export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
+export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, onSectionChange }: Props) {
   const [step, setStep] = useState(0);
   const current = STEPS[step];
   const isFirst = step === 0;
@@ -77,6 +79,16 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
   const saveDuas   = (duas: any[]) => onSave({ duas });
   const saveVocab  = (vocabulary: any[]) => onSave({ vocabulary });
   const saveAvoid  = (avoidTopics: string[]) => onSave({ avoidTopics });
+  const goToStep = (index: number) => {
+    setStep(index);
+    onSectionChange?.(STEPS[index].id);
+  };
+
+  useEffect(() => {
+    if (!activeSection) return;
+    const index = STEPS.findIndex((s) => s.id === activeSection);
+    if (index >= 0) setStep(index);
+  }, [activeSection]);
 
   return (
     <div className="flex min-h-[500px] flex-col">
@@ -91,7 +103,7 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
             <button
               key={s.id}
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
               className={cn(
                 "group flex items-center gap-3 rounded-xl border p-3 text-left transition-all",
                 active
@@ -165,7 +177,7 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
       <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-5">
         <Button
           variant="outline"
-          onClick={() => setStep((s) => s - 1)}
+          onClick={() => goToStep(step - 1)}
           disabled={isFirst}
           className="gap-2"
         >
@@ -179,7 +191,7 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
               key={i}
               type="button"
               aria-label={`Go to step ${i + 1}`}
-              onClick={() => setStep(i)}
+              onClick={() => goToStep(i)}
               className={cn(
                 "h-2 rounded-full transition-all duration-200",
                 i === step ? "w-7 bg-primary" : "w-2 bg-muted-foreground/25 hover:bg-muted-foreground/50"
@@ -190,7 +202,7 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving }: Props) {
 
         <Button
           variant={isLast ? "outline" : "default"}
-          onClick={() => !isLast && setStep((s) => s + 1)}
+          onClick={() => !isLast && goToStep(step + 1)}
           disabled={isLast}
           className="gap-2"
         >

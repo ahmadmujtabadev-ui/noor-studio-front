@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Sparkles, ArrowLeft, ArrowRight, Check, CheckCheck, Loader2,
   FileText, ChevronDown, ChevronUp, X, ArrowUp, ArrowDown,
-  Scissors, GitMerge, Clock, Pencil,
+  Scissors, GitMerge, Clock, Pencil, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
   const [bulkApproving, setBulkApproving] = useState(false);
   const [inlineEditKey, setInlineEditKey] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [showCharValidation, setShowCharValidation] = useState(false);
   const inlineRef = useRef<HTMLTextAreaElement>(null);
 
   const items    = normArr<StructureItem>(bb.structureReview?.items);
@@ -250,37 +251,78 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
           </div>
         </div>
 
-        {/* Characters */}
+        {/* Characters — required */}
         <div className="space-y-2">
-          <Label>Characters (optional)</Label>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {universeCharacters
-              .filter((c) => c.status === "approved" || !c.status)
-              .map((c) => {
-                const id     = c.id || c._id || "";
-                const active = bb.characterIds.includes(id);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => bb.setCharacterIds((prev) =>
-                      active ? prev.filter((x) => x !== id) : [...prev, id]
-                    )}
-                    className={cn(
-                      "rounded-xl border-2 p-3 text-left transition-all",
-                      active ? "border-primary bg-primary/10" : "border-border hover:border-primary/30"
-                    )}
-                  >
-                    <div className="font-semibold text-sm truncate">{c.name}</div>
-                    {c.role && <div className="text-xs text-muted-foreground">{c.role}</div>}
-                  </button>
-                );
-              })}
+          <div className="flex items-center gap-1.5">
+            <Label>Characters</Label>
+            <span className="text-destructive font-bold text-sm">*</span>
+            <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">Required for correct illustrations</span>
           </div>
+
+          {universeCharacters.filter((c) => c.status === "approved" || !c.status).length === 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-2.5 items-start">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                No characters found for this universe.{" "}
+                <a href="/app/characters" className="underline font-semibold hover:text-amber-900">
+                  Create characters first →
+                </a>{" "}
+                then come back to generate the structure.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {universeCharacters
+                .filter((c) => c.status === "approved" || !c.status)
+                .map((c) => {
+                  const id     = c.id || c._id || "";
+                  const active = bb.characterIds.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setShowCharValidation(false);
+                        bb.setCharacterIds((prev) =>
+                          active ? prev.filter((x) => x !== id) : [...prev, id]
+                        );
+                      }}
+                      className={cn(
+                        "rounded-xl border-2 p-3 text-left transition-all",
+                        active ? "border-primary bg-primary/10" : "border-border hover:border-primary/30",
+                        showCharValidation && bb.characterIds.length === 0 && "border-destructive/60"
+                      )}
+                    >
+                      <div className="font-semibold text-sm truncate">{c.name}</div>
+                      {c.role && <div className="text-xs text-muted-foreground">{c.role}</div>}
+                    </button>
+                  );
+                })}
+            </div>
+          )}
+
+          {showCharValidation && bb.characterIds.length === 0 && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Select at least one character — the AI needs them to generate consistent illustrations
+            </p>
+          )}
+
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <AlertCircle className="w-3 h-3 shrink-0 text-amber-500" />
+            Only characters created in the Characters module will have consistent reference images in illustrations
+          </p>
         </div>
 
         <Button
-          onClick={bb.generateStructure}
+          onClick={() => {
+            if (bb.characterIds.length === 0) {
+              setShowCharValidation(true);
+              return;
+            }
+            setShowCharValidation(false);
+            bb.generateStructure();
+          }}
           disabled={bb.globalLoading}
           className={cn("w-full", hasItems && "variant-outline")}
           variant={hasItems ? "outline" : "default"}

@@ -14,13 +14,237 @@ import FabricPageCanvas, {
   FabricCanvasHandle, EditorTool, PAGE_W, PAGE_H,
   LayoutAppliedPayload,
 } from "@/components/editor/FabricPageCanvas";
-import { Loader2, AlertCircle, BookOpen } from "lucide-react";
+import {
+  Loader2, AlertCircle, BookOpen, X, Download,
+  CheckCircle2, AlertTriangle, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/useAuth";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
 import { tokenStorage } from "@/lib/api/client";
 import { reviewApi } from "@/lib/api/review.api";
+
+// ─── Platform configs (mirrors EditorStep.tsx) ────────────────────────────────
+const EDITOR_PLATFORMS = [
+  {
+    id: "kdp",
+    name: "KDP Kids",
+    badge: "Print + Digital",
+    badgeClass: "border-orange-300/40 text-orange-300",
+    format: "PDF/X-1a", size: "8.5×8.5 in", dpi: "300 DPI", bleed: '0.125"', color: "CMYK",
+    note: "Most popular for self-published children's books.",
+  },
+  {
+    id: "apple",
+    name: "Apple Books",
+    badge: "Digital",
+    badgeClass: "border-blue-400/40 text-blue-300",
+    format: "EPUB3/PDF", size: "Reflowable", dpi: "72+ DPI", bleed: "None", color: "RGB",
+    note: "Optimised for iPad and iPhone.",
+  },
+  {
+    id: "ingram",
+    name: "IngramSpark",
+    badge: "Print-on-Demand",
+    badgeClass: "border-violet-400/40 text-violet-300",
+    format: "PDF/X-1a", size: "8.5×8.5 in", dpi: "300 DPI", bleed: '0.125"', color: "CMYK",
+    note: "Global print-on-demand distribution.",
+  },
+] as const;
+
+// ─── Export dialog (inline, dark-themed to match the editor) ─────────────────
+interface ExportDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onExport: (platform: string) => void;
+  exporting: boolean;
+  pages: Array<{ id: string; type?: string | null; thumbnail?: string | null; layoutKey?: string | null }>;
+  projectTitle: string;
+}
+
+function ExportDialog({ open, onClose, onExport, exporting, pages, projectTitle }: ExportDialogProps) {
+  const [platform, setPlatform] = useState<string>("kdp");
+
+  if (!open) return null;
+
+  const coverPage = pages.find((p) => p.id === "cover-front" || p.type === "front-cover");
+  const coverThumb = coverPage?.thumbnail;
+  const totalPages = pages.length;
+  const savedPages = pages.filter((p) => p.layoutKey).length;
+  const hasFrontCover = pages.some((p) => p.id === "cover-front" || p.type === "front-cover");
+  const hasBackCover  = pages.some((p) => p.id === "cover-back"  || p.type === "back-cover");
+
+  const checks = [
+    { label: "Pages in book",       pass: totalPages > 0,  detail: `${totalPages} pages` },
+    { label: "Layout applied",      pass: savedPages > 0,  detail: `${savedPages}/${totalPages} with layout` },
+    { label: "Front cover present", pass: hasFrontCover,   detail: hasFrontCover ? "Found" : "No front cover page" },
+    { label: "Back cover present",  pass: hasBackCover,    detail: hasBackCover  ? "Found" : "No back cover page" },
+  ];
+
+  const activePlat = EDITOR_PLATFORMS.find((p) => p.id === platform)!;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-2xl bg-[#1a1d24] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Download className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Export PDF</h2>
+              <p className="text-xs text-white/40">{projectTitle}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white/70 transition">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-6">
+          {/* Book preview mockup + specs side-by-side */}
+          <div className="flex gap-5">
+            {/* CSS book mockup */}
+            <div className="shrink-0 flex items-center justify-center">
+              <div className="relative" style={{ width: 130, height: 96 }}>
+                <div className="absolute top-0 left-0 h-full rounded-l border border-white/10 bg-white/5 overflow-hidden" style={{ width: 62 }}>
+                  {coverThumb
+                    ? <img src={coverThumb} alt="" className="w-full h-full object-cover opacity-50" />
+                    : <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-2">{[40,55,65,75].map((w,i)=><div key={i} className="h-px rounded-full bg-white/15" style={{width:`${w}%`}}/>)}</div>}
+                  <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
+                </div>
+                <div className="absolute top-0 h-full bg-white/5 rounded-sm" style={{ left: 62, width: 6 }}>
+                  <div className="w-full h-full bg-gradient-to-r from-white/10 to-transparent" />
+                </div>
+                <div className="absolute top-0 right-0 h-full rounded-r border border-white/15 overflow-hidden shadow-xl" style={{ width: 62 }}>
+                  {coverThumb
+                    ? <img src={coverThumb} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"><BookOpen className="w-6 h-6 text-primary/40" /></div>}
+                  <div className="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
+                </div>
+                <div className="absolute -bottom-1.5 left-3 right-3 h-2 bg-black/30 rounded-full blur-md" style={{zIndex:-1}} />
+              </div>
+            </div>
+
+            {/* File specs for selected platform */}
+            <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-4">
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3">File Specs — {activePlat.name}</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                {[
+                  ["Format",      activePlat.format],
+                  ["Page size",   activePlat.size],
+                  ["Resolution",  activePlat.dpi],
+                  ["Bleed",       activePlat.bleed],
+                  ["Color space", activePlat.color],
+                  ["Pages",       String(totalPages)],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between text-xs">
+                    <span className="text-white/35">{k}</span>
+                    <span className="text-white/80 font-medium tabular-nums">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-white/30 mt-3 leading-relaxed">{activePlat.note}</p>
+            </div>
+          </div>
+
+          {/* Platform selector */}
+          <div>
+            <p className="text-xs font-semibold text-white/50 mb-3 uppercase tracking-widest">Publishing Platform</p>
+            <div className="grid grid-cols-3 gap-2">
+              {EDITOR_PLATFORMS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPlatform(p.id)}
+                  className={cn(
+                    "relative text-left rounded-xl border-2 p-3 transition-all focus:outline-none",
+                    platform === p.id
+                      ? "border-primary/60 bg-primary/10"
+                      : "border-white/10 hover:border-white/20 bg-white/5"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-white/90">{p.name}</span>
+                    {platform === p.id && (
+                      <div className="w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <Badge variant="outline" className={cn("text-[9px] mb-2", p.badgeClass)}>{p.badge}</Badge>
+                  <div className="space-y-0.5">
+                    {[["Fmt", p.format], ["DPI", p.dpi], ["Bleed", p.bleed]].map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-[10px]">
+                        <span className="text-white/30">{k}</span>
+                        <span className="text-white/60 font-medium">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pre-flight checklist */}
+          <div>
+            <p className="text-xs font-semibold text-white/50 mb-3 uppercase tracking-widest">Pre-flight Check</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 divide-y divide-white/5 overflow-hidden">
+              {checks.map((c, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
+                    c.pass ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
+                  )}>
+                    {c.pass
+                      ? <CheckCircle2 className="w-3 h-3" />
+                      : <AlertTriangle className="w-3 h-3" />}
+                  </div>
+                  <span className="text-xs text-white/80 flex-1">{c.label}</span>
+                  <span className="text-[11px] text-white/40">{c.detail}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-white/25 mt-2">
+              Pages without a layout applied will render using AI-generated images as fallbacks.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-white/10 shrink-0 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-white/30">
+            High-res print PDF · All canvas changes included
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} className="text-white/50 hover:text-white/80">
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="gap-2 bg-primary hover:bg-primary/90"
+              onClick={() => onExport(platform)}
+              disabled={exporting}
+            >
+              {exporting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Download className="w-3.5 h-3.5" />}
+              {exporting ? "Generating…" : `Export for ${activePlat.name}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9008";
 
@@ -54,6 +278,7 @@ export default function BookEditorPage() {
   const [saving, setSaving] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingEpub, setExportingEpub] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [pageReloadNonceById, setPageReloadNonceById] = useState<Record<string, number>>({});
 
@@ -279,7 +504,13 @@ export default function BookEditorPage() {
     } finally { setSaving(false); }
   }, [requestSaveCurrentPage, toast]);
 
-  const handleExport = useCallback(async () => {
+  // Opens the export dialog (platform picker + pre-flight check)
+  const handleExport = useCallback(() => {
+    setExportDialogOpen(true);
+  }, []);
+
+  // Called by the export dialog once the user picks a platform and confirms
+  const doExport = useCallback(async (platform: string) => {
     if (!projectId) return;
     setExportingPdf(true);
     toast({ title: "Generating PDF…", description: "Saving pages and preparing your download" });
@@ -288,7 +519,7 @@ export default function BookEditorPage() {
       await requestSaveCurrentPage();
 
       const res = await fetch(
-        `${API_BASE}/api/projects/${projectId}/export/pdf?template=classic`,
+        `${API_BASE}/api/projects/${projectId}/export/pdf?platform=${platform}&template=classic`,
         { method: "GET", headers: tokenStorage.get() ? { Authorization: `Bearer ${tokenStorage.get()}` } : {} }
       );
 
@@ -301,12 +532,13 @@ export default function BookEditorPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${projectTitle || "book"}-classic.pdf`;
+      a.download = `${projectTitle || "book"}-${platform}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      setExportDialogOpen(false);
       toast({ title: "PDF exported ✓" });
     } catch (err) {
       toast({ title: "PDF export failed", description: (err as Error).message, variant: "destructive" });
@@ -524,6 +756,15 @@ export default function BookEditorPage() {
     <>
       <SubscriptionGateModal open={editorGateOpen} onOpenChange={setEditorGateOpen} workflow="editor" reason="expired" />
 
+      <ExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        onExport={doExport}
+        exporting={exportingPdf}
+        pages={pages}
+        projectTitle={projectTitle}
+      />
+
       <div className="flex flex-col h-screen bg-[#0f1117] overflow-hidden select-none">
         <EditorToolbar
           title={projectTitle} activeTool={activeTool} onToolChange={handleToolChange}
@@ -555,12 +796,10 @@ export default function BookEditorPage() {
           />
 
           <div className="flex-1 overflow-auto bg-[#0f1117]">
-            <div className="flex items-center justify-center min-h-full p-8">
+            <div className="flex items-center justify-center min-h-full" style={{ padding: "2.5rem 2rem 5rem" }}>
               <div className="relative">
                 <div className="absolute -top-7 left-0 right-0 flex items-center justify-center gap-2 pointer-events-none">
-                  <span className="text-xs text-white/30 font-medium">{currentPage.label}</span>
-                  <span className="text-white/15">·</span>
-                  <span className="text-xs text-white/20">{currentPageIdx + 1} / {pages.length}</span>
+                  <span className="text-xs text-white/40 font-semibold">{currentPage.label}</span>
                 </div>
 
                 <div className="relative rounded-sm overflow-hidden" style={{ width: PAGE_W * scale, height: PAGE_H * scale, boxShadow: "0 20px 80px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6)" }}>
@@ -576,10 +815,37 @@ export default function BookEditorPage() {
                   />
                 </div>
 
-                <div className="absolute -bottom-12 left-0 right-0 flex items-center justify-center gap-4 pointer-events-auto">
-                  <button onClick={() => handlePageSelect(Math.max(0, currentPageIdx - 1))} disabled={currentPageIdx === 0} className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5">← Prev</button>
-                  <span className="text-xs text-white/20">{currentPageIdx + 1} of {pages.length}</span>
-                  <button onClick={() => handlePageSelect(Math.min(pages.length - 1, currentPageIdx + 1))} disabled={currentPageIdx === pages.length - 1} className="text-xs text-white/30 hover:text-white/60 disabled:opacity-20 transition px-3 py-1 rounded-full hover:bg-white/5">Next →</button>
+                {/* Page navigation — prominent pill bar */}
+                <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-0 pointer-events-auto">
+                  <div className="flex items-center gap-1 bg-[#1e2130] border border-white/15 rounded-2xl px-2 py-1.5 shadow-xl shadow-black/40">
+                    <button
+                      onClick={() => handlePageSelect(Math.max(0, currentPageIdx - 1))}
+                      disabled={currentPageIdx === 0}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Prev
+                    </button>
+
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-white/8 select-none">
+                      <span className="text-sm font-bold text-white tabular-nums">
+                        {currentPageIdx + 1}
+                      </span>
+                      <span className="text-white/30 text-sm">/</span>
+                      <span className="text-sm text-white/50 tabular-nums">
+                        {pages.length}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handlePageSelect(Math.min(pages.length - 1, currentPageIdx + 1))}
+                      disabled={currentPageIdx === pages.length - 1}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/8 disabled:opacity-25 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Plus, Users, BookOpen, FolderKanban, Clock,
   Sparkles, Loader2, ChevronLeft, ChevronRight,
@@ -56,8 +56,9 @@ const STAGE_LABEL: Record<string, string> = {
   prose: "Writing", humanize: "Writing", illustrations: "Illustrations",
   cover: "Cover", editor: "Editor", layout: "Editor",
 };
-const CORE_STAGES_CHAPTER = ["story","structure","style","prose","illustrations","cover","editor"];
-const CORE_STAGES_OTHER   = ["story","structure","style","illustrations","cover","editor"];
+// "style" is not a real step in the builder — remove it so progress % is accurate
+const CORE_STAGES_CHAPTER = ["story","structure","prose","illustrations","cover","editor"];
+const CORE_STAGES_OTHER   = ["story","structure","illustrations","cover","editor"];
 
 function getProjectInfo(project: Project) {
   const wf = (project as any).workflow as { mode?: string; currentStage?: string; stages?: Record<string, boolean> } | undefined;
@@ -225,8 +226,11 @@ function KBTemplateCard({ tpl, onClick }: { tpl: typeof DEFAULT_KB_STARTER_TEMPL
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useUser();
   const [gateWorkflow, setGateWorkflow] = useState<GateWorkflow | null>(null);
+  // When at /app/projects show every project; on /app/dashboard cap at 5
+  const isProjectsPage = location.pathname.includes("/projects");
   const { canCreateBook, canCreateCharacter, limits, usage } = usePlanLimits();
 
   const { universes, loading: universesLoading } = useUniverses();
@@ -417,10 +421,12 @@ export default function DashboardPage() {
             {/* Recent Projects */}
             <div className="card-premium p-6">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">Recent Projects</h2>
-                {sortedProjects.length > 5 && (
-                  <Link to="/app/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
-                    View all <ArrowRight className="w-3 h-3" />
+                <h2 className="text-lg font-semibold text-foreground">
+                  {isProjectsPage ? `All Projects (${sortedProjects.length})` : "Recent Projects"}
+                </h2>
+                {!isProjectsPage && sortedProjects.length > 0 && (
+                  <Link to="/app/projects" className="text-sm text-primary hover:underline flex items-center gap-1 font-medium">
+                    View all ({sortedProjects.length}) <ArrowRight className="w-3 h-3" />
                   </Link>
                 )}
               </div>
@@ -449,9 +455,15 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {sortedProjects.slice(0, 5).map((project) => {
+                  {(isProjectsPage ? sortedProjects : sortedProjects.slice(0, 5)).map((project) => {
                     const projectId = getProjectId(project);
                     const { status, progress, isCompleted, isInProgress } = getProjectInfo(project);
+                    const currentStage = (project as any).workflow?.currentStage;
+                    const continueLabel = isCompleted
+                      ? "Open"
+                      : currentStage
+                        ? `Continue → ${STAGE_LABEL[currentStage] || "Resume"}`
+                        : "Start";
                     return (
                       <div
                         key={projectId || getProjectTitle(project)}
@@ -496,11 +508,14 @@ export default function DashboardPage() {
                           >
                             {status}
                           </Badge>
-                          <Button variant="ghost" size="sm"
+                          <Button
+                            variant={isCompleted ? "ghost" : "default"}
+                            size="sm"
+                            className={cn(!isCompleted && "bg-primary/90 hover:bg-primary text-primary-foreground text-xs px-3")}
                             onClick={(e) => { e.stopPropagation(); if (projectId) navigate(`/app/books/${projectId}`); }}
                             disabled={!projectId}
                           >
-                            Open
+                            {continueLabel}
                           </Button>
                         </div>
                       </div>

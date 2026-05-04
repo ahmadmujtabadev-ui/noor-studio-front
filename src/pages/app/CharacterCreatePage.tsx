@@ -57,9 +57,6 @@ import {
   ShortHairBoySvg, CurlyHairBoySvg, WavyHairBoySvg, SpikyHairBoySvg, AfroHairSvg, BuzzCutSvg,
   LongHairGirlSvg, CurlyLongHairSvg, BraidedHairSvg, PonytailHairSvg, BunHairSvg,
   HijabSvg, BaldSvg, WhiteShortHairSvg, GrayShortHairSvg, FeatheredCrestSvg, FurBodySvg,
-  SlimBodySvg, AverageBodySvg, ChubbyBodySvg, AthleticBodySvg, StockyBodySvg,
-  TallSlenderBodySvg, PetiteBodySvg, BroadShoulderBodySvg, ToddlerBodySvg, RoundFullBodySvg,
-  HeightFeelSvg,
   OUTFIT_COLORS,
   LongSleeveTunicSvg, AbayaSvg, ModestBlouseSvg, SalwarKameezTopSvg, LongSleeveDressSvg, SchoolUniformBlouseSvg, LongCardiganSvg,
   TShirtSvg, LongSleeveShirtSvg, CollarShirtSvg, HoodieSvg, ThobeSvg, KurtaSvg, JacketSvg,
@@ -295,13 +292,26 @@ const BOTTOM_GARMENT_PRESETS_BOY = [
 ];
 
 const BOTTOM_GARMENT_PRESETS_GIRL = [
-  "wide-leg trousers",
-  "long skirt",
-  "maxi skirt",
-  "school uniform skirt",
-  "shalwar",
-  "palazzo pants",
+  "abaya bottom",
+  "cardigan bottom",
+  "dress bottom",
+  "kameez bottom",
+  "pants",
+  "pinafore",
+  "salwar",
+  "skirt",
+  "trouser",
 ];
+
+const GIRL_TOP_TO_BOTTOM: Record<string, string> = {
+  "long-sleeve tunic": "pants",
+  "abaya": "abaya bottom",
+  "modest blouse": "skirt",
+  "salwar kameez top": "salwar",
+  "long-sleeve dress": "dress bottom",
+  "school uniform blouse": "pinafore",
+  "long cardigan": "cardigan bottom",
+};
 
 const SHOE_PRESETS = [
   "sneakers",
@@ -599,7 +609,7 @@ export default function CharacterCreatePage() {
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
-  const [dnaTab, setDnaTab] = useState<DnaTab>("face");
+  const [dnaTab, setDnaTab] = useState<DnaTab>("character");
 
   const characterId = createdCharacter?.id || createdCharacter?._id || "";
   const generatePortrait = useGeneratePortrait(characterId);
@@ -608,7 +618,7 @@ export default function CharacterCreatePage() {
 
   const [form, setForm] = useState({
     selectedUniverseId: searchParams.get("universeId") || "",
-    name: fromTemplate?.name ? `${fromTemplate.name} (copy)` : "",
+    name: fromTemplate?.name ?? "",
     role: fromTemplate?.role ? (fromTemplate.role.charAt(0).toUpperCase() + fromTemplate.role.slice(1)) : "Protagonist",
     ageRange: fromTemplate?.ageRange ? (parseInt(fromTemplate.ageRange) || 6) : 6 as number | string,
     traits: fromTemplate?.traits || [] as string[],
@@ -671,6 +681,12 @@ export default function CharacterCreatePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (currentStep === 1) {
+      setDnaTab("character");
+    }
+  }, [currentStep]);
+
   // ─── Auto-suggest eyebrow / nose / cheek from age + face shape ───────────
   // Track the last values we auto-filled so we don't override manual changes
   const lastSuggestion = useRef({ eyebrow: "", nose: "", cheek: "" });
@@ -712,6 +728,20 @@ export default function CharacterCreatePage() {
   const updateForm = (field: string, value: unknown) => {
     setValidationErrors((prev) => { const n = new Set(prev); n.delete(field); return n; });
     setForm((f) => ({ ...f, [field]: value }));
+  };
+
+  const updateGirlTopGarment = (value: string) => {
+    setValidationErrors((prev) => {
+      const n = new Set(prev);
+      n.delete("topGarmentType");
+      n.delete("bottomGarmentType");
+      return n;
+    });
+    setForm((f) => ({
+      ...f,
+      topGarmentType: value,
+      bottomGarmentType: GIRL_TOP_TO_BOTTOM[value] || "",
+    }));
   };
 
   const toggleTrait = (trait: string) => {
@@ -794,6 +824,7 @@ export default function CharacterCreatePage() {
   const isElderAge = ageNum >= 18;
   const isElderMale = form.gender === "boy" && ageNum >= 13;
   const isOther = form.gender === "other" || form.gender === "animal";
+  const isGirlCharacter = form.gender === "girl";
 
   const ageLookImpliesHijabAge = (ageLook: string) => {
     const m = ageLook.match(/(\d+)/);
@@ -808,6 +839,44 @@ export default function CharacterCreatePage() {
       : form.wearHijab
         ? HIJAB_STYLES
         : HAIR_STYLES_GIRL;
+
+  const humanBodyBuildOptions = isGirlCharacter
+    ? [
+        { value: "slim and lean",     label: "Short",    icon: <img src="/girsl-body-porpotions/SHORT.png" alt="Short" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "average build",     label: "Average",  icon: <img src="/girsl-body-porpotions/AVERAGE.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "soft and round",    label: "Chubby",   icon: <img src="/girsl-body-porpotions/CHUBBY.png" alt="Chubby" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "athletic and fit",  label: "Athletic", icon: <img src="/girsl-body-porpotions/ATHLETIC.png" alt="Athletic" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "tall and slender",  label: "Tall",     icon: <img src="/girsl-body-porpotions/TALL.png" alt="Tall" className="w-full h-full object-contain" draggable={false} /> },
+      ]
+    : [
+        { value: "slim and lean",             label: "Slim",     icon: <img src="/weight%20feel%20card/slim.png" alt="Slim" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "average build",             label: "Average",  icon: <img src="/weight%20feel%20card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "soft and round",            label: "Soft",     icon: <img src="/weight%20feel%20card/soft.png" alt="Soft" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "athletic and fit",          label: "Athletic", icon: <img src="/weight%20feel%20card/atletic.png" alt="Athletic" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "stocky and strong",         label: "Stocky",   icon: <img src="/weight%20feel%20card/stocky.png" alt="Stocky" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "petite and light",          label: "Petite",   icon: <img src="/weight%20feel%20card/petite.png" alt="Petite" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "small toddler round tummy", label: "Toddler",  icon: <img src="/weight%20feel%20card/toddler.png" alt="Toddler" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "round and full",            label: "Round",    icon: <img src="/weight%20feel%20card/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
+      ];
+
+  const humanHeightFeelOptions = isGirlCharacter
+    ? [
+        { value: "very small",     label: "Very Small",     icon: <img src="/girls%20height/very%20small.png" alt="Very Small" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "small",          label: "Small",          icon: <img src="/girls%20height/small.png" alt="Small" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "average height", label: "Average",        icon: <img src="/girls%20height/average%20height.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "slightly tall",  label: "Slightly Tall",  icon: <img src="/girls%20height/slightly%20tall.png" alt="Slightly Tall" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "tall",           label: "Tall",           icon: <img src="/girls%20height/tall.png" alt="Tall" className="w-full h-full object-contain" draggable={false} /> },
+      ]
+    : [
+        { value: "very small",         label: "Very Small",     icon: <img src="/height-feel-card/very%20small.png" alt="Very Small" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "small",              label: "Small",          icon: <img src="/height-feel-card/small.png" alt="Small" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "slightly short",     label: "Slightly Short", icon: <img src="/height-feel-card/slighlty%20short.png" alt="Slightly Short" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "average height",     label: "Average",        icon: <img src="/height-feel-card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "slightly tall",      label: "Slightly Tall",  icon: <img src="/height-feel-card/slighlty%20tall.png" alt="Slightly Tall" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "tall",               label: "Tall",           icon: <img src="/height-feel-card/tall.png" alt="Tall" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "very tall",          label: "Very Tall",      icon: <img src="/height-feel-card/very%20tall.png" alt="Very Tall" className="w-full h-full object-contain" draggable={false} /> },
+        { value: "towers over others", label: "Towering",       icon: <img src="/height-feel-card/towering.png" alt="Towering" className="w-full h-full object-contain" draggable={false} /> },
+      ];
 
   const handleCreateAndGenerate = async () => {
     if (!form.name.trim()) {
@@ -1747,7 +1816,7 @@ export default function CharacterCreatePage() {
                     <Label className="text-base font-bold">👕 Top Garment</Label>
                     {form.gender === "girl" ? (
                       <VisualPicker accent="amber" columns={3} iconSize="xl" allowDeselect value={form.topGarmentType}
-                        onChange={(v) => { updateForm("topGarmentType", v); if (v === "salwar kameez top" && !form.bottomGarmentType) updateForm("bottomGarmentType", "shalwar"); }}
+                        onChange={updateGirlTopGarment}
                         options={[
                           { value: "long-sleeve tunic",     label: "Tunic",   icon: <img src="/girl%20top%20garments/tunic.png" alt="Tunic" className="w-full h-full object-contain" draggable={false} /> },
                           { value: "abaya",                 label: "Abaya",   icon: <img src="/girl%20top%20garments/abaya.png" alt="Abaya" className="w-full h-full object-contain" draggable={false} /> },
@@ -1812,12 +1881,15 @@ export default function CharacterCreatePage() {
                       <VisualPicker accent="amber" columns={3} iconSize="xl" allowDeselect value={form.bottomGarmentType}
                         onChange={(v) => updateForm("bottomGarmentType", v)}
                         options={[
-                          { value: "wide-leg trousers",    label: "Wide Leg",  icon: <img src="/girl%20bottom%20garments/wide%20leg.png" alt="Wide Leg" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "long skirt",           label: "Long Skirt",icon: <img src="/girl%20bottom%20garments/long%20skirt.png" alt="Long Skirt" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "maxi skirt",           label: "Maxi Skirt",icon: <img src="/girl%20bottom%20garments/maxi%20shirk.png" alt="Maxi Skirt" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "school uniform skirt", label: "Uniform",   icon: <img src="/girl%20bottom%20garments/uniform.png" alt="Uniform" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "shalwar",              label: "Shalwar",   icon: <img src="/girl%20bottom%20garments/shalwar.png" alt="Shalwar" className="w-full h-full object-contain" draggable={false} /> },
-                          { value: "palazzo pants",        label: "Palazzo",   icon: <img src="/girl%20bottom%20garments/palazzo.png" alt="Palazzo" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "abaya bottom",    label: "Abaya",    icon: <img src="/bottom%20pants/abaya%20bottom.png" alt="Abaya bottom" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "cardigan bottom", label: "Cardigan", icon: <img src="/bottom%20pants/cardian%20bottom.png" alt="Cardigan bottom" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "dress bottom",    label: "Dress",    icon: <img src="/bottom%20pants/dress%20bottom.png" alt="Dress bottom" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "kameez bottom",   label: "Kameez",   icon: <img src="/bottom%20pants/kameez%20bottom.png" alt="Kameez bottom" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "pants",           label: "Pants",    icon: <img src="/bottom%20pants/pants.png" alt="Pants" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "pinafore",        label: "Pinafore", icon: <img src="/bottom%20pants/pinafore.png" alt="Pinafore" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "salwar",          label: "Salwar",   icon: <img src="/bottom%20pants/salwar.png" alt="Salwar" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "skirt",           label: "Skirt",    icon: <img src="/bottom%20pants/skirt.png" alt="Skirt" className="w-full h-full object-contain" draggable={false} /> },
+                          { value: "trouser",         label: "Trouser",  icon: <img src="/bottom%20pants/trouser.png" alt="Trouser" className="w-full h-full object-contain" draggable={false} /> },
                         ]}
                       />
                     ) : (
@@ -1974,18 +2046,7 @@ export default function CharacterCreatePage() {
                     <Label className="text-base font-bold">🧍 Body Build</Label>
                     <VisualPicker columns={4} iconSize="xl" accent="blue" allowDeselect value={form.bodyBuild}
                       onChange={(v) => updateForm("bodyBuild", v)}
-                      options={[
-                        { value: "slim and lean",             label: "Slim",     icon: <img src="/weight%20feel%20card/slim.png" alt="Slim" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "average build",             label: "Average",  icon: <img src="/weight%20feel%20card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "soft and round",            label: "Soft",     icon: <img src="/weight%20feel%20card/soft.png" alt="Soft" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "athletic and fit",          label: "Athletic", icon: <img src="/weight%20feel%20card/atletic.png" alt="Athletic" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "stocky and strong",         label: "Stocky",   icon: <img src="/weight%20feel%20card/stocky.png" alt="Stocky" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "tall and slender",          label: "Tall Slim",icon: <TallSlenderBodySvg /> },
-                        { value: "petite and light",          label: "Petite",   icon: <img src="/weight%20feel%20card/petite.png" alt="Petite" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "broad-shouldered",          label: "Broad",    icon: <BroadShoulderBodySvg /> },
-                        { value: "small toddler round tummy", label: "Toddler",  icon: <img src="/weight%20feel%20card/toddler.png" alt="Toddler" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "round and full",            label: "Round",    icon: <img src="/weight%20feel%20card/round.png" alt="Round" className="w-full h-full object-contain" draggable={false} /> },
-                      ]}
+                      options={humanBodyBuildOptions}
                     />
                     <Input placeholder="Or describe a custom build…"
                       value={BODY_BUILDS.includes(form.bodyBuild) ? "" : form.bodyBuild}
@@ -1997,16 +2058,7 @@ export default function CharacterCreatePage() {
                     <Label className="text-base font-bold">📐 Height Feel</Label>
                     <VisualPicker columns={4} iconSize="xl" accent="blue" allowDeselect value={form.heightFeel}
                       onChange={(v) => updateForm("heightFeel", v)}
-                      options={[
-                        { value: "very small",        label: "Very Small",     icon: <img src="/height-feel-card/very%20small.png" alt="Very Small" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "small",             label: "Small",          icon: <img src="/height-feel-card/small.png" alt="Small" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "slightly short",    label: "Slightly Short", icon: <img src="/height-feel-card/slighlty%20short.png" alt="Slightly Short" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "average height",    label: "Average",        icon: <img src="/height-feel-card/average.png" alt="Average" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "slightly tall",     label: "Slightly Tall",  icon: <img src="/height-feel-card/slighlty%20tall.png" alt="Slightly Tall" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "tall",              label: "Tall",           icon: <img src="/height-feel-card/tall.png" alt="Tall" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "very tall",         label: "Very Tall",      icon: <img src="/height-feel-card/very%20tall.png" alt="Very Tall" className="w-full h-full object-contain" draggable={false} /> },
-                        { value: "towers over others",label: "Towering",       icon: <img src="/height-feel-card/towering.png" alt="Towering" className="w-full h-full object-contain" draggable={false} /> },
-                      ]}
+                      options={humanHeightFeelOptions}
                     />
                   </div>
 

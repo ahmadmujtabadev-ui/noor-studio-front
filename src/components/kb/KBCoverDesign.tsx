@@ -973,7 +973,16 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
 
   const selectTemplate = (tplId: string) => {
     if (selectedTplId === tplId) {
-      patch({ selectedCoverTemplate: null });
+      patch({
+        selectedCoverTemplate: null,
+        selectedSpineTemplate: null,
+        selectedBackTemplate: null,
+        spineColorBackground: "",
+        spineTypographyStyle: "",
+        spinePromptDirective: "",
+        backBackgroundStyle: "",
+        backPromptDirective: "",
+      });
       return;
     }
 
@@ -988,20 +997,24 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
       ? BACK_COVER_TEMPLATES.find((t) => t.value === matched.back)
       : undefined;
 
+    const spineFields = {
+      selectedSpineTemplate: spineTpl?.value ?? null,
+      spineColorBackground: spineTpl?.colorBackground ?? "",
+      spineTypographyStyle: spineTpl?.typographyStyle ?? "",
+      spinePromptDirective: spineTpl?.promptDirective ?? "",
+    };
+
+    const backFields = {
+      selectedBackTemplate: backTpl?.value ?? null,
+      backBackgroundStyle: backTpl?.backgroundStyle ?? "",
+      backPromptDirective: backTpl?.promptDirective ?? "",
+    };
+
     if (!defaults) {
       patch({
         selectedCoverTemplate: tplId,
-        ...(spineTpl && {
-          selectedSpineTemplate: spineTpl.value,
-          spineColorBackground: spineTpl.colorBackground,
-          spineTypographyStyle: spineTpl.typographyStyle,
-          spinePromptDirective: spineTpl.promptDirective,
-        }),
-        ...(backTpl && {
-          selectedBackTemplate: backTpl.value,
-          backBackgroundStyle: backTpl.backgroundStyle,
-          backPromptDirective: backTpl.promptDirective,
-        }),
+        ...spineFields,
+        ...backFields,
       });
       return;
     }
@@ -1026,19 +1039,8 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
       islamicMotifs: cd.islamicMotifs?.length
         ? cd.islamicMotifs
         : defaults.islamicMotifs,
-
-      ...(spineTpl && {
-        selectedSpineTemplate: spineTpl.value,
-        spineColorBackground: spineTpl.colorBackground,
-        spineTypographyStyle: spineTpl.typographyStyle,
-        spinePromptDirective: spineTpl.promptDirective,
-      }),
-
-      ...(backTpl && {
-        selectedBackTemplate: backTpl.value,
-        backBackgroundStyle: backTpl.backgroundStyle,
-        backPromptDirective: backTpl.promptDirective,
-      }),
+      ...spineFields,
+      ...backFields,
     });
   };
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface KBStrengthProps {
   kb: any;
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, section?: string) => void;
   compact?: boolean;
 }
 
@@ -12,6 +12,7 @@ interface Domain {
   id: string;
   label: string;
   tab: string;
+  section?: string;
   weight: number;
   score: (kb: any) => number;
   cost: string;
@@ -23,6 +24,7 @@ const DOMAINS: Domain[] = [
     id: "values",
     label: "Islamic Values",
     tab: "faith",
+    section: "islamicValues",
     weight: 10,
     score: (kb) => Math.min(100, ((kb.islamicValues?.length || 0) / 5) * 100),
     cost: "Stories may lack Islamic moral grounding - characters feel generic",
@@ -32,6 +34,7 @@ const DOMAINS: Domain[] = [
     id: "duas",
     label: "Du'as",
     tab: "faith",
+    section: "duas",
     weight: 15,
     score: (kb) => Math.min(100, ((kb.duas?.length || 0) / 5) * 100),
     cost: "Characters won't make du'a naturally - faith moments feel staged",
@@ -41,6 +44,7 @@ const DOMAINS: Domain[] = [
     id: "vocabulary",
     label: "Vocabulary",
     tab: "faith",
+    section: "vocabulary",
     weight: 10,
     score: (kb) => Math.min(100, ((kb.vocabulary?.length || 0) / 4) * 100),
     cost: "Islamic terms may be misused or replaced with generic English",
@@ -50,6 +54,7 @@ const DOMAINS: Domain[] = [
     id: "avoidTopics",
     label: "Content Guardrails",
     tab: "faith",
+    section: "avoidTopics",
     weight: 10,
     score: (kb) => Math.min(100, ((kb.avoidTopics?.length || 0) / 3) * 100),
     cost: "Stories may drift into culturally inappropriate or haram themes",
@@ -59,11 +64,12 @@ const DOMAINS: Domain[] = [
     id: "characterVoices",
     label: "Character Voices",
     tab: "story",
+    section: "characterGuides",
     weight: 20,
     score: (kb) => {
       const guides = kb.characterGuides || [];
       if (guides.length === 0) return 0;
-      const rich = guides.filter((g: any) => g.speakingStyle && g.faithTone).length;
+      const rich = guides.filter((g: any) => g.speakingStyle && (g.faithTone || g.faithGuide?.faithTone)).length;
       return Math.min(100, (rich / Math.max(guides.length, 1)) * 100);
     },
     cost: "AI generates flat, generic characters - voices sound the same",
@@ -73,6 +79,7 @@ const DOMAINS: Domain[] = [
     id: "backgrounds",
     label: "Scene Settings",
     tab: "visual",
+    section: "backgroundSettings",
     weight: 15,
     score: (kb) => {
       const bs = kb.backgroundSettings || {};
@@ -90,6 +97,7 @@ const DOMAINS: Domain[] = [
     id: "bookFormat",
     label: "Book Format",
     tab: "bookFormat",
+    section: "bookFormatting",
     weight: 10,
     score: (kb) => {
       let pts = 0;
@@ -105,11 +113,12 @@ const DOMAINS: Domain[] = [
     id: "cover",
     label: "Cover Design",
     tab: "cover",
+    section: "coverDesign",
     weight: 10,
     score: (kb) => {
       let pts = 0;
       if (kb.coverDesign?.selectedCoverTemplate) pts += 50;
-      if ((kb.coverDesign?.brandingRules?.length || 0) > 0) pts += 50;
+      if ((kb.coverDesign?.brandingRules?.length || 0) > 0 || (kb.coverDesign?.islamicMotifs?.length || 0) > 0) pts += 50;
       return Math.min(100, pts);
     },
     cost: "Cover uses generic styling - may not match your brand",
@@ -153,7 +162,7 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function DomainBar({ result, onNavigate }: { result: { domain: Domain; score: number }; onNavigate?: (tab: string) => void }) {
+function DomainBar({ result, onNavigate }: { result: { domain: Domain; score: number }; onNavigate?: (tab: string, section?: string) => void }) {
   const { domain, score } = result;
   const isWeak = score < 50;
   const barColor = score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-400" : "bg-red-400";
@@ -165,7 +174,7 @@ function DomainBar({ result, onNavigate }: { result: { domain: Domain; score: nu
         <button
           type="button"
           className="flex min-w-0 items-center gap-2 text-left text-xs font-semibold text-foreground transition-colors hover:text-primary"
-          onClick={() => onNavigate?.(domain.tab)}
+          onClick={() => onNavigate?.(domain.tab, domain.section)}
         >
           <span className={cn(
             "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",

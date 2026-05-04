@@ -17,6 +17,7 @@ import type { Universe } from "@/lib/api/types";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 import { useKnowledgeBases } from "@/hooks/useKnowledgeBase";
 import { KBStrengthScore } from "@/components/kb/KBStrengthScore";
+import { useNavigate } from "react-router-dom";
 
 const AGE_RANGES = [
   { value: "1-6",  label: "1-6 years (Picture book)" },
@@ -58,18 +59,27 @@ interface StoryStepProps {
 
 function KBImpactPanel({ kb }: { kb: any }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const kbId = kb.id || kb._id || "";
 
   const sections = [
-    { label: "Islamic Values", count: kb.islamicValues?.length || 0, tab: "faith", emoji: "🕌" },
-    { label: "Du'as", count: kb.duas?.length || 0, tab: "faith", emoji: "🤲" },
-    { label: "Vocabulary", count: kb.vocabulary?.length || 0, tab: "faith", emoji: "📖" },
-    { label: "Avoid Topics", count: kb.avoidTopics?.length || 0, tab: "faith", emoji: "🚫" },
-    { label: "Character Voices", count: kb.characterGuides?.length || 0, tab: "story", emoji: "🗣️" },
-    { label: "Scene Settings", count: (kb.backgroundSettings?.junior?.locations?.length || 0) + (kb.backgroundSettings?.middleGrade?.locations?.length || 0), tab: "visual", emoji: "🏞️" },
+    { label: "Islamic Values", count: kb.islamicValues?.length || 0, tab: "faith", section: "islamicValues", emoji: "🕌" },
+    { label: "Du'as", count: kb.duas?.length || 0, tab: "faith", section: "duas", emoji: "🤲" },
+    { label: "Vocabulary", count: kb.vocabulary?.length || 0, tab: "faith", section: "vocabulary", emoji: "📖" },
+    { label: "Avoid Topics", count: kb.avoidTopics?.length || 0, tab: "faith", section: "avoidTopics", emoji: "🚫" },
+    { label: "Character Voices", count: kb.characterGuides?.length || 0, tab: "story", section: "characterGuides", emoji: "🗣️" },
+    { label: "Scene Settings", count: (kb.backgroundSettings?.junior?.locations?.length || 0) + (kb.backgroundSettings?.middleGrade?.locations?.length || 0), tab: "visual", section: "backgroundSettings", emoji: "🏞️" },
+    { label: "Book Format", count: kb.bookFormatting?.middleGrade?.wordCount || kb.bookFormatting?.junior?.wordCount || kb.underSixDesign?.pageCount ? 1 : 0, tab: "bookFormat", section: "bookFormatting", emoji: "📐" },
+    { label: "Cover Design", count: (kb.coverDesign?.brandingRules?.length || 0) + (kb.coverDesign?.islamicMotifs?.length || 0) + (kb.coverDesign?.selectedCoverTemplate ? 1 : 0), tab: "cover", section: "coverDesign", emoji: "🎨" },
   ];
 
   const filledSections = sections.filter(s => s.count > 0);
-  const kbUrl = `/app/knowledge-base`;
+  const openKB = (workflow?: string, section?: string) => {
+    const params = new URLSearchParams({ kbId });
+    if (workflow) params.set("workflow", workflow);
+    if (section) params.set("section", section);
+    navigate(`/app/knowledge-base?${params.toString()}`);
+  };
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 overflow-hidden">
@@ -82,7 +92,7 @@ function KBImpactPanel({ kb }: { kb: any }) {
           <span className="text-xs font-bold text-emerald-700">
             ✓ KB active — {filledSections.length} of {sections.length} domains populated
           </span>
-          {filledSections.length < 4 && (
+          {filledSections.length < 5 && (
             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
               Build it up for better output
             </span>
@@ -93,32 +103,34 @@ function KBImpactPanel({ kb }: { kb: any }) {
 
       {open && (
         <div className="border-t border-emerald-100 px-4 py-3 space-y-3 bg-white/60">
-          <KBStrengthScore kb={kb} compact />
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <KBStrengthScore kb={kb} compact onNavigate={(workflow, section) => openKB(workflow, section)} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {sections.map(s => (
-              <a
+              <button
                 key={s.tab + s.label}
-                href={`${kbUrl}?tab=${s.tab}`}
+                type="button"
+                onClick={() => openKB(s.tab, (s as any).section)}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors hover:bg-muted/60",
+                  "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted/60",
                   s.count > 0 ? "border-emerald-200 bg-emerald-50/50 text-emerald-800" : "border-dashed border-muted text-muted-foreground"
                 )}
               >
                 <span>{s.emoji}</span>
                 <span className="font-medium">{s.label}</span>
                 <span className={cn("ml-auto font-bold", s.count > 0 ? "text-emerald-600" : "text-muted-foreground/60")}>
-                  {s.count > 0 ? s.count : "—"}
+                  {s.count}
                 </span>
-              </a>
+              </button>
             ))}
           </div>
-          <a
-            href={kbUrl}
+          <button
+            type="button"
+            onClick={() => openKB()}
             className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-800 transition-colors"
           >
             <ExternalLink className="h-3 w-3" />
             Open Knowledge Base to edit
-          </a>
+          </button>
         </div>
       )}
     </div>
@@ -436,6 +448,19 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
 
         <div className="border-t border-border" />
 
+        {/* Character warning notice */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-amber-800">Characters must be created before writing your story</p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Any characters you name in your story idea — whether written manually or picked from an example — must first be created in the{" "}
+              <a href="/app/characters" className="underline font-semibold hover:text-amber-900">Characters module</a>.
+              The AI uses their reference images and descriptions to generate consistent illustrations. Characters not in the system will produce incorrect or generic images.
+            </p>
+          </div>
+        </div>
+
         {/* Story idea */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -456,6 +481,10 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
           {showExamples && (
             <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-3 space-y-2">
               <p className="text-[11px] font-semibold text-violet-700">Story idea examples — click to use:</p>
+              <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                Only use character names that already exist in your Characters module
+              </p>
               {STORY_EXAMPLES.map((ex, i) => (
                 <button
                   key={i}

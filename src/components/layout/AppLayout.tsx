@@ -156,23 +156,39 @@ export function AppLayout({ children, title, subtitle, actions }: AppLayoutProps
         <div className="flex items-center gap-2 md:gap-3">
           {/* ── Production board button ── */}
           <button
+            type="button"
             onClick={() => setProductionOpen(true)}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer"
-            title="Open production board"
+            aria-label="Open book production progress board"
+            aria-expanded={productionOpen}
+            className={cn(
+              "group hidden h-11 min-w-[190px] items-center gap-3 rounded-xl border border-teal-200 bg-white px-3 text-left shadow-sm transition-all md:flex",
+              "hover:-translate-y-0.5 hover:border-primary/40 hover:bg-teal-50/40 hover:shadow-md",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            )}
+            title="Open book progress board"
           >
-            <BookCopy className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="text-xs font-semibold text-foreground">
-              {filledCount}/{limitLabel}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-primary ring-1 ring-primary/15">
+              <BookCopy className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1 leading-none">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Book Progress
+              </span>
+              <span className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <span>{filledCount} of {limitLabel} slots used</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-emerald-700">{doneCount} complete</span>
+              </span>
             </span>
             {currentLabel && (
               <>
-                <span className="text-muted-foreground text-xs">·</span>
-                <span className="text-xs text-primary font-medium hidden lg:inline truncate max-w-[80px]">
+                <span className="hidden text-muted-foreground text-xs lg:inline">/</span>
+                <span className="hidden max-w-[86px] truncate rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary lg:inline">
                   {currentLabel}
                 </span>
               </>
             )}
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-y-0.5" />
           </button>
 
           {/* ── Credits ── */}

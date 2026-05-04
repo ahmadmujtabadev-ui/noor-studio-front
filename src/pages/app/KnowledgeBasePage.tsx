@@ -230,6 +230,12 @@ const WORKFLOWS = [
 
 type WorkflowId = typeof WORKFLOWS[number]["id"];
 
+const isWorkflowId = (value: string | null): value is WorkflowId =>
+  !!value && WORKFLOWS.some((workflow) => workflow.id === value);
+
+const isSectionId = (value: string | null): value is SectionId =>
+  !!value && SECTIONS.some((section) => section.id === value);
+
 // Per-section color tokens (bg + icon background)
 const SECTION_STYLE: Record<string, { bg: string; iconBg: string; border: string; text: string }> = {
   islamicValues: { bg: "bg-violet-50", iconBg: "bg-violet-100", border: "border-violet-200", text: "text-violet-700" },
@@ -564,28 +570,59 @@ export default function KnowledgeBasePage() {
     const wf = WORKFLOWS.find(w => w.id === id);
     kbNav.setKbNav(id, wf ? (wf.sections[0] as SectionId) : activeSection);
   };
+  const openWorkflow = (id: WorkflowId, section?: SectionId) => {
+    const wf = WORKFLOWS.find(w => w.id === id);
+    const targetSection = section && wf?.sections.includes(section as any)
+      ? section
+      : (wf?.sections[0] as SectionId | undefined);
+    kbNav.setKbNav(id, targetSection || activeSection);
+    setCollapsedSections(new Set());
+  };
+
+  useEffect(() => {
+    if (!kbs.length) return;
+
+    const requestedKbId = searchParams.get("kbId") || searchParams.get("id") || searchParams.get("knowledgeBaseId");
+    const requestedUniverseId = searchParams.get("universeId");
+    const nextKB = requestedKbId
+      ? kbs.find((kb: KnowledgeBase) => (kb.id || (kb as any)._id) === requestedKbId)
+      : requestedUniverseId && !selectedKB
+        ? kbs.find((kb: KnowledgeBase) => (kb as any).universeId === requestedUniverseId || (kb as any).universeId?._id === requestedUniverseId)
+        : null;
+
+    if (nextKB && (nextKB.id || (nextKB as any)._id) !== (selectedKB?.id || (selectedKB as any)?._id)) {
+      setSelectedKB(nextKB);
+    }
+  }, [kbs, searchParams, selectedKB?.id, (selectedKB as any)?._id]);
+
+  useEffect(() => {
+    const workflow = searchParams.get("workflow") || searchParams.get("tab");
+    const section = searchParams.get("section");
+    if (!isWorkflowId(workflow)) return;
+    openWorkflow(workflow, isSectionId(section) ? section : undefined);
+  }, [searchParams]);
 
   // Reset navigation only when a different KB is selected (not on every save)
   useEffect(() => {
     if (!selectedKB) return;
+    const workflow = searchParams.get("workflow") || searchParams.get("tab");
+    const section = searchParams.get("section");
+    if (isWorkflowId(workflow)) {
+      openWorkflow(workflow, isSectionId(section) ? section : undefined);
+      return;
+    }
     kbNav.setKbNav("faith", "islamicValues");
   }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync completion dots whenever KB data changes (does NOT reset navigation)
   useEffect(() => {
     if (!selectedKB) return;
-    const kb = selectedKB as any;
-    const hasFaith = (kb.islamicValues?.length || 0) + (kb.duas?.length || 0) + (kb.vocabulary?.length || 0) + (kb.avoidTopics?.length || 0) > 0;
-    const hasStory = (kb.characterGuides?.length || 0) > 0;
-    const hasVisual = !!(kb.backgroundSettings?.junior?.tone || kb.backgroundSettings?.middleGrade?.tone || (kb.backgroundSettings?.junior?.locations?.length || 0) > 0 || (kb.backgroundSettings?.middleGrade?.locations?.length || 0) > 0);
-    const hasBookFormat = !!(kb.bookFormatting?.middleGrade?.chapterRange || kb.bookFormatting?.middleGrade?.sceneLength || kb.underSixDesign?.pageCount || kb.underSixDesign?.maxWordsPerSpread);
-    const hasCover = !!(kb.coverDesign?.brandingRules?.length || kb.coverDesign?.selectedCoverTemplate);
     const done: string[] = [];
-    if (hasFaith) done.push("faith");
-    if (hasStory) done.push("story");
-    if (hasVisual) done.push("visual");
-    if (hasBookFormat) done.push("bookFormat");
-    if (hasCover) done.push("cover");
+    if (workflowProgress("faith") >= 100) done.push("faith");
+    if (workflowProgress("story") >= 100) done.push("story");
+    if (workflowProgress("visual") >= 100) done.push("visual");
+    if (workflowProgress("bookFormat") >= 100) done.push("bookFormat");
+    if (workflowProgress("cover") >= 100) done.push("cover");
     kbNav.setCompletedWorkflows(done);
   }, [selectedKB?._id ?? selectedKB?.id, selectedKB?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showCreate, setShowCreate] = useState(false);
@@ -818,9 +855,15 @@ export default function KnowledgeBasePage() {
         const customItems = items.filter(v => !ISLAMIC_VALUE_PRESETS.some(p => p.value === v));
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Tap the illustrated tiles to add Islamic values. They're woven into every story and illustration prompt.
-            </p>
+            <div className="rounded-2xl border border-violet-200 bg-violet-50/80 px-5 py-4">
+              <p className="text-lg font-extrabold text-violet-900">Islamic Values</p>
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-violet-800">
+                These are the moral anchors for every generated story, scene, illustration prompt, and character decision. Choose the values you want readers to feel clearly.
+              </p>
+              <div className="mt-3 inline-flex rounded-full bg-white px-3 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200">
+                {items.length} selected
+              </div>
+            </div>
 
             {items.length === 0 && (
               <div className="rounded-xl border border-violet-200 bg-violet-50 dark:bg-violet-950/30 px-4 py-3">
@@ -832,7 +875,7 @@ export default function KnowledgeBasePage() {
             )}
 
             {/* Visual preset tiles */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {ISLAMIC_VALUE_PRESETS.map(preset => {
                 const isSelected = items.includes(preset.value);
                 return (
@@ -846,7 +889,7 @@ export default function KnowledgeBasePage() {
                       save({ islamicValues: next });
                     }}
                     className={cn(
-                      "relative w-full aspect-[3/4] rounded-xl border-2 overflow-hidden transition-all hover:shadow-md hover:scale-[1.02]",
+                      "relative w-full aspect-[4/3] rounded-xl border-2 overflow-hidden bg-white transition-all hover:shadow-md hover:scale-[1.01]",
                       isSelected
                         ? "border-violet-500 shadow-md ring-2 ring-violet-300/50"
                         : "border-border hover:border-violet-300"
@@ -857,8 +900,8 @@ export default function KnowledgeBasePage() {
                       {preset.icon}
                     </div>
                     {/* Label gradient overlay at bottom */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-center">
-                      <span className="text-[11px] font-bold text-white drop-shadow-sm leading-tight">
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-2 pb-2 pt-8 text-center">
+                      <span className="text-sm font-extrabold text-white drop-shadow-sm leading-tight">
                         {preset.label}
                       </span>
                     </div>
@@ -1512,14 +1555,53 @@ export default function KnowledgeBasePage() {
     { label: "Vocab", value: selectedKB.vocabulary?.length || 0, tone: "text-secondary" },
     { label: "Voices", value: (selectedKB as any).characterGuides?.length || 0, tone: "text-primary" },
   ] : [];
+  function workflowProgress(id: WorkflowId): number {
+    if (!selectedKB) return 0;
+    const kb = selectedKB as any;
+    if (id === "faith") {
+      const values = Math.min(100, ((kb.islamicValues?.length || 0) / 5) * 100);
+      const duas = Math.min(100, ((kb.duas?.length || 0) / 5) * 100);
+      const vocab = Math.min(100, ((kb.vocabulary?.length || 0) / 4) * 100);
+      const guardrails = Math.min(100, ((kb.avoidTopics?.length || 0) / 3) * 100);
+      return Math.round((values + duas + vocab + guardrails) / 4);
+    }
+    if (id === "story") {
+      const guides = kb.characterGuides || [];
+      if (guides.length === 0) return 0;
+      const rich = guides.filter((g: any) => g.speakingStyle && (g.faithTone || g.faithGuide?.faithTone)).length;
+      return Math.min(100, Math.round((rich / Math.max(guides.length, 1)) * 100));
+    }
+    if (id === "visual") {
+      return Math.min(100,
+        (kb.backgroundSettings?.junior?.tone ? 30 : 0) +
+        (kb.backgroundSettings?.middleGrade?.tone ? 30 : 0) +
+        ((kb.backgroundSettings?.junior?.locations?.length || 0) > 0 ? 20 : 0) +
+        ((kb.backgroundSettings?.middleGrade?.locations?.length || 0) > 0 ? 20 : 0)
+      );
+    }
+    if (id === "bookFormat") {
+      return Math.min(100,
+        (kb.bookFormatting?.middleGrade?.chapterRange ? 35 : 0) +
+        (kb.bookFormatting?.middleGrade?.sceneLength ? 35 : 0) +
+        (kb.underSixDesign?.pageCount ? 30 : 0)
+      );
+    }
+    if (id === "cover") {
+      return Math.min(100,
+        (kb.coverDesign?.selectedCoverTemplate ? 50 : 0) +
+        ((kb.coverDesign?.brandingRules?.length || 0) > 0 || (kb.coverDesign?.islamicMotifs?.length || 0) > 0 ? 50 : 0)
+      );
+    }
+    return 0;
+  }
   const dnaRecommendations = selectedKB ? [
     { label: "Add at least 5 values", ready: (selectedKB.islamicValues?.length || 0) >= 5, workflow: "faith" as WorkflowId },
     { label: "Add at least 5 du'as", ready: (selectedKB.duas?.length || 0) >= 5, workflow: "faith" as WorkflowId },
     { label: "Add 4 vocabulary terms", ready: (selectedKB.vocabulary?.length || 0) >= 4, workflow: "faith" as WorkflowId },
-    { label: "Set character voices", ready: ((selectedKB as any).characterGuides?.length || 0) > 0, workflow: "story" as WorkflowId },
-    { label: "Select background style", ready: getSectionCount("backgroundSettings") > 0, workflow: "visual" as WorkflowId },
-    { label: "Define book format", ready: getSectionCount("bookFormatting") > 0, workflow: "bookFormat" as WorkflowId },
-    { label: "Choose cover rules", ready: getSectionCount("coverDesign") > 0, workflow: "cover" as WorkflowId },
+    { label: "Set character voices", ready: workflowProgress("story") >= 100, workflow: "story" as WorkflowId },
+    { label: "Select background style", ready: workflowProgress("visual") >= 100, workflow: "visual" as WorkflowId },
+    { label: "Define book format", ready: workflowProgress("bookFormat") >= 100, workflow: "bookFormat" as WorkflowId },
+    { label: "Choose cover rules", ready: workflowProgress("cover") >= 100, workflow: "cover" as WorkflowId },
   ] : [];
   const completedSuggestionCount = dnaRecommendations.filter(item => item.ready).length;
   const kbAny = selectedKB as any;
@@ -1543,6 +1625,9 @@ export default function KnowledgeBasePage() {
     ...(kbAny.coverDesign?.brandingRules || []).slice(0, 3),
     ...(kbAny.coverDesign?.islamicMotifs || []).slice(0, 3),
   ].filter(Boolean) as string[] : [];
+  const getWorkflowProgress = (workflow: typeof WORKFLOWS[number]) => {
+    return workflowProgress(workflow.id as WorkflowId);
+  };
   const handleWorkflowRequest = (id: WorkflowId) => {
     const currentIndex = WORKFLOWS.findIndex(w => w.id === activeWorkflow);
     const targetIndex = WORKFLOWS.findIndex(w => w.id === id);
@@ -1879,15 +1964,16 @@ export default function KnowledgeBasePage() {
           {/* KB Strength Score */}
           <KBStrengthScore
             kb={selectedKB}
-            onNavigate={(tab) => setActiveWorkflow(tab as any)}
+            onNavigate={(tab, section) => isWorkflowId(tab) && openWorkflow(tab, isSectionId(section || null) ? section as SectionId : undefined)}
           />
 
           {/* Workflow tabs */}
-          <div className="rounded-2xl border bg-background p-3 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3 px-1">
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Creation Map</p>
-                <p className="text-sm font-semibold text-foreground">Build the rules every book will inherit</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Creation Map</p>
+                <p className="text-base font-bold text-foreground">Build the rules every book will inherit</p>
+                <p className="text-xs text-muted-foreground">Current step is highlighted. Each card shows how complete that part of your Book DNA is.</p>
               </div>
               <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
                 {kbNav.completedWorkflows.size}/5 complete
@@ -1899,20 +1985,21 @@ export default function KnowledgeBasePage() {
                 const isDone = kbNav.completedWorkflows.has(wf.id);
                 const active = activeWorkflow === wf.id;
                 const Icon = wf.icon;
+                const progress = getWorkflowProgress(wf);
                 return (
                   <button
                     key={wf.id}
                     title={wf.description}
                     onClick={() => handleWorkflowRequest(wf.id as WorkflowId)}
                     className={cn(
-                      "group relative min-h-[112px] overflow-hidden rounded-xl border p-3 text-left transition-all",
+                      "group relative min-h-[132px] overflow-hidden rounded-xl border p-3 text-left transition-all",
                       active
-                        ? "border-primary/30 bg-primary/10 shadow-sm ring-1 ring-primary/15"
-                        : "border-border bg-muted/20 hover:border-primary/25 hover:bg-primary/5"
+                        ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20"
+                        : "border-border bg-white hover:border-primary/35 hover:bg-primary/5 hover:shadow-sm"
                     )}
                   >
                     <span className={cn(
-                      "absolute inset-x-0 top-0 h-1 transition-colors",
+                      "absolute inset-x-0 top-0 h-1.5 transition-colors",
                       active ? "bg-primary" : isDone ? "bg-emerald-500" : "bg-transparent"
                     )} />
 
@@ -1934,6 +2021,18 @@ export default function KnowledgeBasePage() {
                     <span className="mt-3 block">
                       <span className={cn("block text-sm font-bold leading-tight", active ? "text-primary" : "text-foreground")}>{wf.sublabel}</span>
                       <span className="mt-1 block text-xs leading-snug text-muted-foreground">{wf.label}</span>
+                    </span>
+                    <span className="mt-3 block">
+                      <span className="mb-1 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                        <span>{active ? "Current step" : isDone ? "Complete" : "Progress"}</span>
+                        <span>{progress}%</span>
+                      </span>
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className={cn("block h-full rounded-full transition-all duration-500", progress >= 100 ? "bg-emerald-500" : active ? "bg-primary" : "bg-secondary")}
+                          style={{ width: `${Math.max(progress, active ? 12 : 0)}%` }}
+                        />
+                      </span>
                     </span>
                   </button>
                 );
@@ -1958,6 +2057,8 @@ export default function KnowledgeBasePage() {
                   kb={selectedKB}
                   onSave={async (update) => { await save(update as any); }}
                   isSaving={updateMutation.isPending}
+                  activeSection={activeSection}
+                  onSectionChange={(section) => isSectionId(section) && setActiveSection(section)}
                 />
               </div>
             </div>
@@ -2047,7 +2148,7 @@ export default function KnowledgeBasePage() {
                     <button
                       key={item.label}
                       type="button"
-                      onClick={() => handleWorkflowRequest(item.workflow)}
+                      onClick={() => openWorkflow(item.workflow)}
                       className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/60"
                     >
                       {item.ready ? (
