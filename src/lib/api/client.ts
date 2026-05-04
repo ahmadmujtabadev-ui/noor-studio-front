@@ -1,6 +1,6 @@
 import { NoorApiError } from './types';
 
-const BASE_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || 'http://localhost:9008';
+const BASE_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "https://nsb-bacl.vercel.app" || "http://localhost:9008";
 
 // ─── Token Storage ────────────────────────────────────────────────────────────
 
