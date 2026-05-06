@@ -3,7 +3,8 @@
     "allow": [
       "Bash(awk '/const DEFAULT_TEMPLATES  = \\\\[/,/^]/ { print NR\": \"$0 }' /c/Users/Paklogics/Desktop/example_code/Fair/backend05/backend/server/routes/characterTemplates.js)",
       "Bash(npx vite *)",
-      "PowerShell(\\(Get-ChildItem \"c:\\\\Users\\\\Paklogics\\\\Desktop\\\\example_code\\\\example\\\\Noorstudio\\\\public\\\\background\" | Select-Object -ExpandProperty Name\\) -join \"`n\")"
+      "PowerShell(\\(Get-ChildItem \"c:\\\\Users\\\\Paklogics\\\\Desktop\\\\example_code\\\\example\\\\Noorstudio\\\\public\\\\background\" | Select-Object -ExpandProperty Name\\) -join \"`n\")",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\Paklogics\\\\Desktop\\\\example_code\\\\Fair\\\\backend05\\\\backend\" -Recurse -Name | Where-Object { $_ -notmatch 'node_modules|\\\\.git' })"
     ]
   }
 }

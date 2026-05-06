@@ -16,16 +16,6 @@ export function useLoginMutation() {
   });
 }
 
-export function useRegisterMutation() {
-  const register = useAuthStore((s) => s.register);
-  const navigate = useNavigate();
-
-  return useMutation({
-    mutationFn: ({ name, email, password }: { name: string; email: string; password: string }) =>
-      register(name, email, password),
-    onSuccess: () => navigate('/app/dashboard'),
-  });
-}
 
 export function useLogout() {
   const logout = useAuthStore((s) => s.logout);

@@ -11,14 +11,14 @@ interface AuthState {
   isAuthenticated: boolean;
 
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  setAuth: (token: string, user: User) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
   updateUser: (partial: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
+  persist<AuthState>(
     (set, get) => ({
       user: null,
       token: null,
@@ -29,24 +29,21 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const res = await authApi.login({ email, password });
-          tokenStorage.set(res.token);
-          set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
+          if ('token' in res && res.token) {
+            tokenStorage.set(res.token);
+            set({ user: (res as { token: string; user: User }).user, token: res.token as string, isAuthenticated: true, isLoading: false });
+          } else {
+            set({ isLoading: false });
+          }
         } catch (err) {
           set({ isLoading: false });
           throw err;
         }
       },
 
-      register: async (name, email, password) => {
-        set({ isLoading: true });
-        try {
-          const res = await authApi.register({ name, email, password });
-          tokenStorage.set(res.token);
-          set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
-        } catch (err) {
-          set({ isLoading: false });
-          throw err;
-        }
+      setAuth: (token, user) => {
+        tokenStorage.set(token);
+        set({ user, token, isAuthenticated: true, isLoading: false });
       },
 
       logout: () => {
@@ -55,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       refreshUser: async () => {
-        const { token } = get();
+        const token = get().token;
         if (!token) return;
         try {
           const res = await authApi.me();
@@ -73,8 +70,8 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'noor-auth',
-      partialState: (state: AuthState) => ({ token: state.token, user: state.user }),
-    } as Parameters<typeof persist>[1],
+      partialize: (state) => ({ token: state.token, user: state.user }) as AuthState,
+    }
   )
 );
 

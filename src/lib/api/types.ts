@@ -10,6 +10,8 @@ export interface User {
   email: string;
   credits: number;
   plan: 'free' | 'creator' | 'author' | 'studio';
+  isEmailVerified?: boolean;
+  twoFactorEnabled?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'trialing' | 'inactive';
@@ -17,6 +19,11 @@ export interface User {
   createdAt: string;
   updatedAt: string;
 }
+
+export type LoginResult =
+  | { token: string; user: User }
+  | { requires2FA: true; preAuthToken: string; email: string }
+  | { requiresEmailVerification: true; email: string };
 
 export interface AuthResponse {
   token: string;

@@ -246,7 +246,7 @@ function ExportDialog({ open, onClose, onExport, exporting, pages, projectTitle 
   );
 }
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "https://nsb-bacl.vercel.app" || "http://localhost:9008";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9008";
 
 const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   v: "select", V: "select", t: "text", T: "text",
