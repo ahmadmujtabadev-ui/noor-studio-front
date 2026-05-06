@@ -160,11 +160,18 @@ function TemplateCard({
 
 function TemplateContentPreview({ tpl }: { tpl: KBStarterTemplate }) {
   const [tab, setTab] = useState<PreviewTabId>("values");
+  const previewTabs = PREVIEW_TABS.filter(
+    (previewTab) => previewTab.id !== "duas" || tpl.duas.length > 0
+  );
+
+  useEffect(() => {
+    if (tab === "duas" && tpl.duas.length === 0) setTab("values");
+  }, [tab, tpl.duas.length]);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-fit flex-wrap">
-        {PREVIEW_TABS.map((previewTab) => {
+        {previewTabs.map((previewTab) => {
           const Icon = previewTab.icon;
           const active = tab === previewTab.id;
           return (
@@ -437,7 +444,7 @@ function DetailPanel({
           <div className="grid sm:grid-cols-2 gap-1.5 text-xs text-muted-foreground">
             {[
               `${tpl.islamicValues.length} values`,
-              `${tpl.duas.length} du'as with context`,
+              ...(tpl.duas.length ? [`${tpl.duas.length} du'as with context`] : []),
               `${tpl.avoidTopics.length} topics to avoid`,
               "Background scene settings",
               "Cover design rules",
@@ -554,8 +561,8 @@ function DetailPanel({
               Apply "{tpl.name}" to "{targetKb?.name}"?
             </DialogTitle>
             <DialogDescription>
-              This will overwrite Islamic values, du'as, avoid topics,
-              background settings, cover design, and book formatting for{" "}
+              This will overwrite values, avoid topics, background settings,
+              cover design, book formatting{tpl.duas.length ? ", and du'as" : ""} for{" "}
               <strong>{targetKb?.name}</strong>. Character voice guides are not
               affected.
             </DialogDescription>

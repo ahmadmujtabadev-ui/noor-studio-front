@@ -6,6 +6,7 @@ interface KBStrengthProps {
   kb: any;
   onNavigate?: (tab: string, section?: string) => void;
   compact?: boolean;
+  mode?: "islamic" | "universal";
 }
 
 interface Domain {
@@ -126,9 +127,38 @@ const DOMAINS: Domain[] = [
   },
 ];
 
-function computeScore(kb: any): { total: number; domains: { domain: Domain; score: number }[] } {
-  const results = DOMAINS.map((d) => ({ domain: d, score: d.score(kb) }));
-  const totalWeight = DOMAINS.reduce((s, d) => s + d.weight, 0);
+function getDomains(mode: "islamic" | "universal"): Domain[] {
+  return DOMAINS
+    .filter((domain) => mode === "islamic" || domain.id !== "duas")
+    .map((domain) => {
+      if (mode !== "universal") return domain;
+      if (domain.id === "values") {
+        return {
+          ...domain,
+          label: "Core Values",
+          cost: "Stories may lack a clear moral center - characters feel generic",
+        };
+      }
+      if (domain.id === "vocabulary") {
+        return {
+          ...domain,
+          cost: "Preferred story terms may be used inconsistently",
+          tip: "Add at least 4 vocabulary words",
+        };
+      }
+      if (domain.id === "avoidTopics") {
+        return {
+          ...domain,
+          cost: "Stories may drift into inappropriate or off-brand themes",
+        };
+      }
+      return domain;
+    });
+}
+
+function computeScore(kb: any, domains: Domain[]): { total: number; domains: { domain: Domain; score: number }[] } {
+  const results = domains.map((d) => ({ domain: d, score: d.score(kb) }));
+  const totalWeight = domains.reduce((s, d) => s + d.weight, 0);
   const weighted = results.reduce((s, r) => s + (r.score / 100) * r.domain.weight, 0);
   return {
     total: Math.round((weighted / totalWeight) * 100),
@@ -207,8 +237,9 @@ function DomainBar({ result, onNavigate }: { result: { domain: Domain; score: nu
   );
 }
 
-export function KBStrengthScore({ kb, onNavigate, compact = false }: KBStrengthProps) {
-  const { total, domains } = useMemo(() => computeScore(kb), [kb]);
+export function KBStrengthScore({ kb, onNavigate, compact = false, mode = "islamic" }: KBStrengthProps) {
+  const scoreDomains = useMemo(() => getDomains(mode), [mode]);
+  const { total, domains } = useMemo(() => computeScore(kb, scoreDomains), [kb, scoreDomains]);
 
   const label = total >= 75 ? "Strong" : total >= 40 ? "Moderate" : "Weak";
   const labelColor = total >= 75 ? "text-emerald-600" : total >= 40 ? "text-amber-600" : "text-red-600";
@@ -242,7 +273,7 @@ export function KBStrengthScore({ kb, onNavigate, compact = false }: KBStrengthP
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Foundation health</p>
             <p className={cn("mt-1 text-xl font-bold", labelColor)}>{label} Knowledge Base</p>
             <p className="text-xs text-muted-foreground">
-              {total}/100 across {DOMAINS.length} content domains
+              {total}/100 across {scoreDomains.length} content domains
             </p>
             {total < 40 && (
               <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-red-200 bg-white/70 px-2.5 py-1.5 text-[11px] text-red-700">

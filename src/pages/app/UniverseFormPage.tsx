@@ -63,6 +63,7 @@ export default function UniverseFormPage() {
     artStyle: "flat-illustration",
     seriesBible: "",
     tags: [] as string[],
+    category: "islamic" as "islamic" | "universal",
   });
   const [tagInput, setTagInput] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -80,6 +81,7 @@ export default function UniverseFormPage() {
         artStyle: universe.artStyle || "flat-illustration",
         seriesBible: universe.seriesBible || "",
         tags: universe.tags || [],
+        category: universe.category || "islamic",
       });
     }
   }, [universe]);
@@ -104,6 +106,7 @@ export default function UniverseFormPage() {
       artStyle: tpl.artStyle,
       seriesBible: "",
       tags: tpl.tags,
+      category: tpl.flavour === "universal" ? "universal" : "islamic",
     });
     toast.success(`Template applied: ${tpl.name}`);
   }
@@ -118,6 +121,7 @@ export default function UniverseFormPage() {
       artStyle: "flat-illustration",
       seriesBible: "",
       tags: [],
+      category: "islamic",
     });
   }
 
@@ -138,6 +142,7 @@ export default function UniverseFormPage() {
           artStyle: formData.artStyle,
           seriesBible: formData.seriesBible || undefined,
           tags: formData.tags,
+          category: formData.category,
         });
         toast.success("Universe updated!");
         navigate(`/app/universes/${id}`);
@@ -150,6 +155,7 @@ export default function UniverseFormPage() {
           artStyle: formData.artStyle,
           seriesBible: formData.seriesBible || undefined,
           tags: formData.tags,
+          category: formData.category,
         });
         toast.success("Universe created! Now add your characters.");
         navigate(`/app/characters/new?universeId=${created.id || created._id}`);
@@ -346,6 +352,53 @@ export default function UniverseFormPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
+
+          {/* Content Mode — always visible, critical for AI generation */}
+          <div className="rounded-[28px] border bg-card p-6 shadow-sm space-y-4">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Content Mode</p>
+              <p className="mt-1 text-xs text-muted-foreground">Controls whether AI generates Islamic or universal content for every book in this universe.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, category: "islamic" })}
+                className={cn(
+                  "flex items-start gap-3 rounded-2xl border-2 px-5 py-4 text-left transition-all",
+                  formData.category === "islamic"
+                    ? "border-amber-400 bg-amber-50 shadow-sm"
+                    : "border-border bg-card hover:border-amber-300"
+                )}
+              >
+                <span className="mt-0.5 text-2xl leading-none">☪</span>
+                <div>
+                  <p className={cn("text-sm font-bold", formData.category === "islamic" ? "text-amber-800" : "text-foreground")}>
+                    Islamic
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Includes Islamic values, duas, Arabic phrases, and mosque-style artwork</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, category: "universal" })}
+                className={cn(
+                  "flex items-start gap-3 rounded-2xl border-2 px-5 py-4 text-left transition-all",
+                  formData.category === "universal"
+                    ? "border-sky-400 bg-sky-50 shadow-sm"
+                    : "border-border bg-card hover:border-sky-300"
+                )}
+              >
+                <span className="mt-0.5 text-2xl leading-none">🌍</span>
+                <div>
+                  <p className={cn("text-sm font-bold", formData.category === "universal" ? "text-sky-700" : "text-foreground")}>
+                    Universal
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Secular children's content — values like kindness, courage, and friendship, no Islamic references</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[1.2fr_0.9fr]">
             <div className="space-y-6 rounded-[28px] border bg-card p-6 shadow-sm">
               <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Basic Info</p>

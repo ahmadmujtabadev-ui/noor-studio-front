@@ -41,6 +41,7 @@ interface Props {
   onSave: (guide: CharacterGuideData) => void;
   onDelete: (name: string) => void;
   isSaving: boolean;
+  mode?: "islamic" | "universal";
 }
 
 const VOICE_EXAMPLES: Record<string, string> = {
@@ -65,6 +66,21 @@ const FAITH_EXAMPLES: Record<string, string> = {
   "Traditional & formal — uses classical Arabic, respects old ways": `"Assalamu alaykum wa rahmatullah."`,
   "Poetic & lyrical — speaks in metaphors, connects nature to Allah": `"Every leaf falls by His will."`,
   "Empathetic & caring — faith expressed through caring for others": `"Let me help. That's what we do."`,
+};
+
+const UNIVERSAL_STYLE_EXAMPLES: Record<string, string> = {
+  "Joyful & imitative â€” mirrors Islamic joy, frequent Alhamdulillah moments": `"This is amazing! Can we try again?"`,
+  "Reflective & questioning â€” wrestles with faith sincerely": `"But why does it work that way?"`,
+  "Warm & sincere â€” authentic heartfelt expressions of faith": `"I felt really proud of us today."`,
+  "Gentle & encouraging â€” softly guides others toward good": `"Maybe we can start with one small step."`,
+  "Bold & brave â€” expresses faith with confidence and courage": `"I'm scared, but I'm still going to help."`,
+  "Playful & lighthearted â€” weaves Islam into jokes and fun": `"Race you there! Last one carries the picnic basket!"`,
+  "Earnest & serious â€” takes deen very seriously, rarely jokes": `"This matters, so let's do it carefully."`,
+  "Curious & exploratory â€” asks why, reads, full of questions": `"What if there is another clue under the bridge?"`,
+  "Quiet & private â€” faith is deep but inward and personal": `(takes a breath, then nods)`,
+  "Traditional & formal â€” uses classical Arabic, respects old ways": `"Good morning. I am pleased to meet you."`,
+  "Poetic & lyrical â€” speaks in metaphors, connects nature to Allah": `"Every leaf is a tiny green sail."`,
+  "Empathetic & caring â€” faith expressed through caring for others": `"Let me help. That's what friends do."`,
 };
 
 const SPEAKING_STYLE_IMAGES: Record<string, string> = {
@@ -123,6 +139,15 @@ const QUICK_QUOTES = [
   `"Ya Allah, help me."`,
   `"Can we do this together?"`,
   `"I want to do what's right."`,
+];
+
+const UNIVERSAL_QUICK_QUOTES = [
+  `"We can figure this out together."`,
+  `"I want to do what's right."`,
+  `"That was kind of you."`,
+  `"I'm scared, but I'll try."`,
+  `"What if we look one more time?"`,
+  `"No one gets left behind."`,
 ];
 
 function VoiceCard({
@@ -244,23 +269,27 @@ function PillChipGrid({
 }
 
 function QuoteSelector({
+  quotes = QUICK_QUOTES,
+  placeholder = 'Write a line in their voice, e.g. "Bismillah, let us go."',
   selected,
   onToggle,
   onAdd,
   onRemove,
 }: {
+  quotes?: string[];
+  placeholder?: string;
   selected: string[];
   onToggle: (q: string) => void;
   onAdd: (q: string) => void;
   onRemove: (q: string) => void;
 }) {
   const [custom, setCustom] = useState("");
-  const customItems = selected.filter((q) => !QUICK_QUOTES.includes(q));
+  const customItems = selected.filter((q) => !quotes.includes(q));
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {QUICK_QUOTES.map((q) => {
+        {quotes.map((q) => {
           const isSel = selected.includes(q);
 
           return (
@@ -291,6 +320,7 @@ function QuoteSelector({
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
           placeholder='Write a line in their voice, e.g. "Bismillah, let’s go."'
+          {...{ placeholder }}
           className="h-8 flex-1 text-xs italic"
           onKeyDown={(e) => {
             if (e.key === "Enter" && custom.trim()) {
@@ -569,7 +599,9 @@ export function KBCharacterVoiceBuilder({
   onSave,
   onDelete,
   isSaving,
+  mode = "islamic",
 }: Props) {
+  const isUniversal = mode === "universal";
   const [selectedChar, setSelectedChar] = useState<string>("");
   const [guide, setGuide] = useState<CharacterGuideData>({ ...EMPTY_GUIDE });
 
@@ -724,20 +756,22 @@ export function KBCharacterVoiceBuilder({
             <div className="space-y-3">
               <div>
                 <h3 className="text-sm font-bold text-foreground">
-                  Faith style
+                  {isUniversal ? "Voice style" : "Faith style"}
                 </h3>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  Choose how faith appears naturally in their personality.
+                  {isUniversal
+                    ? "Choose how their values and emotions appear naturally in their personality."
+                    : "Choose how faith appears naturally in their personality."}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <p className="text-[12px] font-bold text-foreground">Faith tone</p>
+                <p className="text-[12px] font-bold text-foreground">{isUniversal ? "Voice tone" : "Faith tone"}</p>
                 <ExpandableCardGrid
                   options={FAITH_TONE_OPTIONS}
                   selected={guide.faithTone}
                   onSelect={(v) => patch({ faithTone: v })}
-                  getExample={(v) => FAITH_EXAMPLES[v] || ""}
+                  getExample={(v) => (isUniversal ? UNIVERSAL_STYLE_EXAMPLES[v] : FAITH_EXAMPLES[v]) || ""}
                   getImage={(label) => FAITH_STYLE_IMAGES[label]}
                 />
               </div>
@@ -770,6 +804,8 @@ export function KBCharacterVoiceBuilder({
               </div>
 
               <QuoteSelector
+                quotes={isUniversal ? UNIVERSAL_QUICK_QUOTES : QUICK_QUOTES}
+                placeholder={isUniversal ? 'Write a line in their voice, e.g. "We can solve this together."' : undefined}
                 selected={guide.faithExamples}
                 onToggle={(q) =>
                   patch({

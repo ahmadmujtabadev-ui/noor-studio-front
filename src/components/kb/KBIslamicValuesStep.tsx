@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Loader2, X, Check } from "lucide-react";
+import { Heart, Lightbulb, Loader2, Plus, ShieldCheck, Sparkles, Users, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -9,11 +9,23 @@ interface Props {
   items: string[];
   onSave: (values: string[]) => Promise<void>;
   isSaving: boolean;
+  mode?: "islamic" | "universal";
 }
 
-export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
+const UNIVERSAL_VALUE_TILES = [
+  { value: "Kindness and compassion toward others", label: "Kindness", icon: Heart, image: "/core values/kindness.png" },
+  { value: "Honesty even when it is difficult", label: "Honesty", icon: ShieldCheck, image: "/core values/honesty.png" },
+  { value: "Curiosity and love of learning", label: "Curiosity", icon: Lightbulb },
+  { value: "Teamwork and friendship", label: "Teamwork", icon: Users, image: "/core values/team work.png" },
+  { value: "Courage to do the right thing", label: "Courage", icon: Sparkles, image: "/core values/courage.png" },
+  { value: "Respect for family, community, and nature", label: "Respect", icon: Heart, image: "/core values/respec.png" },
+];
+
+export function KBIslamicValuesStep({ items, onSave, isSaving, mode = "islamic" }: Props) {
   const [customInput, setCustomInput] = useState("");
   const [customHow, setCustomHow] = useState("");
+  const isUniversal = mode === "universal";
+  const valueTiles = isUniversal ? UNIVERSAL_VALUE_TILES : ISLAMIC_VALUE_TILES;
 
   const toggle = (value: string) => {
     const next = items.includes(value)
@@ -31,15 +43,17 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
     setCustomHow("");
   };
 
-  const customItems = items.filter(v => !ISLAMIC_VALUE_TILES.some(t => t.value === v));
+  const customItems = items.filter(v => !valueTiles.some(t => t.value === v));
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="text-lg font-bold">Islamic Values</h3>
+          <h3 className="text-lg font-bold">{isUniversal ? "Core Values" : "Islamic Values"}</h3>
           <p className="text-sm text-muted-foreground">
-            Choose the moral anchors that should appear across stories and illustrations.
+            {isUniversal
+              ? "Choose the broad moral anchors that should appear across stories and illustrations."
+              : "Choose the moral anchors that should appear across stories and illustrations."}
           </p>
         </div>
         <span className="w-fit rounded-full border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground">
@@ -48,7 +62,7 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {ISLAMIC_VALUE_TILES.map(tile => {
+        {valueTiles.map(tile => {
           const isSelected = items.includes(tile.value);
           const Icon = tile.icon;
           return (
@@ -66,7 +80,7 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
             >
               <div className="flex h-[138px] w-full items-center justify-center rounded-lg bg-white/70">
                 <div className="h-[128px] w-full overflow-hidden rounded-xl">
-                  {tile.image ? (
+                  {"image" in tile && tile.image ? (
                     <img
                       src={tile.image}
                       alt={tile.label}
@@ -122,7 +136,7 @@ export function KBIslamicValuesStep({ items, onSave, isSaving }: Props) {
             onKeyDown={e => { if (e.key === "Enter") addCustom(); }}
           />
           <Input
-            placeholder="How it should appear - e.g. Characters pause to thank Allah"
+            placeholder={isUniversal ? "How it should appear - e.g. Characters pause to help a friend" : "How it should appear - e.g. Characters pause to thank Allah"}
             value={customHow}
             onChange={e => setCustomHow(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") addCustom(); }}

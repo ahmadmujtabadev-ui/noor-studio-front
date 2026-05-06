@@ -19,6 +19,7 @@ interface IllustrationsStepProps {
 export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepProps) {
   const [loaded, setLoaded] = useState(false);
   const [globalVariantCount, setGlobalVariantCount] = useState(1);
+  const [isApprovingAll, setIsApprovingAll] = useState(false);
 
   const load = async () => {
     await bb.loadIllustrations();
@@ -35,6 +36,25 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
   const approved = bb.illustrationNodes.filter((n) => n.status === "approved").length;
   const total    = bb.illustrationNodes.length;
   const isGeneratingAll = bb.loadingKey === "generate-all-illustrations";
+
+  const approveAll = async () => {
+    const unapproved = (bb.illustrationNodes as any[]).filter(
+      (n) => n.status !== "approved" && (n.current?.variants?.length > 0 || n.current?.imageUrl)
+    );
+    if (!unapproved.length) return;
+    setIsApprovingAll(true);
+    try {
+      for (const node of unapproved) {
+        await bb.approveIllustration(node.key);
+      }
+    } finally {
+      setIsApprovingAll(false);
+    }
+  };
+
+  const hasAnyImage = (bb.illustrationNodes as any[]).some(
+    (n) => n.current?.variants?.length > 0 || n.current?.imageUrl
+  );
 
   return (
     <div className="space-y-6">
@@ -144,6 +164,22 @@ export function IllustrationsStep({ bb, onBack, onContinue }: IllustrationsStepP
               <RefreshCw className="w-3.5 h-3.5 mr-2" />
               Regenerate All
             </Button>
+            {!bb.allIllusApproved && hasAnyImage && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-emerald-400 text-emerald-700 hover:bg-emerald-50"
+                disabled={bb.globalLoading || isGeneratingAll || isApprovingAll}
+                onClick={approveAll}
+                title="Approve all illustrations that have been generated"
+              >
+                {isApprovingAll ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Approving all…</>
+                ) : (
+                  <><CheckCheck className="w-3.5 h-3.5 mr-2" />Approve All</>
+                )}
+              </Button>
+            )}
             {bb.allIllusApproved && (
               <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 px-3 py-1.5">
                 <CheckCheck className="w-3.5 h-3.5 mr-1.5" />

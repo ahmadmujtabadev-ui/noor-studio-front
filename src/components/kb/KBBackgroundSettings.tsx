@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   X,
@@ -42,6 +42,7 @@ interface Props {
   bs: BackgroundSettings;
   onSave: (update: object) => Promise<void>;
   isSaving: boolean;
+  mode?: "islamic" | "universal";
 }
 
 function Img({ src, alt = "" }: { src: string; alt?: string }) {
@@ -130,9 +131,14 @@ const LOCATION_PRESETS = [
   { value: "garden", label: "Garden", img: "/locations/garden.png" },
   { value: "school classroom", label: "Classroom", img: "/locations/classroom.png" },
   { value: "forest", label: "Forest", img: "/locations/forest.png" },
+  { value: "forest trail", label: "Forest Trail", img: "/locations/forest trail.png" },
+  { value: "desert pass", label: "Desert Pass", img: "/locations/desert pass.png" },
   { value: "seaside beach", label: "Beach", img: "/locations/beach.png" },
+  { value: "seaside port", label: "Seaside Port", img: "/locations/seaside port.png" },
   { value: "rooftop", label: "Rooftop", img: "/locations/rooftop.png" },
   { value: "library", label: "Library", img: "/locations/library.png" },
+  { value: "hidden library", label: "Hidden Library", img: "/locations/hidden library.png" },
+  { value: "ruined observatory", label: "Ruined Observatory", img: "/locations/ruined observatory.png" },
   { value: "madrasa", label: "Madrassa", img: "/locations/madrassa.png" },
   { value: "Ramadan tent", label: "Ramadan", img: "/locations/ramadan.png" },
   { value: "Eid venue", label: "Eid", img: "/locations/eid.png" },
@@ -140,6 +146,41 @@ const LOCATION_PRESETS = [
   { value: "farmyard", label: "Farmyard", img: "/locations/farmyard.png" },
   { value: "river bank", label: "River", img: "/locations/river.png" },
 ];
+
+type LocationFilter = "universal" | "islamic";
+
+const UNIVERSAL_LOCATION_VALUES = new Set([
+  "garden",
+  "forest",
+  "forest trail",
+  "desert pass",
+  "seaside beach",
+  "seaside port",
+  "hidden library",
+  "ruined observatory",
+  "farmyard",
+  "river bank",
+]);
+
+const ISLAMIC_LOCATION_VALUES = new Set([
+  "bedroom",
+  "masjid",
+  "school classroom",
+  "rooftop",
+  "library",
+  "madrasa",
+  "Ramadan tent",
+  "Eid venue",
+  "hammam courtyard",
+]);
+
+const UNIVERSAL_LOCATION_PRESETS = LOCATION_PRESETS.filter((loc) =>
+  UNIVERSAL_LOCATION_VALUES.has(loc.value)
+);
+
+const ISLAMIC_LOCATION_PRESETS = LOCATION_PRESETS.filter((loc) =>
+  ISLAMIC_LOCATION_VALUES.has(loc.value)
+);
 
 function TagPills({
   items,
@@ -260,8 +301,17 @@ function VisualPicker({
   );
 }
 
-export function KBBackgroundSettings({ bs, onSave, isSaving }: Props) {
+export function KBBackgroundSettings({ bs, onSave, isSaving, mode = "islamic" }: Props) {
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>(
+    mode === "universal" ? "universal" : "islamic"
+  );
+  const locationPresets =
+    locationFilter === "universal" ? UNIVERSAL_LOCATION_PRESETS : ISLAMIC_LOCATION_PRESETS;
   const [activeGroup, setActiveGroup] = useState<AgeGroupKey>("junior");
+
+  useEffect(() => {
+    setLocationFilter(mode === "universal" ? "universal" : "islamic");
+  }, [mode]);
 
   const activeMeta = useMemo(
     () => AGE_GROUPS.find((a) => a.key === activeGroup)!,
@@ -482,13 +532,32 @@ export function KBBackgroundSettings({ bs, onSave, isSaving }: Props) {
 
         {/* Locations — full width below the two columns */}
         <section className="space-y-3 border-t border-slate-200 pt-6">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-teal-600" />
-            <Label className="text-sm font-semibold">Locations</Label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-teal-600" />
+              <Label className="text-sm font-semibold">Locations</Label>
+            </div>
+            <div className="flex w-fit rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold shadow-sm">
+              {(["universal", "islamic"] as LocationFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setLocationFilter(filter)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 capitalize transition",
+                    locationFilter === filter
+                      ? "bg-teal-600 text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {LOCATION_PRESETS.map((loc) => {
+            {locationPresets.map((loc) => {
               const isAdded = selectedLocations.includes(loc.value);
 
               return (
@@ -509,6 +578,15 @@ export function KBBackgroundSettings({ bs, onSave, isSaving }: Props) {
                   <div className="aspect-square w-full overflow-hidden">
                     <img src={loc.img} alt={loc.label} className="h-full w-full object-cover" />
                   </div>
+
+                  <span
+                    className={cn(
+                      "absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold text-white shadow-sm",
+                      locationFilter === "universal" ? "bg-emerald-500" : "bg-amber-500"
+                    )}
+                  >
+                    {locationFilter === "universal" ? "Universal" : "Islamic"}
+                  </span>
 
                   <div className="border-t border-slate-100 px-3 py-2">
                     <p className={cn("text-xs font-semibold", isAdded ? "text-teal-700" : "text-slate-700")}>

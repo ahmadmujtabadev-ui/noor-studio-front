@@ -115,7 +115,25 @@ const BASE_MIDDLE_GRADE_BACKGROUND: KBAgeGroupBackground = {
   ],
 };
 
-const BASE_UNDER_SIX_VALUES = [
+const UNIVERSAL_UNDER_SIX_VALUES = [
+  "Sharing is a form of kindness",
+  "Listening to parents and grandparents",
+  "Helping others when they need a hand",
+  "Using gentle words with friends",
+  "Caring for animals gently",
+  "Being curious and brave in small steps",
+];
+
+const UNIVERSAL_MIDDLE_GRADE_VALUES = [
+  "Patience in the face of difficulty",
+  "Honesty even when it is costly",
+  "Courage means doing the right thing while afraid",
+  "Curiosity can be a path to wisdom",
+  "Teamwork multiplies courage",
+  "Speaking up for justice with wisdom",
+];
+
+const ISLAMIC_UNDER_SIX_VALUES = [
   "Saying Alhamdulillah with gratitude",
   "Sharing is a form of kindness",
   "Listening to parents and grandparents",
@@ -124,7 +142,7 @@ const BASE_UNDER_SIX_VALUES = [
   "Caring for animals gently",
 ];
 
-const BASE_MIDDLE_GRADE_VALUES = [
+const ISLAMIC_MIDDLE_GRADE_VALUES = [
   "Sabr (patience) in the face of difficulty",
   "Tawakkul (trust in Allah) after doing your best",
   "Honesty even when it is costly",
@@ -189,6 +207,14 @@ const BASE_MIDDLE_GRADE_AVOID = [
   "Hopeless or nihilistic endings",
   "Romance beyond age-appropriate friendship",
   "Mockery of Islamic practices or scholars",
+];
+
+const UNIVERSAL_MIDDLE_GRADE_AVOID = [
+  "Graphic violence or gore",
+  "Profanity or adult language",
+  "Hopeless or nihilistic endings",
+  "Romance beyond age-appropriate friendship",
+  "Mockery of family, culture, disability, or identity",
 ];
 
 const COMMON_UNDER_SIX_DESIGN = {
@@ -256,7 +282,7 @@ const universalUnderSix = createUnderSixTemplate({
   tagline: "Safe, bright, and full of everyday wonder",
   description:
     "A gentle universal picture-book starter for family warmth, friendship, curiosity, and simple values without overt faith-coded framing.",
-  previewImage: "/kb-templates/5.png",
+  previewImage: "/kb-templates/4.png",
   previewPrompt:
     "Children's book banner, cozy family reading corner at sunrise, child age 4 with expressive eyes reading beside a parent, warm gold and teal palette, soft cushions, books, window light, playful shapes, no text, premium storybook illustration, wholesome universal atmosphere",
   palette: ["#F7C948", "#76C7C0", "#F49D37", "#FFF2CC"],
@@ -267,8 +293,8 @@ const universalUnderSix = createUnderSixTemplate({
     "Everyday family warmth",
     "Editable after apply",
   ],
-  islamicValues: BASE_UNDER_SIX_VALUES,
-  duas: BASE_UNDER_SIX_DUAS,
+  islamicValues: UNIVERSAL_UNDER_SIX_VALUES,
+  duas: [],
   avoidTopics: BASE_UNDER_SIX_AVOID,
   backgroundSettings: {
     junior: BASE_JUNIOR_BACKGROUND,
@@ -287,7 +313,7 @@ const universalUnderSix = createUnderSixTemplate({
     typography: {
       junior: "Bold rounded display with soft friendly curves",
     },
-    islamicMotifs: ["Stars", "Subtle geometric shapes"],
+    islamicMotifs: ["Playful stars", "Soft geometric shapes"],
     characterComposition: [
       "Main child character in lower center",
       "Clear focal point and open negative space",
@@ -308,7 +334,7 @@ const universalMiddleGrade = createMiddleGradeTemplate({
   tagline: "Character-led stories with courage, humour, and heart",
   description:
     "A universal chapter-book starter for friendship, discovery, family life, and coming-of-age stories with broad appeal and clean values.",
-  previewImage: "/kb-templates/6.png",
+  previewImage: "/kb-templates/3.png",
   previewPrompt:
     "Cinematic storybook banner, child age 11 standing on a rooftop at sunset looking across a lively old city, glowing sky, adventurous but grounded, warm oranges and deep blue, premium illustrated cover art, no text, universal middle-grade energy",
   palette: ["#1F3C88", "#F7B267", "#5DA9E9", "#F4845F"],
@@ -319,9 +345,9 @@ const universalMiddleGrade = createMiddleGradeTemplate({
     "Adventure-ready pacing",
     "Editable after apply",
   ],
-  islamicValues: BASE_MIDDLE_GRADE_VALUES,
-  duas: BASE_MIDDLE_GRADE_DUAS,
-  avoidTopics: BASE_MIDDLE_GRADE_AVOID,
+  islamicValues: UNIVERSAL_MIDDLE_GRADE_VALUES,
+  duas: [],
+  avoidTopics: UNIVERSAL_MIDDLE_GRADE_AVOID,
   backgroundSettings: {
     middleGrade: BASE_MIDDLE_GRADE_BACKGROUND,
     avoidBackgrounds: ["Flat empty locations", "Overly modern sterile scenes", "Low-contrast muddy color"],
@@ -372,12 +398,12 @@ const universalAdventure = createMiddleGradeTemplate({
     "Ages 8-14",
   ],
   islamicValues: [
-    ...BASE_MIDDLE_GRADE_VALUES,
-    "Curiosity can be a path to wisdom",
-    "Teamwork multiplies courage",
+    ...UNIVERSAL_MIDDLE_GRADE_VALUES,
+    "Discovery works best with responsibility",
+    "Brave choices should protect others",
   ],
-  duas: BASE_MIDDLE_GRADE_DUAS,
-  avoidTopics: [...BASE_MIDDLE_GRADE_AVOID, "Meaningless peril without purpose"],
+  duas: [],
+  avoidTopics: [...UNIVERSAL_MIDDLE_GRADE_AVOID, "Meaningless peril without purpose"],
   backgroundSettings: {
     middleGrade: {
       ...BASE_MIDDLE_GRADE_BACKGROUND,
@@ -443,7 +469,7 @@ const universalAnimals = createUnderSixTemplate({
     "Gentle behaviour keeps others safe",
     "Caring for small things builds mercy",
   ],
-  duas: BASE_UNDER_SIX_DUAS,
+  duas: [],
   avoidTopics: [...BASE_UNDER_SIX_AVOID, "Predator-prey fear framing"],
   backgroundSettings: {
     junior: {
@@ -505,11 +531,8 @@ const islamicUnderSix = createUnderSixTemplate({
   ],
   islamicValues: [
     "Saying Bismillah before eating and starting tasks",
-    "Saying Alhamdulillah with gratitude",
+    ...ISLAMIC_UNDER_SIX_VALUES,
     "Smiling at others is sadaqah",
-    "Helping others makes Allah happy",
-    "Listening to parents and grandparents",
-    "Saying Salaam to spread peace",
   ],
   duas: [
     ...BASE_UNDER_SIX_DUAS,
@@ -580,7 +603,7 @@ const islamicMiddleGrade = createMiddleGradeTemplate({
     "Explicitly labelled flavour",
   ],
   islamicValues: [
-    ...BASE_MIDDLE_GRADE_VALUES,
+    ...ISLAMIC_MIDDLE_GRADE_VALUES,
     "Brotherhood and sisterhood in Islam",
     "Gratitude (shukr) as a daily practice",
   ],
@@ -659,6 +682,7 @@ export function buildKBPayloadFromTemplate(
   tpl: KBStarterTemplate
 ): Record<string, unknown> {
   return {
+    templateFlavour: tpl.flavour,
     islamicValues: tpl.islamicValues,
     duas: tpl.duas,
     avoidTopics: tpl.avoidTopics,

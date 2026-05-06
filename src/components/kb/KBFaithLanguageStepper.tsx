@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Ban, CheckCircle2, ChevronLeft, ChevronRight, HandHeart, Languages, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ interface Props {
   isSaving: boolean;
   activeSection?: string;
   onSectionChange?: (section: string) => void;
+  mode?: "islamic" | "universal";
 }
 
 const STEPS = [
@@ -68,11 +69,34 @@ function getCount(kb: any, stepId: string): number {
   }
 }
 
-export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, onSectionChange }: Props) {
+function getSteps(mode: "islamic" | "universal") {
+  return STEPS
+    .filter((step) => mode === "islamic" || step.id !== "duas")
+    .map((step) => {
+      if (mode !== "universal") return step;
+      if (step.id === "islamicValues") {
+        return {
+          ...step,
+          label: "Core Values",
+          description: "Broad values woven into every story",
+        };
+      }
+      if (step.id === "vocabulary") {
+        return {
+          ...step,
+          description: "Story words used consistently in prose",
+        };
+      }
+      return step;
+    });
+}
+
+export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, onSectionChange, mode = "islamic" }: Props) {
+  const steps = useMemo(() => getSteps(mode), [mode]);
   const [step, setStep] = useState(0);
-  const current = STEPS[step];
+  const current = steps[step] ?? steps[0];
   const isFirst = step === 0;
-  const isLast  = step === STEPS.length - 1;
+  const isLast  = step === steps.length - 1;
   const CurrentIcon = current.icon;
 
   const saveValues = (islamicValues: string[]) => onSave({ islamicValues });
@@ -80,20 +104,21 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, on
   const saveVocab  = (vocabulary: any[]) => onSave({ vocabulary });
   const saveAvoid  = (avoidTopics: string[]) => onSave({ avoidTopics });
   const goToStep = (index: number) => {
+    if (!steps[index]) return;
     setStep(index);
-    onSectionChange?.(STEPS[index].id);
+    onSectionChange?.(steps[index].id);
   };
 
   useEffect(() => {
     if (!activeSection) return;
-    const index = STEPS.findIndex((s) => s.id === activeSection);
-    if (index >= 0) setStep(index);
-  }, [activeSection]);
+    const index = steps.findIndex((s) => s.id === activeSection);
+    setStep(index >= 0 ? index : 0);
+  }, [activeSection, steps]);
 
   return (
     <div className="flex min-h-[500px] flex-col">
       <div className="mb-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {STEPS.map((s, i) => {
+        {steps.map((s, i) => {
           const count = getCount(kb, s.id);
           const done = count > 0;
           const active = i === step;
@@ -149,27 +174,30 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, on
             items={kb?.islamicValues || []}
             onSave={saveValues}
             isSaving={isSaving}
+            mode={mode}
           />
         )}
-        {step === 1 && (
+        {current.id === "duas" && (
           <KBDuasStep
             duas={kb?.duas || []}
             onSave={saveDuas}
             isSaving={isSaving}
           />
         )}
-        {step === 2 && (
+        {current.id === "vocabulary" && (
           <KBVocabularyStep
             vocab={kb?.vocabulary || []}
             onSave={saveVocab}
             isSaving={isSaving}
+            mode={mode}
           />
         )}
-        {step === 3 && (
+        {current.id === "avoidTopics" && (
           <KBAvoidTopicsStep
             items={kb?.avoidTopics || []}
             onSave={saveAvoid}
             isSaving={isSaving}
+            mode={mode}
           />
         )}
       </div>
@@ -186,7 +214,7 @@ export function KBFaithLanguageStepper({ kb, onSave, isSaving, activeSection, on
         </Button>
 
         <div className="flex gap-1.5">
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <button
               key={i}
               type="button"
