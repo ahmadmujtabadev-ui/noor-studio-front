@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import {
   BookMarked, ArrowLeft, ArrowRight, RefreshCw, CheckCircle2,
   Loader2, ImageIcon, ChevronDown, ChevronUp, Info,
-  Eye, EyeOff, Sparkles, BookOpen, X, Maximize2,
+  Eye, EyeOff, Sparkles, BookOpen, X, Maximize2, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -558,6 +558,11 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
   const backUrl  = bb.coverReview?.back?.current?.imageUrl  || null;
   const spineUrl = bb.coverReview?.spine?.current?.imageUrl || null;
 
+  const isGeneratingAny =
+    bb.loadingKey === "cover-front" ||
+    bb.loadingKey === "cover-back"  ||
+    bb.loadingKey === "cover-spine";
+
   const spineWidthInches = (() => {
     const raw = kb?.coverDesign?.spineWidth;
     if (!raw) return 0.5;
@@ -593,12 +598,23 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
         <div>
           <p className="text-xs text-muted-foreground">Book Builder</p>
           <h2 className="text-3xl font-bold tracking-tight">Cover Design</h2>
-          <p className="text-sm text-muted-foreground">Full wrap spread: back, spine, and front laid out together for print.</p>
+          <p className="text-sm text-muted-foreground">Front cover, spine, and back cover — generated and previewed as a full wrap spread.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {kbLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
           <Badge className="h-9 rounded-full border-0 bg-emerald-100 px-4 text-emerald-700">{approvedCount} / 3 approved</Badge>
-          {anyGenerated && <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2"><Maximize2 className="w-4 h-4" />Preview Book</Button>}
+          <Button
+            variant="outline"
+            disabled={isGeneratingAny}
+            onClick={() => bb.regenerateAllCovers({ previewMode })}
+            className="gap-2"
+          >
+            {isGeneratingAny
+              ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
+              : <><Layers className="w-4 h-4" />{anyGenerated ? "Regenerate All" : "Generate All"}</>
+            }
+          </Button>
+          {anyGenerated && <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2"><Maximize2 className="w-4 h-4" />Preview</Button>}
           <Button onClick={onContinue} disabled={!canContinue} className="gap-2 bg-[#083f36] hover:bg-[#0a4d42]">
             Continue to Editor
             <ArrowRight className="w-4 h-4" />

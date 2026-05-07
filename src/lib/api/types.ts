@@ -43,6 +43,7 @@ export interface Universe {
   artStyle?: string;
   ageRange?: string;
   tone?: string;
+  category?: 'islamic' | 'universal';
   characterCount: number;
   bookCount: number;
   createdAt: string;

@@ -57,21 +57,22 @@ interface StoryStepProps {
   onContinue: () => void;
 }
 
-function KBImpactPanel({ kb }: { kb: any }) {
+function KBImpactPanel({ kb, isIslamic = true }: { kb: any; isIslamic?: boolean }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const kbId = kb.id || kb._id || "";
 
-  const sections = [
-    { label: "Islamic Values", count: kb.islamicValues?.length || 0, tab: "faith", section: "islamicValues", emoji: "🕌" },
-    { label: "Du'as", count: kb.duas?.length || 0, tab: "faith", section: "duas", emoji: "🤲" },
-    { label: "Vocabulary", count: kb.vocabulary?.length || 0, tab: "faith", section: "vocabulary", emoji: "📖" },
-    { label: "Avoid Topics", count: kb.avoidTopics?.length || 0, tab: "faith", section: "avoidTopics", emoji: "🚫" },
-    { label: "Character Voices", count: kb.characterGuides?.length || 0, tab: "story", section: "characterGuides", emoji: "🗣️" },
-    { label: "Scene Settings", count: (kb.backgroundSettings?.junior?.locations?.length || 0) + (kb.backgroundSettings?.middleGrade?.locations?.length || 0), tab: "visual", section: "backgroundSettings", emoji: "🏞️" },
-    { label: "Book Format", count: kb.bookFormatting?.middleGrade?.wordCount || kb.bookFormatting?.junior?.wordCount || kb.underSixDesign?.pageCount ? 1 : 0, tab: "bookFormat", section: "bookFormatting", emoji: "📐" },
-    { label: "Cover Design", count: (kb.coverDesign?.brandingRules?.length || 0) + (kb.coverDesign?.islamicMotifs?.length || 0) + (kb.coverDesign?.selectedCoverTemplate ? 1 : 0), tab: "cover", section: "coverDesign", emoji: "🎨" },
+  const allSections = [
+    { label: "Islamic Values", count: kb.islamicValues?.length || 0, tab: "faith", section: "islamicValues", emoji: "🕌", islamicOnly: true },
+    { label: "Du'as", count: kb.duas?.length || 0, tab: "faith", section: "duas", emoji: "🤲", islamicOnly: true },
+    { label: "Vocabulary", count: kb.vocabulary?.length || 0, tab: "faith", section: "vocabulary", emoji: "📖", islamicOnly: false },
+    { label: "Avoid Topics", count: kb.avoidTopics?.length || 0, tab: "faith", section: "avoidTopics", emoji: "🚫", islamicOnly: false },
+    { label: "Character Voices", count: kb.characterGuides?.length || 0, tab: "story", section: "characterGuides", emoji: "🗣️", islamicOnly: false },
+    { label: "Scene Settings", count: (kb.backgroundSettings?.junior?.locations?.length || 0) + (kb.backgroundSettings?.middleGrade?.locations?.length || 0), tab: "visual", section: "backgroundSettings", emoji: "🏞️", islamicOnly: false },
+    { label: "Book Format", count: kb.bookFormatting?.middleGrade?.wordCount || kb.bookFormatting?.junior?.wordCount || kb.underSixDesign?.pageCount ? 1 : 0, tab: "bookFormat", section: "bookFormatting", emoji: "📐", islamicOnly: false },
+    { label: "Cover Design", count: (kb.coverDesign?.brandingRules?.length || 0) + (kb.coverDesign?.islamicMotifs?.length || 0) + (kb.coverDesign?.selectedCoverTemplate ? 1 : 0), tab: "cover", section: "coverDesign", emoji: "🎨", islamicOnly: false },
   ];
+  const sections = allSections.filter(s => isIslamic || !s.islamicOnly);
 
   const filledSections = sections.filter(s => s.count > 0);
   const openKB = (workflow?: string, section?: string) => {
@@ -88,9 +89,15 @@ function KBImpactPanel({ kb }: { kb: any }) {
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-50 transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold text-emerald-700">
             ✓ KB active — {filledSections.length} of {sections.length} domains populated
+          </span>
+          <span className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold",
+            isIslamic ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-700"
+          )}>
+            {isIslamic ? "☪ Islamic Mode" : "🌍 Universal Mode"}
           </span>
           {filledSections.length < 5 && (
             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
@@ -103,7 +110,7 @@ function KBImpactPanel({ kb }: { kb: any }) {
 
       {open && (
         <div className="border-t border-emerald-100 px-4 py-3 space-y-3 bg-white/60">
-          <KBStrengthScore kb={kb} compact onNavigate={(workflow, section) => openKB(workflow, section)} />
+          <KBStrengthScore kb={kb} compact mode={isIslamic ? "islamic" : "universal"} onNavigate={(workflow, section) => openKB(workflow, section)} />
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {sections.map(s => (
               <button
@@ -143,8 +150,9 @@ interface FeedbackPanelProps {
   onClose: () => void;
   loading: boolean;
   label?: string;
+  isIslamic?: boolean;
 }
-function FeedbackPanel({ onRegen, onClose, loading, label = "Regenerate" }: FeedbackPanelProps) {
+function FeedbackPanel({ onRegen, onClose, loading, label = "Regenerate", isIslamic = true }: FeedbackPanelProps) {
   const [tone, setTone]   = useState("");
   const [focus, setFocus] = useState("");
 
@@ -200,7 +208,7 @@ function FeedbackPanel({ onRegen, onClose, loading, label = "Regenerate" }: Feed
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">Focus</Label>
         <div className="flex flex-wrap gap-1.5">
-          {FOCUS_OPTIONS.map(o => (
+          {FOCUS_OPTIONS.map(o => o.value === "stronger Islamic moment" && !isIslamic ? { value: "stronger emotional moment", label: "Stronger emotional moment" } : o).map(o => (
             <button
               key={o.value}
               onClick={() => setFocus(f => f === o.value ? "" : o.value)}
@@ -264,6 +272,8 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
     if (matched) bb.setAgeRange(matched.value);
   }, [bb.universeId]);
 
+  const selectedUniverse = bb.universeId ? universes.find((u) => (u.id || u._id) === bb.universeId) : null;
+  const isIslamicUniverse = selectedUniverse?.category !== 'universal';
   const missingUniverse = !bb.universeId;
   const missingKB       = !bb.knowledgeBaseId;
   const canGenerate     = !missingUniverse && !missingKB && !!bb.storyIdea.trim();
@@ -386,7 +396,15 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
               </p>
             )}
             {bb.universeId && (
-              <p className="text-xs text-emerald-600 font-medium">✓ Universe selected</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-emerald-600 font-medium">✓ Universe selected</p>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                  isIslamicUniverse ? "bg-amber-100 text-amber-800" : "bg-sky-100 text-sky-700"
+                )}>
+                  {isIslamicUniverse ? "☪ Islamic" : "🌍 Universal"}
+                </span>
+              </div>
             )}
             {!bb.universeId && !(showValidation && missingUniverse) && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -432,7 +450,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 <AlertCircle className="w-3 h-3" />Knowledge Base is required
               </p>
             )}
-            {bb.knowledgeBaseId && selectedKBData && <KBImpactPanel kb={selectedKBData} />}
+            {bb.knowledgeBaseId && selectedKBData && <KBImpactPanel kb={selectedKBData} isIslamic={isIslamicUniverse} />}
             {bb.knowledgeBaseId && !selectedKBData && (
               <p className="text-xs text-emerald-600 font-medium">✓ KB rules applied to all AI generations</p>
             )}
@@ -567,7 +585,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 <p className="text-sm text-destructive">
                   {missingUniverse
                     ? "Please select a Universe before generating."
-                    : "Please select a Knowledge Base — it injects your Islamic story rules, illustration styles, and character voices."}
+                    : "Please select a Knowledge Base — it injects your story rules, illustration styles, and character voices."}
                 </p>
               </div>
             )}
@@ -626,6 +644,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                     onRegen={handleFullRegen}
                     onClose={() => setShowFeedback(false)}
                     label="Regenerate full story"
+                    isIslamic={isIslamicUniverse}
                   />
                 </div>
               )}
@@ -656,7 +675,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Islamic Moral</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{isIslamicUniverse ? "Islamic Moral" : "Moral"}</Label>
                 <Textarea
                   value={current.moral}
                   onChange={(e) => bb.updateStoryCurrent({ moral: e.target.value })}
@@ -708,6 +727,7 @@ export function StoryStep({ bb, universes, onContinue }: StoryStepProps) {
                                   onRegen={(opts) => handleParaRegen(idx, opts)}
                                   onClose={() => setParaFeedbackIdx(null)}
                                   label={`Regenerate paragraph ${idx + 1}`}
+                                  isIslamic={isIslamicUniverse}
                                 />
                               </div>
                             )}

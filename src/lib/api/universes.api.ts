@@ -9,6 +9,7 @@ export interface CreateUniverseInput {
   artStyle?: string;
   ageRange?: string;
   tone?: string;
+  category?: 'islamic' | 'universal';
 }
 
 export type UpdateUniverseInput = Partial<CreateUniverseInput>;

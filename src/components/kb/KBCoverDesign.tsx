@@ -9,7 +9,6 @@ import {
   COVER_TEMPLATE_SVG_MAP,
   COVER_TEMPLATE_PNG_MAP,
 } from "@/components/shared/CoverTemplateSvgs";
-import { TITLE_PLACEMENT_OPTIONS } from "@/components/shared/KBFieldIcons";
 import { useCoverTemplates } from "@/hooks/useKnowledgeBase";
 
 // ─── Per-template field defaults ──────────────────────────────────────────────
@@ -1044,25 +1043,14 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
     });
   };
 
-  const brandingRules = cd.brandingRules || [];
-  const characterComp = cd.characterComposition || [];
-  const optionalAddons = cd.optionalAddons || [];
   const islamicMotifs = cd.islamicMotifs || [];
   const avoidCover = cd.avoidCover || [];
-
-  const selectedSpine = SPINE_TEMPLATES.find(
-    (t) => t.value === cd.selectedSpineTemplate
-  );
-  const selectedBack = BACK_COVER_TEMPLATES.find(
-    (t) => t.value === cd.selectedBackTemplate
-  );
 
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
-        Define every detail of your book cover. Pick a style template — all
-        fields auto-fill. Matching spine and back cover styles will also be
-        selected automatically. You can still customise anything after.
+        Pick a cover style template — all fields auto-fill. AI will generate a
+        matching front cover, spine, and back cover in the book builder.
       </p>
 
       <Section icon="🎨" title="Cover Style Template" defaultOpen>
@@ -1199,39 +1187,17 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
               </p>
             </div>
             <p className="text-[11px] text-rose-500 font-medium">
-              ↓ Matching back + spine are now selected below and all fields are
-              pre-filled
+              Matching spine &amp; back cover styles are auto-configured — all three will be generated in the book builder.
             </p>
           </div>
         )}
       </Section>
 
       <Section icon="📖" title="Front Cover" defaultOpen={!!selectedTplId}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Book Title" hint="The main title as it will appear on the cover">
-            <LiveInput
-              value={cd.bookTitle || ""}
-              placeholder="e.g. The Desert of Wonders"
-              onChange={(v) => patch({ bookTitle: v })}
-            />
-          </Field>
-
-          <Field label="Subtitle / Tagline">
-            <LiveInput
-              value={cd.subtitle || ""}
-              placeholder="e.g. A Journey Beyond the Stars"
-              onChange={(v) => patch({ subtitle: v })}
-            />
-          </Field>
-
-          <Field label="Author Name">
-            <LiveInput
-              value={cd.authorName || ""}
-              placeholder="e.g. Zara Al-Amin"
-              onChange={(v) => patch({ authorName: v })}
-            />
-          </Field>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Book title and author are taken from your story — focus here on the visual scene.
+          Title placement is handled automatically by the selected template.
+        </p>
 
         <Field label="Mood / Theme" hint="Tap to select — or leave for template default">
           <ImgTilePicker
@@ -1266,37 +1232,6 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
             rows={2}
           />
         </Field>
-
-        <Field label="Title Placement">
-          <div className="grid grid-cols-3 gap-2 mt-1">
-            {TITLE_PLACEMENT_OPTIONS.map((opt) => {
-              const isSel = cd.titlePlacement === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => patch({ titlePlacement: isSel ? "" : opt.value })}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-center hover:shadow-sm",
-                    isSel
-                      ? "border-rose-500 bg-rose-50 shadow-sm"
-                      : "border-gray-200 hover:border-rose-300 bg-white"
-                  )}
-                >
-                  <div className="w-12 h-12">{opt.icon}</div>
-                  <span
-                    className={cn(
-                      "text-[10px] font-semibold",
-                      isSel ? "text-rose-700" : "text-gray-600"
-                    )}
-                  >
-                    {opt.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </Field>
       </Section>
 
       <Section icon="✨" title="Visual Style Settings" defaultOpen={!!selectedTplId}>
@@ -1324,249 +1259,10 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
           />
         </Field>
 
-        <div className="rounded-xl border border-gray-200 p-3 space-y-3">
-          <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">
-            Scene Layers
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Foreground">
-              <LiveInput
-                value={cd.foregroundLayer || ""}
-                placeholder="e.g. Hero silhouette"
-                onChange={(v) => patch({ foregroundLayer: v })}
-              />
-            </Field>
-            <Field label="Midground">
-              <LiveInput
-                value={cd.midgroundLayer || ""}
-                placeholder="e.g. Dramatic landscape"
-                onChange={(v) => patch({ midgroundLayer: v })}
-              />
-            </Field>
-            <Field label="Background">
-              <LiveInput
-                value={cd.backgroundLayer || ""}
-                placeholder="e.g. Epic dark sky"
-                onChange={(v) => patch({ backgroundLayer: v })}
-              />
-            </Field>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Atmosphere — Middle Grade">
-            <LiveTextarea
-              value={cd.atmosphere?.middleGrade || ""}
-              placeholder="e.g. Cinematic lighting, mystery in background"
-              onChange={(v) =>
-                patch({
-                  atmosphere: { ...cd.atmosphere, middleGrade: v },
-                })
-              }
-              rows={2}
-            />
-          </Field>
-
-          <Field label="Atmosphere — Junior">
-            <LiveTextarea
-              value={cd.atmosphere?.junior || ""}
-              placeholder="e.g. Bright joyful colors, plot-related objects"
-              onChange={(v) =>
-                patch({
-                  atmosphere: { ...cd.atmosphere, junior: v },
-                })
-              }
-              rows={2}
-            />
-          </Field>
-        </div>
       </Section>
 
-      <Section icon="📏" title="Spine" defaultOpen={false}>
-        <Field label="Spine Style Template" hint="Tap to select a matching visual style for AI spine generation">
-          <ImgTilePicker
-            options={SPINE_TEMPLATES.map((t) => ({
-              value: t.value,
-              label: t.label,
-              img: t.img,
-            }))}
-            value={cd.selectedSpineTemplate || ""}
-            onChange={(v) => {
-              const tpl = SPINE_TEMPLATES.find((t) => t.value === v);
-              patch({
-                selectedSpineTemplate: v || null,
-                spineColorBackground: tpl?.colorBackground || "",
-                spineTypographyStyle: tpl?.typographyStyle || "",
-                spinePromptDirective: tpl?.promptDirective || "",
-              });
-            }}
-          />
-        </Field>
 
-        {selectedSpine && (
-          <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3">
-            <p className="text-xs font-bold text-indigo-700">
-              {selectedSpine.label} spine style selected
-            </p>
-            <p className="text-[11px] text-gray-600 mt-0.5">
-              {selectedSpine.colorBackground}
-            </p>
-          </div>
-        )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Spine Title (Vertical)">
-            <LiveInput
-              value={cd.spineTitle || ""}
-              placeholder="Same as book title"
-              onChange={(v) => patch({ spineTitle: v })}
-            />
-          </Field>
-          <Field label="Spine Author Name">
-            <LiveInput
-              value={cd.spineAuthor || ""}
-              placeholder="Author name"
-              onChange={(v) => patch({ spineAuthor: v })}
-            />
-          </Field>
-          <Field label="Publisher Logo">
-            <LiveInput
-              value={cd.publisherLogo || ""}
-              placeholder="Publisher name or description"
-              onChange={(v) => patch({ publisherLogo: v })}
-            />
-          </Field>
-        </div>
-
-        <Field label="Spine Prompt Directive">
-          <LiveTextarea
-            value={cd.spinePromptDirective || ""}
-            onChange={(v) => patch({ spinePromptDirective: v })}
-            rows={5}
-          />
-        </Field>
-      </Section>
-
-      <Section icon="📝" title="Back Cover" defaultOpen={false}>
-        <Field label="Back Cover Style Template" hint="Tap to select a matching visual style for AI back cover generation">
-          <ImgTilePicker
-            options={BACK_COVER_TEMPLATES.map((t) => ({
-              value: t.value,
-              label: t.label,
-              img: t.img,
-            }))}
-            value={cd.selectedBackTemplate || ""}
-            onChange={(v) => {
-              const tpl = BACK_COVER_TEMPLATES.find((t) => t.value === v);
-              patch({
-                selectedBackTemplate: v || null,
-                backBackgroundStyle: tpl?.backgroundStyle || "",
-                backPromptDirective: tpl?.promptDirective || "",
-              });
-            }}
-          />
-        </Field>
-
-        {selectedBack && (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
-            <p className="text-xs font-bold text-emerald-700">
-              {selectedBack.label} back cover style selected
-            </p>
-            <p className="text-[11px] text-gray-600 mt-0.5">
-              {selectedBack.backgroundStyle}
-            </p>
-          </div>
-        )}
-
-        <Field label="Blurb (Story Description)" hint="120–180 words: character → situation → conflict → hook">
-          <LiveTextarea
-            value={cd.blurb || ""}
-            placeholder={
-              "Introduce main character...\nExplain the situation or problem...\nAdd conflict or tension...\nEnd with a hook that makes readers want to open the book."
-            }
-            onChange={(v) => patch({ blurb: v })}
-            rows={6}
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Publisher Name">
-            <LiveInput
-              value={cd.publisherName || ""}
-              placeholder="e.g. Noor Publishing"
-              onChange={(v) => patch({ publisherName: v })}
-            />
-          </Field>
-          <Field label="Website (optional)">
-            <LiveInput
-              value={cd.website || ""}
-              placeholder="e.g. noorstudio.com"
-              onChange={(v) => patch({ website: v })}
-            />
-          </Field>
-          <Field label="Price (optional)">
-            <LiveInput
-              value={cd.price || ""}
-              placeholder="e.g. £8.99 / $10.99"
-              onChange={(v) => patch({ price: v })}
-            />
-          </Field>
-          <Field label="ISBN Number">
-            <LiveInput
-              value={cd.isbn || ""}
-              placeholder="e.g. 978-0-00-000000-0"
-              onChange={(v) => patch({ isbn: v })}
-            />
-          </Field>
-        </div>
-
-        <Field label="Back Cover Prompt Directive">
-          <LiveTextarea
-            value={cd.backPromptDirective || ""}
-            onChange={(v) => patch({ backPromptDirective: v })}
-            rows={7}
-          />
-        </Field>
-
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
-          <p className="text-xs text-amber-700 font-semibold">
-            📌 Barcode — auto-generated from ISBN when published
-          </p>
-        </div>
-      </Section>
-
-      <Section icon="📐" title="Design Settings" defaultOpen={false}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Trim Size" hint="Final printed book dimensions">
-            <LiveInput
-              value={cd.trimSize || ""}
-              placeholder="e.g. 6 × 9 inches"
-              onChange={(v) => patch({ trimSize: v })}
-            />
-          </Field>
-          <Field label="Spine Width">
-            <LiveInput
-              value={cd.spineWidth || ""}
-              placeholder="e.g. 0.85 inches (200 pages)"
-              onChange={(v) => patch({ spineWidth: v })}
-            />
-          </Field>
-          <Field label="Bleed">
-            <LiveInput
-              value={cd.bleed || "0.125 inch"}
-              placeholder="0.125 inch (standard)"
-              onChange={(v) => patch({ bleed: v })}
-            />
-          </Field>
-          <Field label="Resolution">
-            <LiveInput
-              value={cd.resolution || "300 DPI"}
-              placeholder="300 DPI (print standard)"
-              onChange={(v) => patch({ resolution: v })}
-            />
-          </Field>
-        </div>
-      </Section>
 
       <Section icon="📋" title="Rules & Restrictions" defaultOpen={false}>
         <TagPills
@@ -1577,50 +1273,6 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
           onRemove={(i) =>
             patch({
               islamicMotifs: islamicMotifs.filter(
-                (_: string, j: number) => j !== i
-              ),
-            })
-          }
-        />
-
-        <TagPills
-          label="Branding Rules"
-          items={brandingRules}
-          placeholder="e.g. Series logo must appear prominently"
-          onAdd={(v) => patch({ brandingRules: [...brandingRules, v] })}
-          onRemove={(i) =>
-            patch({
-              brandingRules: brandingRules.filter(
-                (_: string, j: number) => j !== i
-              ),
-            })
-          }
-        />
-
-        <TagPills
-          label="Character Composition Rules"
-          items={characterComp}
-          placeholder="e.g. Eye contact with reader preferred for Middle Grade"
-          onAdd={(v) =>
-            patch({ characterComposition: [...characterComp, v] })
-          }
-          onRemove={(i) =>
-            patch({
-              characterComposition: characterComp.filter(
-                (_: string, j: number) => j !== i
-              ),
-            })
-          }
-        />
-
-        <TagPills
-          label="Optional Add-ons"
-          items={optionalAddons}
-          placeholder="e.g. Icon badge, corner headshot, series number"
-          onAdd={(v) => patch({ optionalAddons: [...optionalAddons, v] })}
-          onRemove={(i) =>
-            patch({
-              optionalAddons: optionalAddons.filter(
                 (_: string, j: number) => j !== i
               ),
             })

@@ -17,6 +17,7 @@ interface Props {
   vocab: VocabWord[];
   onSave: (vocab: VocabWord[]) => Promise<void>;
   isSaving: boolean;
+  mode?: "islamic" | "universal";
 }
 
 /** Preset vocabulary words — illustrated like the reference image */
@@ -35,6 +36,15 @@ const VOCAB_PRESETS: Array<VocabWord & {
   { word: "Tawakkul",     definition: "Trusting Allah completely after doing your best effort",          example: "After studying hard, he made du'a and practised tawakkul.",                       imgSrc: "/vocablulary/tawakkul.png",     bg: "bg-sky-50",      border: "border-sky-200",     textColor: "text-sky-900",     subColor: "text-sky-700",     type: "Value" },
   { word: "Sadaqah",      definition: "Giving charity freely for the sake of Allah",                     example: "Zara put her pocket money in the sadaqah box with a smile.",                     avoid: "Charity",  imgSrc: "/vocablulary/sadaqah.png",      bg: "bg-rose-50",     border: "border-rose-200",    textColor: "text-rose-900",    subColor: "text-rose-700",    type: "Pillar" },
   { word: "Prayer Mat",   definition: "The clean mat placed on the floor when praying salah",            example: "Yusuf rolled out the prayer mat and faced the qibla.",                            imgSrc: "/vocablulary/prayer%20mat.png", bg: "bg-orange-50",   border: "border-orange-200",  textColor: "text-orange-900",  subColor: "text-orange-700",  type: "Object" },
+];
+
+const UNIVERSAL_VOCAB_PRESETS: typeof VOCAB_PRESETS = [
+  { word: "Kindness", definition: "Choosing gentle, helpful actions toward others", example: "Maya showed kindness by sharing her umbrella.", imgSrc: "", bg: "bg-rose-50", border: "border-rose-200", textColor: "text-rose-900", subColor: "text-rose-700", type: "Value" },
+  { word: "Courage", definition: "Doing what is right even when it feels difficult", example: "Leo found the courage to tell the truth.", imgSrc: "", bg: "bg-amber-50", border: "border-amber-200", textColor: "text-amber-900", subColor: "text-amber-700", type: "Value" },
+  { word: "Curiosity", definition: "Wanting to learn, ask questions, and discover", example: "Nora's curiosity led her to the old garden gate.", imgSrc: "", bg: "bg-cyan-50", border: "border-cyan-200", textColor: "text-cyan-900", subColor: "text-cyan-700", type: "Trait" },
+  { word: "Teamwork", definition: "Solving problems together with trust and respect", example: "The friends used teamwork to repair the kite.", imgSrc: "", bg: "bg-emerald-50", border: "border-emerald-200", textColor: "text-emerald-900", subColor: "text-emerald-700", type: "Value" },
+  { word: "Wonder", definition: "A warm feeling of amazement at the world", example: "A sense of wonder filled the meadow at sunrise.", imgSrc: "", bg: "bg-violet-50", border: "border-violet-200", textColor: "text-violet-900", subColor: "text-violet-700", type: "Tone" },
+  { word: "Respect", definition: "Treating people, places, and nature with care", example: "They showed respect by listening before speaking.", imgSrc: "", bg: "bg-lime-50", border: "border-lime-200", textColor: "text-lime-900", subColor: "text-lime-700", type: "Value" },
 ];
 
 /** Color palette for custom word cards (cycles through these) */
@@ -63,11 +73,13 @@ function WordAvatar({ word, colorIdx }: { word: string; colorIdx: number }) {
   );
 }
 
-export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
+export function KBVocabularyStep({ vocab, onSave, isSaving, mode = "islamic" }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [newWord, setNewWord] = useState<VocabWord>({ word: "", definition: "", example: "", type: "", avoid: "" });
+  const isUniversal = mode === "universal";
+  const presets = isUniversal ? UNIVERSAL_VOCAB_PRESETS : VOCAB_PRESETS;
 
-  const presetWords = VOCAB_PRESETS.map(p => p.word);
+  const presetWords = presets.map(p => p.word);
   const addedPresetWords = vocab.map(v => v.word);
 
   const togglePreset = (p: typeof VOCAB_PRESETS[0]) => {
@@ -101,7 +113,7 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
 
       {/* ── Preset word grid — styled like the reference image ── */}
       <div className="grid grid-cols-2 gap-4">
-        {VOCAB_PRESETS.map(preset => {
+        {presets.map((preset, index) => {
           const isAdded = addedPresetWords.includes(preset.word);
           return (
             <button
@@ -118,7 +130,11 @@ export function KBVocabularyStep({ vocab, onSave, isSaving }: Props) {
             >
               {/* Vocabulary illustration */}
               <div className="w-full aspect-square max-w-[120px] drop-shadow-sm">
-                <img src={preset.imgSrc} alt={preset.word} className="w-full h-full object-contain" />
+                {preset.imgSrc ? (
+                  <img src={preset.imgSrc} alt={preset.word} className="w-full h-full object-contain" />
+                ) : (
+                  <WordAvatar word={preset.word} colorIdx={index} />
+                )}
               </div>
               {/* Word — bold, large */}
               <span className={cn("text-base font-extrabold leading-tight", isAdded ? preset.textColor : "text-gray-800")}>

@@ -681,6 +681,30 @@ export function useBookBuilder() {
     }
   }, [getPid, loadCover, toast]);
 
+  const regenerateAllCovers = useCallback((opts?: { previewMode?: boolean }) => {
+    gateCredits(
+      {
+        title: 'Generate Full Cover',
+        description: 'AI will generate the front cover, spine, and back cover for your book. Credits are deducted per image as generation completes.',
+        cost: 9,
+      },
+      async () => {
+        const pid = getPid();
+        for (const side of ['front', 'back', 'spine'] as const) {
+          setLoadingKey(`cover-${side}`);
+          try {
+            await reviewApi.regenerateCover(pid, side, { variantCount: 1, previewMode: opts?.previewMode });
+            await loadCover();
+          } catch (err) {
+            toast({ title: `${side} cover generation failed`, description: (err as Error).message, variant: "destructive" });
+          }
+        }
+        setLoadingKey(null);
+        toast({ title: 'Full cover generated ✓' });
+      }
+    );
+  }, [getPid, loadCover, toast, gateCredits]);
+
   const bothCoversApproved = useMemo(() => {
     if (!coverReview) return false;
     return coverReview.front?.status === "approved" && coverReview.back?.status === "approved";
@@ -841,6 +865,7 @@ export function useBookBuilder() {
     coverReview,
     loadCover,
     regenerateCover,
+    regenerateAllCovers,
     selectCoverVariant,
     approveCover,
     bothCoversApproved,

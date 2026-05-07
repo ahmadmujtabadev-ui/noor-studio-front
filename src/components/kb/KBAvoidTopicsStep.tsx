@@ -10,6 +10,7 @@ interface Props {
   items: string[];
   onSave: (items: string[]) => Promise<void>;
   isSaving: boolean;
+  mode?: "islamic" | "universal";
 }
 
 const AGE_TIER_LABELS: Record<AgeTier, string> = {
@@ -38,6 +39,10 @@ const AVOID_PRESETS: { label: string; value: string; emoji: string; bg: string; 
   { label: "Magic/Sorcery",   value: "Magic, sorcery or witchcraft presented positively",                   emoji: "🔮", bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", defaultTier: "all" },
 ];
 
+const UNIVERSAL_AVOID_PRESETS = AVOID_PRESETS.filter(
+  (preset) => !["Haram Food", "Mockery", "Gender Mixing", "Magic/Sorcery"].includes(preset.label)
+);
+
 function getStoredValue(value: string, tier: AgeTier) {
   return tier === "all" ? value : `${value}||${tier}`;
 }
@@ -47,7 +52,8 @@ function parseStoredValue(stored: string): { value: string; tier: AgeTier } {
   return { value, tier: (tier as AgeTier) || "all" };
 }
 
-export function KBAvoidTopicsStep({ items, onSave, isSaving }: Props) {
+export function KBAvoidTopicsStep({ items, onSave, isSaving, mode = "islamic" }: Props) {
+  const presets = mode === "universal" ? UNIVERSAL_AVOID_PRESETS : AVOID_PRESETS;
   const [customInput, setCustomInput] = useState("");
   const [tiers, setTiers] = useState<Record<string, AgeTier>>(() => {
     const map: Record<string, AgeTier> = {};
@@ -62,7 +68,7 @@ export function KBAvoidTopicsStep({ items, onSave, isSaving }: Props) {
     items.some(i => parseStoredValue(i).value === value);
 
   const getEffectiveTier = (value: string): AgeTier =>
-    tiers[value] || AVOID_PRESETS.find(p => p.value === value)?.defaultTier || "all";
+    tiers[value] || presets.find(p => p.value === value)?.defaultTier || "all";
 
   const toggle = (value: string) => {
     if (isSelected(value)) {
@@ -103,7 +109,7 @@ export function KBAvoidTopicsStep({ items, onSave, isSaving }: Props) {
 
       {/* Big "no" tile grid */}
       <div className="grid grid-cols-2 gap-3">
-        {AVOID_PRESETS.map(preset => {
+        {presets.map(preset => {
           const sel = isSelected(preset.value);
           const tier = getEffectiveTier(preset.value);
           return (

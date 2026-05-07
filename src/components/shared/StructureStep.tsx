@@ -263,41 +263,48 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex gap-2.5 items-start">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700">
-                No characters found for this universe.{" "}
+                No approved characters found for this universe.{" "}
                 <a href="/app/characters" className="underline font-semibold hover:text-amber-900">
-                  Create characters first →
+                  Go to Characters →
                 </a>{" "}
-                then come back to generate the structure.
+                approve at least one character, then come back.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {universeCharacters
-                .filter((c) => c.status === "approved" || !c.status)
-                .map((c) => {
-                  const id     = c.id || c._id || "";
-                  const active = bb.characterIds.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => {
-                        setShowCharValidation(false);
-                        bb.setCharacterIds((prev) =>
-                          active ? prev.filter((x) => x !== id) : [...prev, id]
-                        );
-                      }}
-                      className={cn(
-                        "rounded-xl border-2 p-3 text-left transition-all",
-                        active ? "border-primary bg-primary/10" : "border-border hover:border-primary/30",
-                        showCharValidation && bb.characterIds.length === 0 && "border-destructive/60"
-                      )}
-                    >
-                      <div className="font-semibold text-sm truncate">{c.name}</div>
-                      {c.role && <div className="text-xs text-muted-foreground">{c.role}</div>}
-                    </button>
-                  );
-                })}
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {universeCharacters
+                  .filter((c) => c.status === "approved" || !c.status)
+                  .map((c) => {
+                    const id     = c.id || c._id || "";
+                    const active = bb.characterIds.includes(id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setShowCharValidation(false);
+                          bb.setCharacterIds((prev) =>
+                            active ? prev.filter((x) => x !== id) : [...prev, id]
+                          );
+                        }}
+                        className={cn(
+                          "rounded-xl border-2 p-3 text-left transition-all",
+                          active ? "border-primary bg-primary/10" : "border-border hover:border-primary/30",
+                          showCharValidation && bb.characterIds.length === 0 && "border-destructive/60"
+                        )}
+                      >
+                        <div className="font-semibold text-sm truncate">{c.name}</div>
+                        {c.role && <div className="text-xs text-muted-foreground">{c.role}</div>}
+                      </button>
+                    );
+                  })}
+              </div>
+              <p className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                Only <strong>approved</strong> characters are shown. If a character is missing,{" "}
+                <a href="/app/characters" className="underline font-semibold hover:opacity-80">approve it in Characters first →</a>
+              </p>
             </div>
           )}
 

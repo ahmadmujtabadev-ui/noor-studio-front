@@ -353,7 +353,7 @@ export default function UniverseFormPage() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
 
-          {/* Content Mode — always visible, drives all AI generation */}
+          {/* Content Mode — always visible, critical for AI generation */}
           <div className="rounded-[28px] border bg-card p-6 shadow-sm space-y-4">
             <div>
               <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">Content Mode</p>
@@ -372,7 +372,9 @@ export default function UniverseFormPage() {
               >
                 <span className="mt-0.5 text-2xl leading-none">☪</span>
                 <div>
-                  <p className={cn("text-sm font-bold", formData.category === "islamic" ? "text-amber-800" : "text-foreground")}>Islamic</p>
+                  <p className={cn("text-sm font-bold", formData.category === "islamic" ? "text-amber-800" : "text-foreground")}>
+                    Islamic
+                  </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">Includes Islamic values, duas, Arabic phrases, and mosque-style artwork</p>
                 </div>
               </button>
@@ -388,8 +390,10 @@ export default function UniverseFormPage() {
               >
                 <span className="mt-0.5 text-2xl leading-none">🌍</span>
                 <div>
-                  <p className={cn("text-sm font-bold", formData.category === "universal" ? "text-sky-700" : "text-foreground")}>Universal</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Secular children's content — kindness, courage, and friendship, no Islamic references</p>
+                  <p className={cn("text-sm font-bold", formData.category === "universal" ? "text-sky-700" : "text-foreground")}>
+                    Universal
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Secular children's content — values like kindness, courage, and friendship, no Islamic references</p>
                 </div>
               </button>
             </div>

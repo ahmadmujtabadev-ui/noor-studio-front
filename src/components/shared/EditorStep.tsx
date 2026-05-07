@@ -1,16 +1,160 @@
 // steps/EditorStep.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Layout, ArrowLeft, Loader2, CheckCircle2, BookOpen, FileText,
   Palette, PenLine, Image as ImageIcon, BookMarked, Download,
-  AlertTriangle,
+  AlertTriangle, RefreshCw, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { BookBuilderHook } from "@/hooks/useBookBuilder";
 import { normArr } from "@/lib/api/reviewTypes";
 import { exportsApi } from "@/lib/api/exports.api";
+import { knowledgeBasesApi } from "@/lib/api/knowledgeBases.api";
+import type { KnowledgeBase } from "@/lib/api/types";
+
+// ─── Front Cover Text Editor ──────────────────────────────────────────────────
+
+interface CoverTextPanelProps {
+  bb: BookBuilderHook;
+}
+
+function CoverTextPanel({ bb }: CoverTextPanelProps) {
+  const [kb, setKb]             = useState<KnowledgeBase | null>(null);
+  const [title, setTitle]       = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [author, setAuthor]     = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+
+  const frontUrl = bb.coverReview?.front?.current?.imageUrl || null;
+  const isRegen  = bb.loadingKey === "cover-front";
+
+  useEffect(() => {
+    if (!bb.knowledgeBaseId) return;
+    knowledgeBasesApi.get(bb.knowledgeBaseId).then((data) => {
+      setKb(data);
+      const cd = (data as any).coverDesign || {};
+      setTitle(cd.bookTitle   || "");
+      setSubtitle(cd.subtitle || "");
+      setAuthor(cd.authorName || "");
+    }).catch(() => {});
+  }, [bb.knowledgeBaseId]);
+
+  const handleSave = async () => {
+    if (!kb || !bb.knowledgeBaseId) return;
+    setSaving(true);
+    try {
+      const cd = (kb as any).coverDesign || {};
+      await knowledgeBasesApi.update(bb.knowledgeBaseId, {
+        coverDesign: { ...cd, bookTitle: title, subtitle, authorName: author },
+      } as any);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAndRegen = async () => {
+    await handleSave();
+    bb.regenerateCover("front");
+  };
+
+  if (!frontUrl && !bb.knowledgeBaseId) return null;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-border/50 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center shrink-0">
+          <BookMarked className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm">Front Cover Text</h3>
+          <p className="text-xs text-muted-foreground">Edit the title, subtitle, and author name — then regenerate to apply.</p>
+        </div>
+      </div>
+
+      <div className="p-5 flex flex-col lg:flex-row gap-6">
+        {/* Cover preview */}
+        <div className="lg:w-44 shrink-0">
+          {frontUrl ? (
+            <div className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-border/30">
+              <img src={frontUrl} alt="Front cover" className="w-full h-full object-cover" draggable={false} />
+            </div>
+          ) : (
+            <div className="w-full aspect-[2/3] rounded-xl bg-muted/20 border border-dashed border-border/40 flex items-center justify-center">
+              <ImageIcon className="w-6 h-6 text-muted-foreground/30" />
+            </div>
+          )}
+        </div>
+
+        {/* Text fields */}
+        <div className="flex-1 space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Book Title</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. The Desert of Wonders"
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Subtitle / Tagline</Label>
+            <Input
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="e.g. A Journey Beyond the Stars"
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Author Name</Label>
+            <Input
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="e.g. Zara Al-Amin"
+              className="text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={saving}
+              onClick={handleSave}
+              className="gap-1.5"
+            >
+              {saving
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : saved
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  : <Save className="w-3.5 h-3.5" />
+              }
+              {saved ? "Saved" : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={saving || isRegen}
+              onClick={handleSaveAndRegen}
+              className="gap-1.5"
+            >
+              {isRegen
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Regenerating…</>
+                : <><RefreshCw className="w-3.5 h-3.5" />Save & Regenerate Front Cover</>
+              }
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -90,6 +234,9 @@ export function EditorStep({ bb, onBack }: EditorStepProps) {
 
   return (
     <div className="space-y-5 pb-10">
+
+      {/* ── Front cover text editing ─────────────────────────────────────── */}
+      <CoverTextPanel bb={bb} />
 
       {/* ── Stage review ────────────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border bg-card p-6 space-y-5">

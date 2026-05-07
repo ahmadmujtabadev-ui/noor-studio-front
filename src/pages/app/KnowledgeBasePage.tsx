@@ -1359,6 +1359,7 @@ export default function KnowledgeBasePage() {
             bs={bs}
             onSave={async (update) => { await save(update as any); }}
             isSaving={updateMutation.isPending}
+            mode={kbMode}
           />
         );
       }
@@ -1539,6 +1540,7 @@ export default function KnowledgeBasePage() {
             characters={universeChars}
             guides={guides as any}
             isSaving={updateMutation.isPending}
+            mode={kbMode}
             onSave={(guide) => {
               const { faithTone, faithExpressions, islamicTraits, faithExamples, ...rest } = guide as any;
               save({ characterGuides: [...guides.filter((g: CharacterGuide) => g.characterName !== guide.characterName), { ...rest, characterName: guide.characterName, faithGuide: { faithTone, faithExpressions, islamicTraits, faithExamples } }] } as any);
@@ -1562,9 +1564,27 @@ export default function KnowledgeBasePage() {
     activeWorkflowDef?.sections.includes(s.id as any) && (isIslamicKB || s.id !== "duas")
   );
   const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "coverDesign"]);
+  const selectedUniverse = selectedKB
+    ? universes.find((u: any) => {
+        const universeId = (selectedKB as any).universeId?._id || (selectedKB as any).universeId;
+        return u.id === universeId || u._id === universeId;
+      })
+    : null;
+  const isUniversalKB = Boolean(
+    (selectedKB as any)?.templateFlavour === "universal" ||
+    (
+      selectedUniverse &&
+      (
+        (selectedUniverse as any).flavour === "universal" ||
+        (selectedUniverse as any).templateFlavour === "universal" ||
+        selectedUniverse.tags?.includes("universal")
+      )
+    )
+  );
+  const kbMode: "islamic" | "universal" = isUniversalKB ? "universal" : "islamic";
   const dnaStats = selectedKB ? [
-    { label: isIslamicKB ? "Values" : "Core Values", value: selectedKB.islamicValues?.length || 0, tone: "text-primary" },
-    ...(isIslamicKB ? [{ label: "Du'as", value: selectedKB.duas?.length || 0, tone: "text-emerald-600" }] : []),
+    { label: isUniversalKB ? "Core Values" : "Values", value: selectedKB.islamicValues?.length || 0, tone: "text-primary" },
+    ...(!isUniversalKB ? [{ label: "Du'as", value: selectedKB.duas?.length || 0, tone: "text-emerald-600" }] : []),
     { label: "Vocab", value: selectedKB.vocabulary?.length || 0, tone: "text-secondary" },
     { label: "Voices", value: (selectedKB as any).characterGuides?.length || 0, tone: "text-primary" },
   ] : [];
@@ -1576,6 +1596,7 @@ export default function KnowledgeBasePage() {
       const duas = Math.min(100, ((kb.duas?.length || 0) / 5) * 100);
       const vocab = Math.min(100, ((kb.vocabulary?.length || 0) / 4) * 100);
       const guardrails = Math.min(100, ((kb.avoidTopics?.length || 0) / 3) * 100);
+      if (isUniversalKB) return Math.round((values + vocab + guardrails) / 3);
       return Math.round((values + duas + vocab + guardrails) / 4);
     }
     if (id === "story") {
@@ -1608,8 +1629,8 @@ export default function KnowledgeBasePage() {
     return 0;
   }
   const dnaRecommendations = selectedKB ? [
-    { label: "Add at least 5 values", ready: (selectedKB.islamicValues?.length || 0) >= 5, workflow: "faith" as WorkflowId },
-    { label: "Add at least 5 du'as", ready: (selectedKB.duas?.length || 0) >= 5, workflow: "faith" as WorkflowId },
+    { label: isUniversalKB ? "Add at least 5 core values" : "Add at least 5 values", ready: (selectedKB.islamicValues?.length || 0) >= 5, workflow: "faith" as WorkflowId },
+    ...(!isUniversalKB ? [{ label: "Add at least 5 du'as", ready: (selectedKB.duas?.length || 0) >= 5, workflow: "faith" as WorkflowId }] : []),
     { label: "Add 4 vocabulary terms", ready: (selectedKB.vocabulary?.length || 0) >= 4, workflow: "faith" as WorkflowId },
     { label: "Set character voices", ready: workflowProgress("story") >= 100, workflow: "story" as WorkflowId },
     { label: "Select background style", ready: workflowProgress("visual") >= 100, workflow: "visual" as WorkflowId },
@@ -1946,9 +1967,9 @@ export default function KnowledgeBasePage() {
               <p className="text-xs text-muted-foreground">Updated {new Date(selectedKB.updatedAt).toLocaleDateString()}</p>
             </div>
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-              <span className="font-semibold text-primary">{selectedKB.islamicValues.length}</span> values
-              <span className="text-muted-foreground/40">·</span>
-              <span className="font-semibold text-emerald-600">{selectedKB.duas.length}</span> du'as
+              <span className="font-semibold text-primary">{selectedKB.islamicValues.length}</span> {isUniversalKB ? "core values" : "values"}
+              {!isUniversalKB && <span className="text-muted-foreground/40">·</span>}
+              {!isUniversalKB && <span className="font-semibold text-emerald-600">{selectedKB.duas.length}</span>} {!isUniversalKB && "du'as"}
               <span className="text-muted-foreground/40">·</span>
               <span className="font-semibold text-secondary">{selectedKB.vocabulary.length}</span> vocab
               <span className="text-muted-foreground/40">·</span>
@@ -1977,6 +1998,7 @@ export default function KnowledgeBasePage() {
           {/* KB Strength Score */}
           <KBStrengthScore
             kb={selectedKB}
+            mode={kbMode}
             onNavigate={(tab, section) => isWorkflowId(tab) && openWorkflow(tab, isSectionId(section || null) ? section as SectionId : undefined)}
           />
 
@@ -1999,6 +2021,8 @@ export default function KnowledgeBasePage() {
                 const active = activeWorkflow === wf.id;
                 const Icon = wf.icon;
                 const progress = getWorkflowProgress(wf);
+                const sublabel = isUniversalKB && wf.id === "faith" ? "Values & Language" : wf.sublabel;
+                const label = isUniversalKB && wf.id === "faith" ? "What the stories value" : wf.label;
                 return (
                   <button
                     key={wf.id}
@@ -2032,8 +2056,8 @@ export default function KnowledgeBasePage() {
                     </span>
 
                     <span className="mt-3 block">
-                      <span className={cn("block text-sm font-bold leading-tight", active ? "text-primary" : "text-foreground")}>{wf.sublabel}</span>
-                      <span className="mt-1 block text-xs leading-snug text-muted-foreground">{wf.label}</span>
+                      <span className={cn("block text-sm font-bold leading-tight", active ? "text-primary" : "text-foreground")}>{sublabel}</span>
+                      <span className="mt-1 block text-xs leading-snug text-muted-foreground">{label}</span>
                     </span>
                     <span className="mt-3 block">
                       <span className="mb-1 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
@@ -2072,6 +2096,7 @@ export default function KnowledgeBasePage() {
                   isSaving={updateMutation.isPending}
                   activeSection={activeSection}
                   onSectionChange={(section) => isSectionId(section) && setActiveSection(section)}
+                  mode={kbMode}
                 />
               </div>
             </div>
@@ -2239,14 +2264,14 @@ export default function KnowledgeBasePage() {
 
       {/* ── Create Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={showCreate} onOpenChange={open => { setShowCreate(open); if (!open) { setCreateStep("template"); setForm({ name: "", universeId: "", starterTemplateId: "" }); } }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[92vh] max-w-[min(56rem,calc(100vw-2rem))] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {createStep === "template" ? "Choose a Starter Template" : "Name Your Knowledge Base"}
             </DialogTitle>
             <DialogDescription>
               {createStep === "template"
-                ? "Pick a pre-built template to jumpstart your Knowledge Base with values, du'as, and scene rules — or start blank."
+                ? "Pick a pre-built template to jumpstart your Knowledge Base with values and scene rules, with du'as only on Islamic-Forward templates."
                 : "Give your Knowledge Base a name and link it to a universe."}
             </DialogDescription>
           </DialogHeader>
@@ -2286,7 +2311,7 @@ export default function KnowledgeBasePage() {
               </button>
 
               {/* Template grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
                 {kbTemplates.map((tpl) => {
                   const SvgComp = KB_TEMPLATE_SVG_MAP[tpl.id as keyof typeof KB_TEMPLATE_SVG_MAP];
                   const isSelected = form.starterTemplateId === tpl.id;
@@ -2296,17 +2321,17 @@ export default function KnowledgeBasePage() {
                       type="button"
                       onClick={() => setForm(f => ({ ...f, starterTemplateId: tpl.id }))}
                       className={cn(
-                        "relative flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all hover:shadow-md text-center",
+                        "relative flex min-h-[210px] flex-col items-center justify-between gap-2 rounded-xl border-2 p-3 text-center transition-all hover:shadow-md",
                         isSelected ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40"
                       )}
                     >
                       {/* SVG thumbnail */}
-                      <div className="w-20 h-24 rounded-lg overflow-hidden shadow-sm">
+                      <div className="aspect-[4/3] w-full max-w-[112px] overflow-hidden rounded-lg shadow-sm">
                         {tpl.previewImage ? (
                           <img
                             src={tpl.previewImage}
                             alt={tpl.name}
-                            className="w-full h-full object-cover"
+                            className="h-full w-full object-cover"
                           />
                         ) : SvgComp ? (
                           <SvgComp />
@@ -2316,8 +2341,8 @@ export default function KnowledgeBasePage() {
                           </div>
                         )}
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold leading-tight">{tpl.name}</p>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold leading-tight line-clamp-2 break-words">{tpl.name}</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">{tpl.ageRange}</p>
                       </div>
                       {/* Palette dots */}
