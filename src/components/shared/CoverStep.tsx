@@ -385,10 +385,93 @@ function CoverSideCard({ side, node, loadingKey, previewMode, onGenerate, onAppr
 
 // ─── CoverStep ────────────────────────────────────────────────────────────────
 
+// ─── Single spread control card ───────────────────────────────────────────────
+
+interface SpreadControlCardProps {
+  spreadNode: import("@/lib/api/reviewTypes").SpreadSideNode | undefined;
+  loadingKey: string | null;
+  previewMode: boolean;
+  onGenerate: (opts?: { previewMode?: boolean; prompt?: string }) => void;
+  onApprove: () => void;
+}
+
+function SpreadControlCard({ spreadNode, loadingKey, previewMode, onGenerate, onApprove }: SpreadControlCardProps) {
+  const [userNotes, setUserNotes] = useState("");
+  const isGenerating = loadingKey === "cover-spread";
+  const isApproving  = loadingKey === "cover-approve-spread";
+  const approved     = spreadNode?.status === "approved";
+  const hasImage     = Boolean(spreadNode?.current?.imageUrl);
+
+  return (
+    <div className={cn(
+      "rounded-2xl border bg-card overflow-hidden transition-all",
+      approved ? "border-emerald-300 dark:border-emerald-700 shadow-md shadow-emerald-100/30" : "border-border",
+    )}>
+      <div className="px-5 py-4 border-b border-border/40 flex items-center gap-3">
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", approved ? "bg-emerald-100 dark:bg-emerald-900/40" : "bg-muted")}>
+          {approved ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <BookOpen className="w-4 h-4 text-muted-foreground" />}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm">Full Cover Spread</h3>
+            {approved && <Badge className="text-[10px] h-4 bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-0">Approved</Badge>}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">Front cover + spine + back cover — generated as one wide image</p>
+        </div>
+      </div>
+      <div className="px-5 pt-4 pb-3 border-b border-border/30 space-y-2">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Scene Notes <span className="ml-1 font-normal normal-case opacity-60">(optional)</span>
+        </Label>
+        <Textarea
+          value={userNotes}
+          onChange={(e) => setUserNotes(e.target.value)}
+          rows={2}
+          placeholder="e.g. Characters in foreground, mosque at sunset in back cover, warm golden sky across all three…"
+          className="text-xs resize-none border-border/60 focus:border-primary/40"
+        />
+      </div>
+      <div className="px-5 pb-5 pt-4 flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={hasImage ? "outline" : "default"}
+          disabled={isGenerating || isApproving}
+          onClick={() => onGenerate({ previewMode, prompt: userNotes.trim() || undefined })}
+          className="gap-1.5"
+        >
+          {isGenerating
+            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Generating…</>
+            : hasImage
+              ? <><RefreshCw className="w-3.5 h-3.5" />Regenerate Cover</>
+              : <><Sparkles className="w-3.5 h-3.5" />Generate Cover</>
+          }
+        </Button>
+        {hasImage && !approved && (
+          <Button
+            size="sm"
+            disabled={isApproving || isGenerating}
+            onClick={onApprove}
+            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+          >
+            {isApproving
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <><CheckCircle2 className="w-3.5 h-3.5" />Approve</>
+            }
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── CoverSpreadPanel ─────────────────────────────────────────────────────────
+
 interface CoverSpreadPanelProps {
   frontUrl: string | null;
   spineUrl: string | null;
   backUrl: string | null;
+  spreadUrl: string | null;
+  spreadApproved: boolean;
   frontApproved: boolean;
   backApproved: boolean;
   spineApproved: boolean;
@@ -401,6 +484,8 @@ function CoverSpreadPanel({
   frontUrl,
   spineUrl,
   backUrl,
+  spreadUrl,
+  spreadApproved,
   frontApproved,
   backApproved,
   spineApproved,
@@ -463,20 +548,42 @@ function CoverSpreadPanel({
           <div className="mb-2 grid grid-cols-12 text-[10px] text-muted-foreground/70">
             {Array.from({ length: 12 }).map((_, i) => <span key={i}>{i + 1}&quot;</span>)}
           </div>
-          <div className="relative mx-auto flex aspect-[12.5/9] w-full border-2 border-orange-400 bg-background shadow-sm">
-            {face("back", backUrl, backApproved)}
-            <div className="relative h-full overflow-visible bg-[#b89055]" style={{ flex: `0 0 ${spinePct}%` }}>
-              <div className="relative h-full overflow-hidden">
-                {spineUrl ? <img src={spineUrl} alt="spine cover" className="h-full w-full object-cover" draggable={false} /> : <div className="h-full w-full bg-gradient-to-b from-[#cfb382] to-[#9b763e]" />}
-                <div className="absolute inset-x-[22%] inset-y-[6%] border border-dashed border-emerald-600/70" />
-                <div className="absolute inset-0 border border-dashed border-red-400/80" />
-                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tracking-widest text-[#5d4122]" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>Bismillah in Kufi</div>
-                {spineApproved && <CheckCircle2 className="absolute bottom-3 left-1/2 h-4 w-4 -translate-x-1/2 text-emerald-600" />}
+          <div className="relative mx-auto aspect-[12.5/9] w-full border-2 border-orange-400 bg-background shadow-sm overflow-hidden">
+            {spreadUrl ? (
+              /* Single AI-generated spread image */
+              <>
+                <img src={spreadUrl} alt="Full cover spread" className="h-full w-full object-cover" draggable={false} />
+                {spreadApproved && (
+                  <div className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Approved</div>
+                )}
+                {/* Bleed / safe zone guides */}
+                <div className="absolute inset-0 border border-dashed border-red-400/60 pointer-events-none" />
+              </>
+            ) : (
+              /* CSS mock while no spread image yet */
+              <div className="flex h-full w-full">
+                {face("back", backUrl, backApproved)}
+                <div className="relative h-full overflow-visible bg-[#b89055]" style={{ flex: `0 0 ${spinePct}%` }}>
+                  <div className="relative h-full overflow-hidden">
+                    {spineUrl ? <img src={spineUrl} alt="spine cover" className="h-full w-full object-cover" draggable={false} /> : <div className="h-full w-full bg-gradient-to-b from-[#cfb382] to-[#9b763e]" />}
+                    <div className="absolute inset-x-[22%] inset-y-[6%] border border-dashed border-emerald-600/70" />
+                    <div className="absolute inset-0 border border-dashed border-red-400/80" />
+                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tracking-widest text-[#5d4122]" style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>Bismillah in Kufi</div>
+                    {spineApproved && <CheckCircle2 className="absolute bottom-3 left-1/2 h-4 w-4 -translate-x-1/2 text-emerald-600" />}
+                  </div>
+                  <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-center text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">Spine</div>
+                </div>
+                {face("front", frontUrl, frontApproved)}
               </div>
-              <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-center text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">Spine</div>
-            </div>
-            {face("front", frontUrl, frontApproved)}
+            )}
           </div>
+          {spreadUrl && (
+            <div className="mt-3 flex justify-center gap-6 text-[10px] font-semibold uppercase tracking-[0.32em] text-muted-foreground">
+              <span>Back Cover</span>
+              <span>Spine</span>
+              <span>Front Cover</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -559,9 +666,10 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
   const spineUrl = bb.coverReview?.spine?.current?.imageUrl || null;
 
   const isGeneratingAny =
-    bb.loadingKey === "cover-front" ||
-    bb.loadingKey === "cover-back"  ||
-    bb.loadingKey === "cover-spine";
+    bb.loadingKey === "cover-front"  ||
+    bb.loadingKey === "cover-back"   ||
+    bb.loadingKey === "cover-spine"  ||
+    bb.loadingKey === "cover-spread";
 
   const spineWidthInches = (() => {
     const raw = kb?.coverDesign?.spineWidth;
@@ -570,12 +678,13 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
     return isNaN(n) ? 0.5 : n;
   })();
 
-  const frontApproved = bb.coverReview?.front?.status === "approved";
-  const backApproved  = bb.coverReview?.back?.status  === "approved";
-  const spineApproved = bb.coverReview?.spine?.status === "approved";
-  const canContinue   = frontApproved && backApproved;
-  const anyGenerated  = Boolean(frontUrl || spineUrl || backUrl);
-  const approvedCount = [frontApproved, spineApproved, backApproved].filter(Boolean).length;
+  const frontApproved  = bb.coverReview?.front?.status  === "approved";
+  const backApproved   = bb.coverReview?.back?.status   === "approved";
+  const spineApproved  = bb.coverReview?.spine?.status  === "approved";
+  const spreadApproved = bb.coverReview?.spread?.status === "approved";
+  const canContinue    = spreadApproved || (frontApproved && backApproved);
+  const anyGenerated   = Boolean(frontUrl || spineUrl || backUrl || bb.coverReview?.spread?.current?.imageUrl);
+  const approvedCount  = spreadApproved ? 3 : [frontApproved, spineApproved, backApproved].filter(Boolean).length;
 
   const statusDot = (side: "front" | "spine" | "back") => {
     const s = bb.coverReview?.[side]?.status ?? "draft";
@@ -606,12 +715,12 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
           <Button
             variant="outline"
             disabled={isGeneratingAny}
-            onClick={() => bb.regenerateAllCovers({ previewMode })}
+            onClick={() => bb.generateCoverSpread({ previewMode })}
             className="gap-2"
           >
             {isGeneratingAny
               ? <><Loader2 className="w-4 h-4 animate-spin" />Generating…</>
-              : <><Layers className="w-4 h-4" />{anyGenerated ? "Regenerate All" : "Generate All"}</>
+              : <><Layers className="w-4 h-4" />{anyGenerated ? "Regenerate Cover" : "Generate Cover"}</>
             }
           </Button>
           {anyGenerated && <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-2"><Maximize2 className="w-4 h-4" />Preview</Button>}
@@ -628,6 +737,8 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
         frontUrl={frontUrl}
         spineUrl={spineUrl}
         backUrl={backUrl}
+        spreadUrl={bb.coverReview?.spread?.current?.imageUrl || null}
+        spreadApproved={spreadApproved}
         frontApproved={frontApproved}
         backApproved={backApproved}
         spineApproved={spineApproved}
@@ -636,33 +747,20 @@ export function CoverStep({ bb, onBack, onContinue }: CoverStepProps) {
         onPreviewModeChange={setPreviewMode}
       />
 
-      {/* T-17: Sequential workflow guidance */}
+      {/* Workflow hint */}
       <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-        <p className="font-semibold text-foreground mb-1">Recommended order</p>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={cn("px-2 py-0.5 rounded-full font-medium", frontApproved ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary")}>1. Front Cover</span>
-          <span className="text-muted-foreground/40">→</span>
-          <span className={cn("px-2 py-0.5 rounded-full font-medium", backApproved ? "bg-emerald-100 text-emerald-700" : frontApproved ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/60")}>2. Back Cover</span>
-          <span className="text-muted-foreground/40">→</span>
-          <span className={cn("px-2 py-0.5 rounded-full font-medium", spineApproved ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground/60")}>3. Spine (optional)</span>
-          {!frontApproved && <span className="ml-1 opacity-60">— approve front first for best back cover consistency</span>}
-        </div>
+        <p className="font-semibold text-foreground mb-1">How it works</p>
+        <p>Click <strong>Generate Cover</strong> — AI generates the back cover, spine, and front cover as one wide image. Review it in the spread preview above, then click <strong>Approve</strong> to unlock the editor.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {(["front", "back", "spine"] as const).map((side) => (
-          <CoverControlCard
-            key={side}
-            side={side}
-            node={bb.coverReview?.[side]}
-            loadingKey={bb.loadingKey}
-            previewMode={previewMode}
-            frontApproved={frontApproved}
-            onGenerate={(s, opts) => bb.regenerateCover(s, opts)}
-            onApprove={bb.approveCover}
-          />
-        ))}
-      </div>
+      {/* ── Single spread generation card ── */}
+      <SpreadControlCard
+        spreadNode={bb.coverReview?.spread}
+        loadingKey={bb.loadingKey}
+        previewMode={previewMode}
+        onGenerate={(opts) => bb.generateCoverSpread(opts)}
+        onApprove={() => bb.approveCoverSpread()}
+      />
 
       {/* ── Header ── */}
       <div className="hidden rounded-2xl border border-border bg-card overflow-hidden">

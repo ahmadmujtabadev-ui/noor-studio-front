@@ -170,10 +170,23 @@ export interface CoverSideNode {
   updatedAt: string;
 }
 
+export interface SpreadSideNode {
+  status: NodeStatus;
+  current: {
+    imageUrl: string;
+    prompt: string;
+    seed: number | null;
+  };
+  versions: unknown[];
+  approvedAt: string | null;
+  updatedAt: string;
+}
+
 export interface CoverReview {
   front: CoverSideNode;
   back: CoverSideNode;
   spine?: CoverSideNode;
+  spread?: SpreadSideNode;
 }
 
 // ─── Full review object ───────────────────────────────────────────────────────

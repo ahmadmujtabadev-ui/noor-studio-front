@@ -115,7 +115,8 @@ export default function BookBuilderPage() {
       bb.loadingKey.startsWith("cover-")
     ));
 
-  const overlayLabel = bb.loadingKey === "cover-front" ? "Generating front cover…"
+  const overlayLabel = bb.loadingKey === "cover-spread" ? "Generating full cover spread…"
+    : bb.loadingKey === "cover-front" ? "Generating front cover…"
     : bb.loadingKey === "cover-back"  ? "Generating back cover…"
     : bb.loadingKey === "cover-spine" ? "Generating spine…"
     : undefined;

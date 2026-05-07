@@ -705,8 +705,47 @@ export function useBookBuilder() {
     );
   }, [getPid, loadCover, toast, gateCredits]);
 
+  const generateCoverSpread = useCallback((opts?: { previewMode?: boolean; prompt?: string }) => {
+    gateCredits(
+      {
+        title: 'Generate Full Cover Spread',
+        description: 'AI will generate front cover, spine, and back cover as one combined image.',
+        cost: 3,
+      },
+      async () => {
+        const pid = getPid();
+        setLoadingKey('cover-spread');
+        try {
+          await reviewApi.regenerateCoverSpread(pid, { previewMode: opts?.previewMode, prompt: opts?.prompt });
+          await loadCover();
+          toast({ title: 'Cover spread generated ✓' });
+        } catch (err) {
+          toast({ title: 'Cover spread generation failed', description: (err as Error).message, variant: 'destructive' });
+        } finally {
+          setLoadingKey(null);
+        }
+      }
+    );
+  }, [getPid, loadCover, toast, gateCredits]);
+
+  const approveCoverSpread = useCallback(async () => {
+    const pid = getPid();
+    setLoadingKey('cover-approve-spread');
+    try {
+      await reviewApi.approveCoverSpread(pid);
+      await loadCover();
+      toast({ title: 'Cover spread approved ✓' });
+    } catch (err) {
+      toast({ title: 'Approve failed', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setLoadingKey(null);
+    }
+  }, [getPid, loadCover, toast]);
+
   const bothCoversApproved = useMemo(() => {
     if (!coverReview) return false;
+    // Spread approval counts as both covers approved
+    if (coverReview.spread?.status === "approved") return true;
     return coverReview.front?.status === "approved" && coverReview.back?.status === "approved";
   }, [coverReview]);
 
@@ -866,6 +905,8 @@ export function useBookBuilder() {
     loadCover,
     regenerateCover,
     regenerateAllCovers,
+    generateCoverSpread,
+    approveCoverSpread,
     selectCoverVariant,
     approveCover,
     bothCoversApproved,

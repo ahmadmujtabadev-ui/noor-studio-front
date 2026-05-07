@@ -131,6 +131,15 @@ export const reviewApi = {
   approveCover: (pid: string, side: "front" | "back" | "spine") =>
     api.post(`/api/projects/${pid}/review/cover/${side}/approve`, {}),
 
+  regenerateCoverSpread: (
+    pid: string,
+    body?: { prompt?: string; previewMode?: boolean },
+  ) =>
+    api.post(`/api/projects/${pid}/review/cover/spread/regenerate`, body ?? {}),
+
+  approveCoverSpread: (pid: string) =>
+    api.post(`/api/projects/${pid}/review/cover/spread/approve`, {}),
+
   // ─── Editor pages (fabricJson + thumbnail persistence) ─────────────────────
 
   getEditorPages: (pid: string): Promise<{ pages: EditorPageSave[] }> =>
