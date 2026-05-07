@@ -548,6 +548,17 @@ export default function KnowledgeBasePage() {
   const { universes } = useUniverses();
 
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
+
+  const selectedUniverseObj = selectedKB
+    ? universes.find((u) => {
+        const uid = u.id || u._id;
+        const kbUniverseId = typeof (selectedKB as any).universeId === "string"
+          ? (selectedKB as any).universeId
+          : (selectedKB as any).universeId?._id;
+        return uid === kbUniverseId;
+      })
+    : null;
+  const isIslamicKB = selectedUniverseObj?.category !== "universal";
   const [newItem, setNewItem] = useState("");
   const [newValueHow, setNewValueHow] = useState("");
   const [newAvoidTopic, setNewAvoidTopic] = useState("");
@@ -611,7 +622,7 @@ export default function KnowledgeBasePage() {
       openWorkflow(workflow, isSectionId(section) ? section : undefined);
       return;
     }
-    kbNav.setKbNav("faith", "islamicValues");
+    kbNav.setKbNav("faith", isIslamicKB ? "islamicValues" : "vocabulary");
   }, [selectedKB?._id ?? selectedKB?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync completion dots whenever KB data changes (does NOT reset navigation)
@@ -1547,11 +1558,13 @@ export default function KnowledgeBasePage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const activeWorkflowDef = WORKFLOWS.find(w => w.id === activeWorkflow);
-  const currentSections = SECTIONS.filter(s => activeWorkflowDef?.sections.includes(s.id as any));
+  const currentSections = SECTIONS.filter(s =>
+    activeWorkflowDef?.sections.includes(s.id as any) && (isIslamicKB || s.id !== "duas")
+  );
   const FULL_WIDTH_SECTIONS = new Set(["characterGuides", "backgroundSettings", "bookFormatting", "coverDesign"]);
   const dnaStats = selectedKB ? [
-    { label: "Values", value: selectedKB.islamicValues?.length || 0, tone: "text-primary" },
-    { label: "Du'as", value: selectedKB.duas?.length || 0, tone: "text-emerald-600" },
+    { label: isIslamicKB ? "Values" : "Core Values", value: selectedKB.islamicValues?.length || 0, tone: "text-primary" },
+    ...(isIslamicKB ? [{ label: "Du'as", value: selectedKB.duas?.length || 0, tone: "text-emerald-600" }] : []),
     { label: "Vocab", value: selectedKB.vocabulary?.length || 0, tone: "text-secondary" },
     { label: "Voices", value: (selectedKB as any).characterGuides?.length || 0, tone: "text-primary" },
   ] : [];
