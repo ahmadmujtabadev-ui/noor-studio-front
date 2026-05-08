@@ -123,17 +123,33 @@ function readRawRect(obj: fabric.Object): { left: number; top: number; width: nu
 function coverFitGeometry(
   naturalW: number, naturalH: number,
   clip: { left: number; top: number; width: number; height: number },
+  cropZone?: "left" | "right" | "spine",
 ): { left: number; top: number; scale: number; drawW: number; drawH: number } {
-  const s = (naturalW > 0 && naturalH > 0)
-    ? Math.max(clip.width / naturalW, clip.height / naturalH)
-    : 1;
+  if (!cropZone || naturalW <= 0 || naturalH <= 0) {
+    const s = naturalW > 0 && naturalH > 0
+      ? Math.max(clip.width / naturalW, clip.height / naturalH)
+      : 1;
+    const drawW = naturalW * s;
+    const drawH = naturalH * s;
+    return {
+      left: clip.left + (clip.width - drawW) / 2,
+      top:  clip.top  + (clip.height - drawH) / 2,
+      scale: s, drawW, drawH,
+    };
+  }
+  // Spread zone proportions: back 47% | spine 6% | front 47%.
+  // Scale so the target zone fills the canvas width, then position accordingly.
+  const zoneStart = cropZone === "left" ? 0 : cropZone === "spine" ? 0.47 : 0.53;
+  const zoneEnd   = cropZone === "left" ? 0.47 : cropZone === "spine" ? 0.53 : 1.0;
+  const zoneW = naturalW * (zoneEnd - zoneStart);
+  // Fit zone to canvas
+  const s = Math.min(clip.width / zoneW, clip.height / naturalH);
   const drawW = naturalW * s;
   const drawH = naturalH * s;
   return {
-    left: clip.left + (clip.width - drawW) / 2,
-    top:  clip.top  + (clip.height - drawH) / 2,
-    scale: s,
-    drawW, drawH,
+    left:  clip.left - naturalW * zoneStart * s,
+    top:   clip.top  + (clip.height - drawH) / 2,
+    scale: s, drawW, drawH,
   };
 }
 
@@ -370,8 +386,8 @@ type InitObj = Partial<fabric.ITextOptions> & { text: string; _role: string; _wr
 function buildInitialObjects(page: BookPage, type: BookPageType): InitObj[] {
   const out: InitObj[] = [];
   if (type === "front-cover") {
-    if (page.title) out.push({ _role: "title", text: page.title, _wrap: true, left: 50, top: 60, fontSize: 52, fontFamily: "Fredoka One", fontWeight: "bold", fill: "#ffffff", textAlign: "center", width: PAGE_W - 100, lineHeight: 1.2, shadow: "2px 4px 12px rgba(0,0,0,0.8)" });
-    if (page.text) out.push({ _role: "author", text: page.text.length > 80 ? page.text.slice(0, 77) + "…" : page.text, _wrap: true, left: 50, top: PAGE_H - 80, fontSize: 20, fontFamily: "Nunito", fontStyle: "italic", fill: "#ffffff", textAlign: "center", width: PAGE_W - 100, shadow: "1px 2px 6px rgba(0,0,0,0.7)" });
+    // No automatic text overlays — the AI-generated cropped image contains
+    // the title and author text. Users can add text via the toolbar if needed.
   } else if (type === "spread") {
     if (page.text) { const txt = page.text.length > 600 ? page.text.slice(0, 597) + "…" : page.text; out.push({ _role: "body-text", text: txt, _wrap: true, left: 40, top: PAGE_H - 220, fontSize: txt.split(/\s+/).length > 12 ? 17 : 20, fontFamily: "Nunito", fill: "#ffffff", textAlign: "center", width: PAGE_W - 80, lineHeight: 1.55, shadow: "1px 1px 5px rgba(0,0,0,0.9)", backgroundColor: "rgba(0,0,0,0.38)", padding: 14 }); }
   } else if (type === "chapter-opener") {
@@ -391,7 +407,16 @@ function buildInitialObjects(page: BookPage, type: BookPageType): InitObj[] {
   } else if (type === "chapter-moment") {
     if (page.text) { const cap = page.text.length > 400 ? page.text.slice(0, 397) + "…" : page.text; out.push({ _role: "caption", text: cap, _wrap: true, left: 40, top: PAGE_H - 120, fontSize: 15, fontFamily: "Nunito", fontStyle: "italic", fill: "#ffffff", textAlign: "center", width: PAGE_W - 80, lineHeight: 1.4, shadow: "1px 1px 4px rgba(0,0,0,0.9)", backgroundColor: "rgba(0,0,0,0.4)", padding: 10 }); }
   } else if (type === "back-cover") {
-    if (page.text) { const syn = page.text.length > 500 ? page.text.slice(0, 497) + "…" : page.text; out.push({ _role: "synopsis", text: syn, _wrap: true, left: 60, top: PAGE_H / 2 - 80, fontSize: 17, fontFamily: "Merriweather", fill: "#1a1a1a", textAlign: "center", width: PAGE_W - 120, lineHeight: 1.65, backgroundColor: "rgba(255,255,255,0.82)", padding: 22 }); }
+    // No automatic text overlays — the AI-generated cropped image contains
+    // the synopsis. Users can add text via the toolbar if needed.
+  } else if (type === "spine") {
+    // Spine canvas — title + author rotate -90° so they read bottom-to-top
+    if (page.title) {
+      out.push({ _role: "spine-title", text: page.title, _wrap: true, left: PAGE_W / 2, top: PAGE_H * 0.35, originX: "center", originY: "center", fontSize: 32, fontFamily: "Fredoka One", fontWeight: "bold", fill: "#ffffff", textAlign: "center", width: PAGE_H * 0.5, angle: -90, shadow: "1px 2px 8px rgba(0,0,0,0.9)" } as any);
+    }
+    if (page.text) {
+      out.push({ _role: "spine-author", text: page.text, _wrap: true, left: PAGE_W / 2, top: PAGE_H * 0.78, originX: "center", originY: "center", fontSize: 18, fontFamily: "Nunito", fontStyle: "italic", fill: "#ffffff", textAlign: "center", width: PAGE_H * 0.25, angle: -90, shadow: "1px 1px 4px rgba(0,0,0,0.8)" } as any);
+    }
   }
   return out;
 }
@@ -983,6 +1008,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
             fireOnceDone({
               layoutKey,
               bodyText: extractedBody ?? bodyText ?? null,
+              bodyTextStyles: null,
               fabricJson: json,
               thumbnail: thumb,
             });
@@ -1073,6 +1099,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           fireOnceDone({
             layoutKey,
             bodyText: bodyText ?? null,
+            bodyTextStyles: null,
             fabricJson: json,
             thumbnail: thumb,
           });
@@ -1313,10 +1340,14 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
       const hasBakedImage = fabricHasContent && Array.isArray(fj.objects) &&
         fj.objects.some((o: any) => o._layoutBaked && o.type === "image");
 
+      // Spread-based cover pages must always rebuild from imageUrl so that
+      // cropZone aligns the correct zone. Never use saved fabricJson for these.
+      const forceFreshRender = !!page.cropZone;
+
       if (isInlineImagePage(page)) {
         c.backgroundColor = "#fffef7";
         buildInlineImageLayout(page, c, () => isAliveRef.current && gen === pageLoadGenRef.current, () => cancelled).then(finish);
-      } else if (hasBakedImage) {
+      } else if (!forceFreshRender && hasBakedImage) {
         c.loadFromJSON(page.fabricJson, () => {
           if (stale()) return;
           clampLoadedObjects(fabricRef.current!);
@@ -1329,7 +1360,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           });
           finish();
         });
-      } else if (fabricHasContent) {
+      } else if (!forceFreshRender && fabricHasContent) {
         // Legacy fabricJson path with image-zone references
         c.loadFromJSON(page.fabricJson, async () => {
           if (stale()) return;
@@ -1428,7 +1459,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           const natW = el?.naturalWidth || img.width || PAGE_W;
           const natH = el?.naturalHeight || img.height || PAGE_H;
           const clip = { left: 0, top: 0, width: PAGE_W, height: PAGE_H };
-          const geom = coverFitGeometry(natW, natH, clip);
+          const geom = coverFitGeometry(natW, natH, clip, page.cropZone);
           img.set({
             originX: "left", originY: "top",
             left: geom.left, top: geom.top,
@@ -1446,7 +1477,7 @@ const FabricPageCanvas = forwardRef<FabricCanvasHandle, Props>(
           addTextLayers();
         }).catch(() => addTextLayers());
       } else {
-        const bgColors: Record<BookPageType, string> = { "front-cover": "#1a2744", "back-cover": "#1a2744", "spread": "#fdf8f0", "chapter-opener": "#1e3a5f", "chapter-moment": "#1e3a5f", "text-page": "#fffef7" };
+        const bgColors: Record<BookPageType, string> = { "front-cover": "#1a2744", "spine": "#1a1a1a", "back-cover": "#1a2744", "spread": "#fdf8f0", "chapter-opener": "#1e3a5f", "chapter-moment": "#1e3a5f", "text-page": "#fffef7" };
         c.backgroundColor = bgColors[page.type] ?? "#f5f0e8";
         addTextLayers();
       }

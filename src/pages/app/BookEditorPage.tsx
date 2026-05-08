@@ -292,17 +292,27 @@ export default function BookEditorPage() {
     (json: object, thumbnail: string | undefined, idx: number) => {
       const pageSnapshot = pagesRef.current[idx];
       const objects = (json as any)?.objects ?? [];
-      const bodyLeft = objects.find((o: any) => o._role === "body-text");
-      const bodyRight = objects.find((o: any) => o._role === "body-text-right");
-      const titleObj = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const bodyLeft    = objects.find((o: any) => o._role === "body-text");
+      const bodyRight   = objects.find((o: any) => o._role === "body-text-right");
+      const titleObj    = objects.find((o: any) => o._role === "title" || o._role === "chapter-title");
+      const authorObj   = objects.find((o: any) => o._role === "author");
+      const synopsisObj = objects.find((o: any) => o._role === "synopsis");
+      const spineTitleObj  = objects.find((o: any) => o._role === "spine-title");
+      const spineAuthorObj = objects.find((o: any) => o._role === "spine-author");
 
       const updates: Record<string, unknown> = { fabricJson: json };
       if (thumbnail !== undefined) updates.thumbnail = thumbnail;
 
       if (bodyLeft?.text && bodyRight?.text) updates.text = `${bodyLeft.text} ${bodyRight.text}`;
       else if (bodyLeft?.text) updates.text = bodyLeft.text;
+      // For spread-based cover pages (cropZone set), fabricJson is not re-loaded on
+      // reload — persist text edits through page.text / page.title instead.
+      else if (authorObj?.text   && pageSnapshot?.type === "front-cover") updates.text  = authorObj.text;
+      else if (synopsisObj?.text && pageSnapshot?.type === "back-cover")  updates.text  = synopsisObj.text;
+      else if (spineTitleObj?.text  && pageSnapshot?.type === "spine")    updates.title = spineTitleObj.text;
+      else if (spineAuthorObj?.text && pageSnapshot?.type === "spine")    updates.text  = spineAuthorObj.text;
 
-      if (titleObj?.text && pageSnapshot?.type === "front-cover") {
+      if (titleObj?.text && (pageSnapshot?.type === "front-cover" || pageSnapshot?.type === "spine")) {
         updates.title = titleObj.text;
       }
 

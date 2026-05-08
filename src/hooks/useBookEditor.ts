@@ -6,6 +6,7 @@ import { sanitizeFabricImages } from "@/lib/api/sanitizeFabricImages";
 
 export type BookPageType =
   | "front-cover"
+  | "spine"
   | "spread"
   | "chapter-opener"
   | "text-page"
@@ -45,11 +46,10 @@ export interface BookPage {
   layoutType?: LayoutType;
   fabricJson?: object | null;
   thumbnail?: string;
-  // NEW: when set, the canvas will rebuild this layout on every page load.
   layoutKey?: LayoutKey | null;
-  // NEW: body-text style overrides (font, size, weight, colour, per-char styles)
-  // captured from the user's edits. Applied AFTER template rebuild on reload.
   bodyTextStyles?: Record<string, unknown> | null;
+  // When imageUrl is a full spread, crop to the appropriate zone in the editor.
+  cropZone?: "left" | "right" | "spine";
 }
 
 function resolveSpreadLayout(text: string, imageUrl: string): SpreadLayoutType {
@@ -67,6 +67,24 @@ function resolveTextLayout(text: string): TextLayoutType {
     return "decorative_full_text";
   }
   return "two_column";
+}
+
+/**
+ * Build a Cloudinary crop URL for one zone of a spread image.
+ * Spread proportions: back 47% | spine 6% | front 47%.
+ * Uses fl_relative so percentages work regardless of original dimensions.
+ * Returns null when the URL is not a Cloudinary URL.
+ */
+function cloudinaryCropUrl(spreadUrl: string, zone: "front" | "back"): string | null {
+  if (!spreadUrl?.includes("res.cloudinary.com")) return null;
+  const uploadMarker = "/image/upload/";
+  const idx = spreadUrl.indexOf(uploadMarker);
+  if (idx === -1) return null;
+  const base = spreadUrl.slice(0, idx + uploadMarker.length);
+  const rest = spreadUrl.slice(idx + uploadMarker.length);
+  const x = zone === "front" ? "0.53" : "0";
+  const transform = `c_crop,fl_relative,w_0.47,x_${x}/`;
+  return base + transform + rest;
 }
 
 function illusUrl(illus: any): string {
@@ -269,6 +287,19 @@ export function useBookEditor() {
       const backSelIdx = backNode?.current?.selectedVariantIndex ?? 0;
       const backUrl = (backVariants[backSelIdx] as any)?.imageUrl || backNode?.current?.imageUrl || "";
 
+      const spreadUrl = (coverData as any)?.cover?.spread?.current?.imageUrl || "";
+
+      // Derive individual crop URLs from the spread using Cloudinary transformations.
+      // These are proper portrait crops (47% each side) — no cropZone needed.
+      const derivedFrontUrl = !frontUrl ? cloudinaryCropUrl(spreadUrl, "front") : null;
+      const derivedBackUrl  = !backUrl  ? cloudinaryCropUrl(spreadUrl, "back")  : null;
+
+      const actualFrontUrl = frontUrl || derivedFrontUrl || spreadUrl;
+      const actualBackUrl  = backUrl  || derivedBackUrl  || spreadUrl;
+      // cropZone only as last resort when Cloudinary crop isn't available
+      const frontCropZone = (!frontUrl && !derivedFrontUrl && spreadUrl) ? "right" as const : undefined;
+      const backCropZone  = (!backUrl  && !derivedBackUrl  && spreadUrl) ? "left"  as const : undefined;
+
       const illustrations = normArr(r?.illustrations ?? []);
       const structures = normArr(r?.structure?.items ?? []);
       const humanized = normArr(r?.humanized ?? []);
@@ -280,10 +311,24 @@ export function useBookEditor() {
         id: "cover-front",
         label: "Front Cover",
         type: "front-cover",
-        imageUrl: frontUrl,
+        imageUrl: actualFrontUrl,
         title: bookTitle,
         text: author ? `By ${author}` : "",
+        ...(frontCropZone ? { cropZone: frontCropZone } : {}),
       });
+
+      // Spine page — shown when a spread image is available (uses cropZone: "spine")
+      if (spreadUrl) {
+        bookPages.push({
+          id: "cover-spine",
+          label: "Spine",
+          type: "spine",
+          imageUrl: spreadUrl,
+          title: bookTitle,
+          text: author || "",
+          cropZone: "spine" as const,
+        });
+      }
 
       if (isChapter) {
         bookPages.push(...buildChapterPages(illustrations, humanized, prose));
@@ -295,8 +340,9 @@ export function useBookEditor() {
         id: "cover-back",
         label: "Back Cover",
         type: "back-cover",
-        imageUrl: backUrl,
+        imageUrl: actualBackUrl,
         text: r?.story?.current?.synopsis || "",
+        ...(backCropZone ? { cropZone: backCropZone } : {}),
       });
 
       const savedById = new Map<string, any>();
@@ -327,7 +373,10 @@ export function useBookEditor() {
 
         return {
           ...page,
-          ...(isValidFabric && { fabricJson: saved.fabricJson }),
+          // Spread-based cover pages (cropZone set) always re-render from imageUrl
+          // so saved fabricJson (with wrong centering) must not be loaded.
+          // Text content (title, text) is preserved below and rebuilds the overlays.
+          ...(isValidFabric && !page.cropZone && { fabricJson: saved.fabricJson }),
           ...(saved.thumbnail !== undefined && { thumbnail: saved.thumbnail }),
           ...(saved.text !== undefined && { text: saved.text }),
           ...(saved.title !== undefined && { title: saved.title }),
