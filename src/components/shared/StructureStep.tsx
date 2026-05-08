@@ -34,6 +34,20 @@ export function StructureStep({ bb, allCharacters, universeId, onBack, onContinu
       })
     : allCharacters;
 
+  // Auto-select all approved universe characters when none are selected yet.
+  // This handles returning to step 2 on an existing project whose characterIds
+  // were never persisted (created before the character-selection feature).
+  useEffect(() => {
+    if (bb.characterIds.length === 0 && universeCharacters.length > 0) {
+      const approvedIds = universeCharacters
+        .filter((c) => c.status === "approved" || !c.status)
+        .map((c) => c.id || c._id || "")
+        .filter(Boolean);
+      if (approvedIds.length) bb.setCharacterIds(approvedIds);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [universeCharacters.length]);
+
   const [modalKey, setModalKey] = useState<string | null>(null);
   const [localItems, setLocalItems] = useState<Record<string, Partial<StructureItem["current"]>>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});

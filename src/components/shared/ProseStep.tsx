@@ -499,7 +499,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                   )}
 
                   {/* Bottom meta row */}
-                  <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-dashed border-border">
+                  <div className="grid sm:grid-cols-1 gap-4 pt-2 border-t border-dashed border-border">
                     {/* Chapter summary */}
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -515,7 +515,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                     </div>
 
                     {/* Islamic moment */}
-                    {!hasPolished && (
+                    {/* {!hasPolished && (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Islamic Moment / Dua
@@ -531,7 +531,7 @@ export function ProseStep({ bb, onBack, onContinue }: ProseStepProps) {
                           A du'a, Quranic reference, or Islamic lesson woven into this chapter
                         </p>
                       </div>
-                    )}
+                    )} */}
 
                     {/* Improvements chips */}
                     {hasPolished && normArr(humanNode?.current?.changesMade as string[]).length > 0 && (
