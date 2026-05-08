@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronDown, ChevronUp, Frame, Plus, X, ZoomIn } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Frame, Plus, User, X, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import {
   COVER_TEMPLATE_PNG_MAP,
 } from "@/components/shared/CoverTemplateSvgs";
 import { useCoverTemplates } from "@/hooks/useKnowledgeBase";
+import { useCharacters } from "@/hooks/useCharacters";
 
 // ─── Per-template field defaults ──────────────────────────────────────────────
 const TEMPLATE_FIELD_DEFAULTS: Record<
@@ -121,23 +122,22 @@ const TEMPLATE_FIELD_DEFAULTS: Record<
     ],
   },
   ct_modern_minimal: {
-    moodTheme: "Contemporary, clean, minimal, bold and modern",
-    colorStyle: "High contrast — off-white, bold black shapes, bold red accent",
-    typographyTitle: "Ultra-bold display — Anton, Bebas Neue, Impact",
+    moodTheme: "Contemporary, clean, minimal, sophisticated and modern",
+    colorStyle: "Clean off-white background, single near-black geometric shape, warm orange accent — minimal restrained palette with maximum negative space",
+    typographyTitle: "Modern geometric sans-serif — Futura, Montserrat, Gill Sans",
     typographyBody: "Clean geometric sans-serif, maximum legibility",
     lightingEffects: "",
-    foregroundLayer: "Character as clean graphical element, bold and graphic",
-    midgroundLayer: "Strong geometric shape as dominant focal element",
-    backgroundLayer:
-      "Clean off-white or light background with maximum negative space",
+    foregroundLayer: "Character as clean minimal graphic element, maximum negative space surrounding them",
+    midgroundLayer: "Single large bold geometric shape (circle, arc, or abstract brushstroke) as dominant focal element",
+    backgroundLayer: "Clean off-white or pale background, absolute minimum visual elements, Scandinavian design aesthetic",
     mainVisualConcept:
-      "Bold single geometric shape as dominant visual, character integrated as clean graphical focal point, strong white space",
+      "Single large geometric arc or circle dominates the cover, character as minimal clean focal point, clean off-white background, maximum breathing room — Scandinavian poster design aesthetic",
     characterDescription:
-      "Character rendered as clean minimal graphic element, strong silhouette",
+      "Character as minimal graphical element, clean restrained pose, surrounded by generous negative space",
     atmosphereMiddleGrade:
-      "Clean contemporary, sophisticated simplicity, strong visual tension through contrast",
+      "Clean contemporary, sophisticated simplicity, strong visual tension through negative space",
     atmosphereJunior:
-      "Bold playful geometric shapes, bright accent color, modern and fun",
+      "Bold clean geometric shapes, warm orange accent, modern and approachable",
     islamicMotifs: [],
   },
   ct_watercolor_dream: {
@@ -955,12 +955,14 @@ const AGE_FILTERS  = ["All", "Under 6", "Ages 6-8", "Ages 8-14"] as const;
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   cd: any;
+  universeId?: string;
   onSave: (update: object) => Promise<void>;
   isSaving: boolean;
 }
 
-export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
+export function KBCoverDesign({ cd, universeId, onSave, isSaving }: Props) {
   const { data: templates = [] } = useCoverTemplates();
+  const { data: allCharacters = [] } = useCharacters(universeId || undefined);
   const [moodFilter, setMoodFilter] = useState<string>("All");
   const [ageFilter, setAgeFilter] = useState<string>("All");
   const [previewTpl, setPreviewTpl] = useState<{ id: string; name: string; src: string } | null>(null);
@@ -1046,6 +1048,9 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
   const islamicMotifs = cd.islamicMotifs || [];
   const avoidCover = cd.avoidCover || [];
 
+  const validIds = (allCharacters as any[]).map((c: any) => c.id || c._id || "");
+  const selectedCount = (cd.characterMustInclude || []).filter((id: string) => validIds.includes(id)).length;
+
   return (
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">
@@ -1053,6 +1058,7 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
         matching front cover, spine, and back cover in the book builder.
       </p>
 
+      {/* ── 1. Cover Style Template ── */}
       <Section icon="🎨" title="Cover Style Template" defaultOpen>
         <p className="text-xs text-muted-foreground">
           Click any template below — all front-cover fields will populate, and a
@@ -1193,7 +1199,70 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
         )}
       </Section>
 
-      <Section icon="📖" title="Front Cover" defaultOpen={!!selectedTplId}>
+      {/* ── 2. Cover Characters ── */}
+      <Section icon="👤" title="Cover Characters" badge={selectedCount > 0 ? `${selectedCount} selected` : undefined} defaultOpen>
+        <p className="text-xs text-muted-foreground">
+          Select the main character(s) to appear on the front cover. Their visual DNA (appearance, outfit, features) is sent directly to the AI.
+        </p>
+        {(allCharacters as any[]).length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">
+            No characters found in this universe. Create characters first.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(allCharacters as any[]).map((char: any) => {
+              const charId = char.id || char._id || "";
+              const selected = (cd.characterMustInclude || []).includes(charId);
+              return (
+                <button
+                  key={charId}
+                  type="button"
+                  onClick={() => {
+                    const clean: string[] = (cd.characterMustInclude || []).filter((id: string) => validIds.includes(id));
+                    const next = selected ? clean.filter((id) => id !== charId) : [...clean, charId];
+                    patch({ characterMustInclude: next });
+                  }}
+                  className={cn(
+                    "relative flex flex-col items-center rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:shadow-md text-left",
+                    selected ? "border-rose-500 shadow-md" : "border-gray-200 hover:border-rose-300 bg-white"
+                  )}
+                >
+                  <div className="w-full aspect-square overflow-hidden bg-gray-100">
+                    {char.imageUrl ? (
+                      <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-8 h-8 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className={cn("w-full px-2 py-2 text-center", selected ? "bg-rose-50" : "bg-white")}>
+                    <p className={cn("text-xs font-bold leading-tight truncate", selected ? "text-rose-700" : "text-gray-800")}>
+                      {char.name}
+                    </p>
+                    {char.role && (
+                      <p className="text-[10px] text-muted-foreground capitalize mt-0.5">{char.role}</p>
+                    )}
+                  </div>
+                  {selected && (
+                    <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {selectedCount > 0 && (
+          <p className="text-[10px] text-rose-600 font-medium">
+            {selectedCount} character(s) selected — visual DNA will be used in AI cover generation
+          </p>
+        )}
+      </Section>
+
+      {/* ── 3. Front Cover ── */}
+      <Section icon="📖" title="Front Cover" defaultOpen={false}>
         <p className="text-xs text-muted-foreground">
           Book title and author are taken from your story — focus here on the visual scene.
           Title placement is handled automatically by the selected template.
@@ -1224,17 +1293,18 @@ export function KBCoverDesign({ cd, onSave, isSaving }: Props) {
           />
         </Field>
 
-        <Field label="Character Description" hint="Main character appearance on the cover (optional)">
+        <Field label="Character Description Override" hint="Optional — only used if no cover character is selected in the Characters section above">
           <LiveTextarea
             value={cd.characterDescription || ""}
-            placeholder="e.g. Silhouette of a young girl in abaya holding a lantern, facing away from viewer"
+            placeholder="e.g. Young girl in abaya holding a lantern, facing viewer with a warm smile"
             onChange={(v) => patch({ characterDescription: v })}
             rows={2}
           />
         </Field>
       </Section>
 
-      <Section icon="✨" title="Visual Style Settings" defaultOpen={!!selectedTplId}>
+      {/* ── 4. Visual Style Settings ── */}
+      <Section icon="✨" title="Visual Style Settings" defaultOpen={false}>
         <Field label="Title Typography" hint="Tap to select font style">
           <ImgTilePicker
             options={TYPO_TILES}

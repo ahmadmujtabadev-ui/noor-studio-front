@@ -91,7 +91,7 @@ const BASE_JUNIOR_BACKGROUND: KBAgeGroupBackground = {
   lightingStyle: "soft diffused daylight, even illumination, crisp and clear",
   timeOfDay: "afternoon",
   cameraHint: "medium",
-  locations: ["bedroom", "garden", "school classroom", "family kitchen", "park"],
+  locations: ["bedroom"],
   keyFeatures: [
     "Rounded soft shapes",
     "Warm safe lighting",
@@ -106,7 +106,7 @@ const BASE_MIDDLE_GRADE_BACKGROUND: KBAgeGroupBackground = {
   lightingStyle: "golden hour and soft dusk lighting with layered depth",
   timeOfDay: "golden-hour",
   cameraHint: "wide",
-  locations: ["library", "courtyard", "market street", "forest trail", "hilltop"],
+  locations: ["library"],
   keyFeatures: [
     "Three-layer depth",
     "Clear story movement through space",
@@ -407,7 +407,7 @@ const universalAdventure = createMiddleGradeTemplate({
   backgroundSettings: {
     middleGrade: {
       ...BASE_MIDDLE_GRADE_BACKGROUND,
-      locations: ["desert pass", "forest trail", "ruined observatory", "seaside port", "hidden library"],
+      locations: ["desert pass"],
       keyFeatures: [
         "Travel energy and forward motion",
         "Clear path or destination cue",
@@ -474,7 +474,7 @@ const universalAnimals = createUnderSixTemplate({
   backgroundSettings: {
     junior: {
       ...BASE_JUNIOR_BACKGROUND,
-      locations: ["garden", "meadow", "orchard", "pond edge", "backyard"],
+      locations: ["garden"],
       keyFeatures: [
         "Friendly animal companions",
         "Fresh greens and floral accents",
@@ -547,7 +547,7 @@ const islamicUnderSix = createUnderSixTemplate({
   backgroundSettings: {
     junior: {
       ...BASE_JUNIOR_BACKGROUND,
-      locations: ["bedroom", "family lounge", "masjid", "garden", "kitchen"],
+      locations: ["bedroom"],
       keyFeatures: [
         "Warm Islamic home details",
         "Simple geometric motifs",
@@ -612,7 +612,7 @@ const islamicMiddleGrade = createMiddleGradeTemplate({
   backgroundSettings: {
     middleGrade: {
       ...BASE_MIDDLE_GRADE_BACKGROUND,
-      locations: ["masjid courtyard", "desert dunes", "mountain path", "historic market", "library"],
+      locations: ["masjid courtyard"],
       keyFeatures: [
         "Islamic architectural detail in the environment",
         "Epic scale with emotional warmth",

@@ -1380,6 +1380,7 @@ export default function KnowledgeBasePage() {
         return (
           <KBCoverDesign
             cd={cd}
+            universeId={(selectedKB as any)?.universeId?._id || (selectedKB as any)?.universeId || ""}
             onSave={async (update) => { await save(update as any); }}
             isSaving={updateMutation.isPending}
           />
