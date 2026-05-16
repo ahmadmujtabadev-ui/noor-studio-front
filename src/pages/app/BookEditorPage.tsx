@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/useAuth";
 import { SubscriptionGateModal } from "@/components/shared/SubscriptionGateModal";
+import { ReportButton } from "@/components/shared/ReportButton";
 import { tokenStorage } from "@/lib/api/client";
 import { reviewApi } from "@/lib/api/review.api";
 
@@ -246,7 +247,7 @@ function ExportDialog({ open, onClose, onExport, exporting, pages, projectTitle 
   );
 }
 
-const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "https://nsb-bacl.vercel.app" || "http://localhost:9008";
+const API_BASE = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:9008" ||  "https://nsb-bacl.vercel.app" 
 
 const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   v: "select", V: "select", t: "text", T: "text",
@@ -863,7 +864,10 @@ export default function BookEditorPage() {
           <span className="text-[10px] text-white/25">Tool: <span className="text-white/40 capitalize">{activeTool}</span></span>
           <span className="text-[10px] text-white/25">Zoom: <span className="text-white/40">{Math.round(scale * 100)}%</span></span>
           {selectedObj && <span className="text-[10px] text-white/25">Selected: <span className="text-white/40">{selectedObj.type}</span></span>}
-          <span className="ml-auto text-[10px] text-white/20">Press V·T·R·C to switch tools · Delete to remove</span>
+          <div className="ml-auto flex items-center gap-3">
+            <ReportButton projectId={projectId ?? undefined} className="h-5 px-1.5 text-white/30 hover:text-white/60 hover:bg-white/5" />
+            <span className="text-[10px] text-white/20">Press V·T·R·C to switch tools · Delete to remove</span>
+          </div>
         </div>
       </div>
     </>

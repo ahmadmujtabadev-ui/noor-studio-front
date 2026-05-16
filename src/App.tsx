@@ -33,6 +33,12 @@ import BillingCancelPage from "./pages/app/BillingCancelPage";
 import DemoViewerPage from "./pages/DemoViewerPage";
 import AuthPage from "./pages/AuthPage";
 import { AuthGuard } from "./components/auth/AuthGuard";
+import { AdminGuard } from "./components/admin/AdminGuard";
+import AdminPage from "./pages/admin/AdminPage";
+import PreferencesPage from "./pages/app/PreferencesPage";
+import { CookieConsentBanner } from "./components/shared/CookieConsentBanner";
+import { OnboardingTour } from "./components/shared/OnboardingTour";
+import { NpsWidget } from "./components/shared/NpsWidget";
 import NotFound from "./pages/NotFound";
 
 // ─── React Query client ───────────────────────────────────────────────────────
@@ -79,6 +85,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthBootstrap />
+          <CookieConsentBanner />
+          <OnboardingTour />
+          <NpsWidget />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
@@ -117,10 +126,21 @@ const App = () => (
                     <Route path="billing" element={<BillingPage />} />
                     <Route path="billing/success" element={<BillingSuccessPage />} />
                     <Route path="billing/cancel" element={<BillingCancelPage />} />
+                    <Route path="preferences" element={<PreferencesPage />} />
                     <Route path="settings" element={<DashboardPage />} />
                     <Route path="help" element={<DashboardPage />} />
                   </Routes>
                 </AuthGuard>
+              }
+            />
+
+            {/* Admin Panel */}
+            <Route
+              path="/admin"
+              element={
+                <AdminGuard>
+                  <AdminPage />
+                </AdminGuard>
               }
             />
 

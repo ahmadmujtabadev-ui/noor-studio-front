@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NoorStudio — Pre-Launch QA Test Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #1a1a2e; background: #fff; padding: 32px 40px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 13px; margin-bottom: 6px; }
+  .meta { font-size: 11px; color: #888; margin-bottom: 32px; }
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #fff; background: #2d3a8c; padding: 6px 12px; border-radius: 4px 4px 0 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .num { background: rgba(255,255,255,0.25); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f2ff; font-size: 11px; font-weight: 600; text-align: left; padding: 7px 10px; border: 1px solid #dde; color: #444; }
+  td { padding: 7px 10px; border: 1px solid #e5e7f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafe; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+  .tag-backend  { background: #e8f5e9; color: #2e7d32; }
+  .tag-frontend { background: #e3f2fd; color: #1565c0; }
+  .tag-both     { background: #f3e5f5; color: #6a1b9a; }
+  .tag-admin    { background: #fff3e0; color: #e65100; }
+  .check { width: 16px; height: 16px; border: 1.5px solid #bbb; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  .pass-col { width: 70px; text-align: center; }
+  .id-col { width: 40px; font-weight: 600; color: #2d3a8c; }
+  .type-col { width: 80px; }
+  .area-col { width: 110px; }
+  .feature-col { width: 160px; font-weight: 600; }
+  .how-col { color: #333; line-height: 1.5; }
+  .expected-col { color: #444; font-size: 12px; line-height: 1.5; }
+  .note { font-size: 11px; color: #888; font-style: italic; margin-top: 2px; }
+  .page-break { page-break-before: always; }
+  .header-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #2d3a8c; padding-bottom: 16px; }
+  .logo { font-size: 18px; font-weight: 800; color: #2d3a8c; }
+  .logo span { color: #f59e0b; }
+  .status-legend { display: flex; gap: 16px; font-size: 11px; color: #666; align-items: center; }
+  .status-legend span { display: flex; align-items: center; gap: 4px; }
+  code { font-family: 'Menlo', 'Courier New', monospace; font-size: 11px; background: #f1f3f8; padding: 1px 5px; border-radius: 3px; color: #c0392b; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .summary-card { border: 1px solid #dde; border-radius: 6px; padding: 12px 16px; }
+  .summary-card .n { font-size: 28px; font-weight: 800; color: #2d3a8c; }
+  .summary-card .l { font-size: 11px; color: #888; margin-top: 2px; }
+  @media print {
+    body { padding: 20px 28px; font-size: 12px; }
+    .page-break { page-break-before: always; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header-bar">
+  <div>
+    <div class="logo">Noor<span>Studio</span></div>
+    <h1 style="margin-top:4px">Pre-Launch QA Test Report</h1>
+    <div class="subtitle">All implemented features — test checklist &amp; expected results</div>
+    <div class="meta">Generated: May 2026 &nbsp;|&nbsp; Tester: _____________________ &nbsp;|&nbsp; Environment: _____________________</div>
+  </div>
+  <div class="status-legend">
+    <span><span class="check"></span> Pass</span>
+    <span><span class="check" style="background:#fee2e2;border-color:#f87171"></span> Fail</span>
+    <span><span class="check" style="background:#fef9c3;border-color:#fbbf24"></span> Partial</span>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="summary-grid">
+  <div class="summary-card"><div class="n">16</div><div class="l">Features Implemented</div></div>
+  <div class="summary-card"><div class="n">8</div><div class="l">Backend Routes / Models</div></div>
+  <div class="summary-card"><div class="n">10</div><div class="l">Frontend Pages / Components</div></div>
+  <div class="summary-card"><div class="n">5</div><div class="l">P0 Launch Blockers Fixed</div></div>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION A — SECURITY & AUTH -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">A — Security &amp; Authentication <span class="num">4 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">A-01</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Password minimum 10 chars</td>
+        <td>Go to <code>/auth</code> → Sign Up. Try password <code>short123</code> (8 chars). Then try <code>ValidPass10!</code>.</td>
+        <td>Short password is rejected with validation error. 10-char password proceeds.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">A-02</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Common password block</td>
+        <td>Try to sign up with password <code>password123</code> or <code>qwerty12345</code>.</td>
+        <td>Server returns error: "This password is too common."</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">A-03</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Disposable email block</td>
+        <td>Sign up with <code>test@mailinator.com</code> or <code>test@tempmail.org</code>.</td>
+        <td>OTP not sent. Error: "Disposable email addresses are not allowed."</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">A-04</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Banned user login block</td>
+        <td>In Admin panel, ban a test account. Then try to log in with that account.</td>
+        <td>Login rejected with: "Your account has been suspended. Contact support@noorstudio.app."</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION B — SESSION MANAGEMENT -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">B — Session Management <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">B-01</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Active sessions list</td>
+        <td>Log in on two different browsers. Go to <code>/app/preferences</code> → "Active sessions" section.</td>
+        <td>Both sessions appear with device type, IP address, and "X time ago" last-active. Current session marked with "Current" badge.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">B-02</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Logout all other devices</td>
+        <td>On Browser A, click "Sign out all other devices." Switch to Browser B and try to navigate to any <code>/app/*</code> route.</td>
+        <td>Browser B is redirected to <code>/auth</code>. Session in Browser A remains active.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">B-03</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>New device login alert email</td>
+        <td>Log in from a different IP than the last login (e.g., use a VPN or different network). Check the registered email inbox.</td>
+        <td>Email received with subject "New device login detected" containing the IP address and approximate time.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION C — EMAIL PREFERENCES -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">C — Email Preferences &amp; Unsubscribe <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">C-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Preferences page loads</td>
+        <td>Navigate to <code>/app/preferences</code>. Observe the three sections.</td>
+        <td>Page loads with: (1) Email notifications section with 4 toggles, (2) Active sessions section, (3) Privacy &amp; data section.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">C-02</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Save email preferences</td>
+        <td>Toggle off "Marketing &amp; promotions." A "Save changes" button appears. Click it.</td>
+        <td>Toast: "Preferences saved." Refresh the page — toggle remains off.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">C-03</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>One-click unsubscribe link</td>
+        <td>Check any marketing email sent by the platform. Click the "Unsubscribe" link at the bottom.</td>
+        <td>Browser opens confirmation page. All marketing emails are disabled for that account without requiring login.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION D — GDPR & DATA EXPORT -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">D — GDPR Data Export <span class="num">2 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">D-01</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Download my data</td>
+        <td>Go to <code>/app/preferences</code> → "Privacy &amp; data" section. Click "Download my data."</td>
+        <td>Browser downloads a JSON file containing the user's profile, projects, characters, and credit transactions.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">D-02</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Export unauthenticated guard</td>
+        <td>Open a private window and hit <code>GET /api/user/export</code> directly without a token.</td>
+        <td>Server returns <code>401 Unauthorized</code>. No data leaks.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION E — REPORT BUTTON -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">E — In-Product Report Button <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">E-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Report button in editor</td>
+        <td>Open any project at <code>/app/projects/:id</code>. Look at the bottom status bar (dark bar at the very bottom of the editor).</td>
+        <td>A small flag icon button is visible in the status bar. Hovering shows "Report this content."</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">E-02</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Report dialog flow</td>
+        <td>Click the flag icon. Select "Inappropriate content" from the Type dropdown. Add a description. Click "Submit Report."</td>
+        <td>Dialog shows a green checkmark success state: "Report submitted. Our team will review this shortly."</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">E-03</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Report appears in admin queue</td>
+        <td>After submitting a report, go to <code>/admin</code> → Reports tab.</td>
+        <td>The report appears in the list with status "pending". Admin can click Review or Dismiss. "Note" button allows adding an internal note.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION F — ADMIN PANEL -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">F — Admin Panel <span class="num">6 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">F-01</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Admin access guard</td>
+        <td>Log in as a regular user. Navigate to <code>/admin</code>.</td>
+        <td>Access denied — user sees an error or is redirected. Only <code>role: admin</code> accounts can access.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">F-02</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Stats dashboard</td>
+        <td>Log in as admin. Open <code>/admin</code>.</td>
+        <td>Six stat cards show: Total Users, Signups Today, Active Subs, Banned, Projects, AI Cost Today. Cards auto-refresh every 60 s.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">F-03</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Ban / Unban user</td>
+        <td>In Users tab, find a test account. Click the 3-dot menu → "Ban user." Enter a reason. Then unban via the same menu.</td>
+        <td>User row shows banned indicator after ban. Banned count in stat card increments. Unban restores normal status. The banned user cannot log in while banned.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">F-04</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Adjust credits</td>
+        <td>In Users tab → 3-dot menu → "Adjust credits." Enter +50. Submit.</td>
+        <td>Success toast. User's credit count in the table updates immediately.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">F-05</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>View user books</td>
+        <td>In Users tab → 3-dot menu → "View books."</td>
+        <td>Modal opens listing all books by that user with title, status, and creation date.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">F-06</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Refund via Stripe</td>
+        <td>In Users tab → 3-dot menu → "Refund." Enter a valid Stripe charge ID and amount.</td>
+        <td>Success toast. Refund processed in Stripe (verify in Stripe dashboard).</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION G — MARGIN DASHBOARD -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">G — Admin Margin Dashboard <span class="num">2 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">G-01</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Margin tab loads</td>
+        <td>Go to <code>/admin</code> → click "Margin" tab.</td>
+        <td>Three metric cards appear: Est. MRR ($), AI Cost 30d ($), Gross Margin (%). Gross margin is color-coded: green ≥60%, amber ≥30%, red otherwise.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">G-02</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>Daily chart</td>
+        <td>Observe the "Daily Revenue vs. AI Cost" bar chart below the metric cards.</td>
+        <td>Up to 14 rows shown, each with a date, blue revenue bar, red cost bar, and numeric labels on the right.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION H — COOKIE CONSENT -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">H — Cookie Consent Banner <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">H-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Banner appears for new users</td>
+        <td>Open the app in an incognito window (or clear <code>localStorage</code>). Navigate to any page.</td>
+        <td>Cookie consent banner appears at the bottom of the page with "Reject non-essential" and "Accept all" buttons.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">H-02</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Accept persists</td>
+        <td>Click "Accept all." Refresh the page.</td>
+        <td>Banner does not reappear. <code>localStorage</code> key <code>noor_cookie_consent</code> is set to <code>"all"</code>.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">H-03</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Reject persists</td>
+        <td>Clear localStorage. Click "Reject non-essential." Refresh.</td>
+        <td>Banner does not reappear. <code>noor_cookie_consent</code> is set to <code>"essential"</code>.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION I — ONBOARDING TOUR -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">I — In-App Onboarding Tour <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">I-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Tour appears for new accounts</td>
+        <td>Create a fresh account (account age &lt;7 days). Clear <code>localStorage</code> key <code>noor_onboarding_seen</code>. Wait ~2 seconds after login.</td>
+        <td>Onboarding tour dialog opens automatically showing Step 1: "Create your Universe" with a Sparkles header and progress dots.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">I-02</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Tour navigation</td>
+        <td>Click "Next" through all 4 steps: Universe → Characters → Knowledge Base → Generate Book.</td>
+        <td>Each step shows the correct icon, title, description, and action button. Progress dots update. On step 4 the "Create my first book" button links to <code>/app/books/new</code>.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">I-03</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Skip persists</td>
+        <td>Click "Skip tour." Refresh the page.</td>
+        <td>Tour does not reappear. <code>noor_onboarding_seen</code> is set to <code>"true"</code> in localStorage.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION J — NPS WIDGET -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">J — NPS Feedback Widget <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">J-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Widget appears (7-day+ accounts)</td>
+        <td>Use an account older than 7 days. Clear <code>noor_nps_last_shown</code> from localStorage. Wait ~10 seconds on any app page.</td>
+        <td>NPS widget slides in at the bottom-right corner with "Quick feedback" header and score buttons 0–10.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">J-02</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Score + comment submission</td>
+        <td>Select score 8. A comment box appears. Enter optional comment. Click "Submit."</td>
+        <td>Widget shows green checkmark "Thank you!" state. Score and comment are stored — verify via <code>GET /api/feedback</code> (admin endpoint).</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">J-03</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Minimize &amp; dismiss</td>
+        <td>Click the "&gt;" chevron button to minimize. Then click the floating "Share feedback" button to restore. Click X to dismiss.</td>
+        <td>Minimize collapses to a floating pill button. Restore brings back the full widget. Dismiss hides permanently for 30 days.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE BREAK -->
+<div class="page-break"></div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION K — CANCELLATION SAVE FLOW -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">K — Cancellation Save Flow <span class="num">4 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">K-01</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Modal opens (no confirm dialog)</td>
+        <td>Go to <code>/app/billing</code>. Click "Cancel Plan" (visible when subscription is active).</td>
+        <td>A modal opens with the survey step — NOT the browser's native <code>confirm()</code> dialog. Title: "Before you go — why are you canceling?"</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">K-02</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Survey step</td>
+        <td>Select a reason (e.g., "It's too expensive"). Optionally add feedback. Click "Continue."</td>
+        <td>Survey is submitted to <code>POST /api/payments/cancel-survey</code>. Modal advances to the "We'd hate to see you go" offer step.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">K-03</td>
+        <td><span class="tag tag-frontend">Frontend</span></td>
+        <td>Save offer — keep plan</td>
+        <td>On the offer step, click the "Keep your plan + credits" card.</td>
+        <td>Toast: "Keep creating! Your plan remains active." Modal closes. Subscription unchanged.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">K-04</td>
+        <td><span class="tag tag-both">Full Stack</span></td>
+        <td>Confirm cancellation</td>
+        <td>On offer step, click "No thanks, still cancel." On confirm step, click "Yes, cancel subscription."</td>
+        <td>Subscription cancelled in Stripe (cancelAtPeriodEnd=true). Toast: "Subscription cancelled." Billing page shows "Cancels on [date]" badge.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION L — CREDIT ROLLOVER -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">L — Credit Rollover on Upgrade <span class="num">2 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">L-01</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Upgrade bonus credits</td>
+        <td>Note current credit balance. Upgrade from "Creator" to "Author" plan via <code>/app/billing</code>.</td>
+        <td>After upgrade, credit balance increases by +50 (Author upgrade bonus). Transaction history shows "Upgrade bonus: creator → author".</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">L-02</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Credits are never reset on upgrade</td>
+        <td>Check credit balance before and after upgrading from "Creator" to "Studio."</td>
+        <td>Existing credits are preserved. Studio upgrade adds +150 bonus on top of existing balance.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SECTION M — AI USAGE & FEEDBACK (BACKEND) -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="section-title">M — AI Usage &amp; Feedback Endpoints <span class="num">3 tests</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th class="id-col">#</th>
+        <th class="type-col">Layer</th>
+        <th class="feature-col">Feature</th>
+        <th class="how-col">How to test</th>
+        <th class="expected-col">Expected result</th>
+        <th class="pass-col">Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="id-col">M-01</td>
+        <td><span class="tag tag-admin">Admin</span></td>
+        <td>AI Usage tab</td>
+        <td>Go to <code>/admin</code> → "AI Usage" tab. Toggle between 7d / 14d / 30d views.</td>
+        <td>Table updates with provider, model, stage, success/fail icon, and token counts. Summary bar shows total calls, success rate, tokens in/out.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">M-02</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Feedback endpoint</td>
+        <td>Submit NPS score via the widget (see J-02). Then call <code>GET /api/feedback</code> as admin.</td>
+        <td>Response includes <code>npsAverage</code> and a list of feedback records with type, score, comment, page, and timestamp.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+      <tr>
+        <td class="id-col">M-03</td>
+        <td><span class="tag tag-backend">Backend</span></td>
+        <td>Unauthenticated feedback blocked</td>
+        <td>POST to <code>/api/feedback</code> without an Authorization header.</td>
+        <td>Server returns <code>401 Unauthorized</code>.</td>
+        <td class="pass-col"><span class="check"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────── -->
+<!-- SIGN-OFF -->
+<!-- ───────────────────────────────────────────────────────────── -->
+<div style="margin-top: 32px; border-top: 2px solid #2d3a8c; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-start;">
+  <div>
+    <div style="font-size: 11px; color: #888; margin-bottom: 6px;">TOTAL: 41 test cases across 13 sections</div>
+    <div style="font-size: 11px; color: #888;">Backend routes added: 14 &nbsp;|&nbsp; New models: 4 (Session, Feedback, Report, StripeEvent) &nbsp;|&nbsp; New frontend components: 10</div>
+  </div>
+  <div style="text-align: right;">
+    <div style="font-size: 11px; color: #888; margin-bottom: 20px;">Tester sign-off</div>
+    <div style="width: 180px; border-top: 1px solid #bbb; font-size: 11px; color: #aaa; padding-top: 4px;">Signature &amp; Date</div>
+  </div>
+</div>
+
+<div style="margin-top: 16px; font-size: 10px; color: #bbb; text-align: center;">
+  NoorStudio Pre-Launch QA — Confidential — Generated by Claude Code
+</div>
+
+</body>
+</html>

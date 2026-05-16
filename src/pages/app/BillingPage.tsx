@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { CancellationSaveModal } from "@/components/shared/CancellationSaveModal";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +79,8 @@ export default function BillingPage() {
   const cancelMutation = useCancelSubscription();
   const portalMutation = useCreatePortalSession();
 
+  const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
+
   const credits = user?.credits ?? 0;
   const plan = (user?.plan ?? "free") as PlanId;
   const subscriptionStatus = user?.subscriptionStatus;
@@ -111,15 +115,14 @@ export default function BillingPage() {
     }
   };
 
-  const handleCancelSubscription = async () => {
-    if (!confirm("Cancel your subscription? You'll keep access until the end of your billing period.")) return;
-    try {
-      await cancelMutation.mutateAsync();
-      await refreshUser();
-      toast({ title: "Subscription cancelled", description: "You'll keep access until " + (periodEnd ?? "period end") });
-    } catch (err) {
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to cancel", variant: "destructive" });
-    }
+  const handleCancelSubscription = () => {
+    setCancellationModalOpen(true);
+  };
+
+  const performCancelSubscription = async () => {
+    await cancelMutation.mutateAsync();
+    await refreshUser();
+    toast({ title: "Subscription cancelled", description: "You'll keep access until " + (periodEnd ?? "period end") });
   };
 
   const handleManageBilling = async () => {
@@ -131,6 +134,13 @@ export default function BillingPage() {
   };
 
   return (
+    <>
+    <CancellationSaveModal
+      open={cancellationModalOpen}
+      periodEnd={periodEnd}
+      onConfirmCancel={performCancelSubscription}
+      onClose={() => setCancellationModalOpen(false)}
+    />
     <AppLayout title="Billing & Plan" subtitle="Manage your plans, add-ons, purchases, and invoices.">
       <div className="space-y-6">
 
@@ -548,5 +558,6 @@ export default function BillingPage() {
 
       </div>
     </AppLayout>
+    </>
   );
 }

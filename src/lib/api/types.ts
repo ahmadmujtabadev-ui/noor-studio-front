@@ -8,10 +8,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  role: 'user' | 'admin';
   credits: number;
   plan: 'free' | 'creator' | 'author' | 'studio';
   isEmailVerified?: boolean;
   twoFactorEnabled?: boolean;
+  isBanned?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   subscriptionStatus?: 'active' | 'past_due' | 'canceled' | 'trialing' | 'inactive';
