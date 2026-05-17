@@ -12,7 +12,7 @@ export const authApi = {
     api.post<{ message: string }>('/api/auth/change-password', data),
 
   // ── Signup (OTP flow) ────────────────────────────────────────────────────
-  sendSignupOtp: (data: { name: string; email: string; password: string }) =>
+  sendSignupOtp: (data: { name: string; email: string; password: string; birthYear: number }) =>
     api.post<{ message: string }>('/api/auth/send-signup-otp', data, { auth: false }),
 
   verifySignupOtp: (data: { email: string; otp: string }) =>

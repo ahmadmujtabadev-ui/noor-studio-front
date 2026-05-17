@@ -112,9 +112,11 @@ export const adminApi = {
 
   getMargin: () =>
     api.get<{
-      mrr: number;
-      aiCost: number;
-      grossMarginPct: number;
-      daily: Array<{ date: string; revenue: number; cost: number; margin: number }>;
+      estimatedMrr: number;
+      aiCost30d: number;
+      grossProfit30d: number;
+      grossMarginPct: string | null;
+      planBreakdown: Array<{ _id: string; count: number }>;
+      dailyCostSeries: Array<{ date: string; calls: number; aiCost: number }>;
     }>('/api/admin/margin'),
 };

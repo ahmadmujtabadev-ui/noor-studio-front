@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, BookOpen, Library, FolderKanban, Globe,
   CreditCard, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight,
-  Plus, LogOut, Zap, Check,
+  Plus, LogOut, Zap, Check, ShieldAlert,
   Layers, Wand2, ImageIcon, BookMarked, Rocket, PenLine,
   Moon, Feather, Frame, Brush, LayoutGrid,
 } from "lucide-react";
@@ -270,6 +270,19 @@ export function AppSidebar() {
           {bottomNavItems.map((item) => (
             <NavLink key={item.href} item={item} />
           ))}
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+                "text-amber-400 hover:bg-amber-400/10",
+                isRTL && "flex-row-reverse"
+              )}
+            >
+              <ShieldAlert className={cn("w-5 h-5 shrink-0", collapsed && "mx-auto")} />
+              {!collapsed && <span className="text-sm font-medium">Admin Panel</span>}
+            </Link>
+          )}
         </nav>
       </div>
 

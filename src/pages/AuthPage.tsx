@@ -30,6 +30,7 @@ const AuthPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [birthYear, setBirthYear] = useState("");
 
   // OTP / multi-step state
   const [otp, setOtp] = useState("");
@@ -72,7 +73,7 @@ const AuthPage = () => {
       } else if ("token" in res && res.token) {
         setAuth(res.token, res.user);
         toast.success("Welcome back!");
-        navigate(from, { replace: true });
+        navigate(res.user.role === 'admin' ? '/admin' : from, { replace: true });
       }
     } catch (error) {
       toast.error(error instanceof NoorApiError ? error.message : "Login failed");
@@ -84,11 +85,14 @@ const AuthPage = () => {
   // ── Signup ─────────────────────────────────────────────────────────────────
 
   const handleSignup = async () => {
-    if (!name || !email || !password) return toast.error("Please fill in all fields");
-    if (password.length < 8) return toast.error("Password must be at least 8 characters");
+    if (!name || !email || !password || !birthYear) return toast.error("Please fill in all fields");
+    if (password.length < 10) return toast.error("Password must be at least 10 characters");
+    const yearNum = parseInt(birthYear, 10);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear() - 13)
+      return toast.error("You must be at least 13 years old to create an account");
     setLoading(true);
     try {
-      await authApi.sendSignupOtp({ name, email, password });
+      await authApi.sendSignupOtp({ name, email, password, birthYear: yearNum });
       setOtpEmail(email);
       setOtp("");
       setResendCooldown(60);
@@ -176,7 +180,7 @@ const AuthPage = () => {
 
   const handleResetPassword = async () => {
     if (!newPassword) return toast.error("Please enter a new password");
-    if (newPassword.length < 8) return toast.error("Password must be at least 8 characters");
+    if (newPassword.length < 10) return toast.error("Password must be at least 10 characters");
     if (newPassword !== confirmPassword) return toast.error("Passwords do not match");
     setLoading(true);
     try {
@@ -332,12 +336,26 @@ const AuthPage = () => {
                       <Input
                         id="signup-password"
                         type="password"
-                        placeholder="Min. 8 characters"
+                        placeholder="Min. 10 characters"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-birth-year">Year of Birth</Label>
+                      <Input
+                        id="signup-birth-year"
+                        type="number"
+                        placeholder="e.g. 1990"
+                        min={1900}
+                        max={new Date().getFullYear() - 13}
+                        value={birthYear}
+                        onChange={(e) => setBirthYear(e.target.value)}
+                        disabled={loading}
                         onKeyDown={(e) => e.key === "Enter" && handleSignup()}
                       />
+                      <p className="text-xs text-muted-foreground">You must be at least 13 years old.</p>
                     </div>
                     <Button className="w-full mt-2" onClick={handleSignup} disabled={loading}>
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -554,7 +572,7 @@ const AuthPage = () => {
                 <Input
                   id="new-password"
                   type="password"
-                  placeholder="Min. 8 characters"
+                  placeholder="Min. 10 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={loading}
