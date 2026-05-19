@@ -55,9 +55,20 @@ export interface AdminReport {
   createdAt: string;
 }
 
+export interface AdminFeedback {
+  _id: string;
+  userId?: { _id: string; name: string; email: string };
+  type: 'nps' | 'cancellation' | 'general';
+  score?: number;
+  comment?: string;
+  page?: string;
+  createdAt: string;
+}
+
 export interface AIUsageRecord {
   _id: string;
   id: string;
+  userId?: { _id: string; name: string; email: string };
   provider: string;
   model?: string;
   stage?: string;
@@ -119,4 +130,10 @@ export const adminApi = {
       planBreakdown: Array<{ _id: string; count: number }>;
       dailyCostSeries: Array<{ date: string; calls: number; aiCost: number }>;
     }>('/api/admin/margin'),
+
+  getFeedback: (params?: { type?: string; page?: number; limit?: number }) =>
+    api.get<{ feedback: AdminFeedback[]; total: number; page: number; totalPages: number; npsAverage: string | null; npsCount: number }>(
+      '/api/admin/feedback',
+      { params }
+    ),
 };

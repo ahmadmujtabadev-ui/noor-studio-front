@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminApi, type AdminUser, type AdminReport, type AIUsageRecord } from '@/lib/api/admin.api';
+import { adminApi, type AdminUser, type AdminReport, type AIUsageRecord, type AdminFeedback } from '@/lib/api/admin.api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useLogout } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import {
   LayoutDashboard, Loader2, MoreHorizontal, Ban,
   BookCopy, Coins, RefreshCw, CheckCircle2, XCircle,
   ChevronLeft, ChevronRight, Search, Cpu, ShieldCheck,
-  Sparkles, Flag,
+  Sparkles, Flag, MessageSquare, Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -98,30 +98,45 @@ function BooksDialog({ user, onClose }: { user: AdminUser; onClose: () => void }
   });
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex flex-col w-full max-w-2xl max-h-[85vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Books by {user.name}</DialogTitle>
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </DialogHeader>
-        {isLoading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : !data?.books?.length ? (
-          <p className="py-6 text-center text-muted-foreground">No books yet</p>
-        ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {data.books.map((b) => (
-                <TableRow key={b._id}>
-                  <TableCell className="font-medium">{b.title || 'Untitled'}</TableCell>
-                  <TableCell><Badge variant="outline" className="capitalize">{b.status || 'draft'}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground">{fmt(b.createdAt)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        <DialogFooter><Button variant="outline" onClick={onClose}>Close</Button></DialogFooter>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : !data?.books?.length ? (
+            <p className="py-6 text-center text-muted-foreground">No books yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="w-32">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.books.map((b) => (
+                    <TableRow key={b._id}>
+                      <TableCell className="font-medium max-w-xs">
+                        <p className="truncate">{b.title || 'Untitled'}</p>
+                      </TableCell>
+                      <TableCell><Badge variant="outline" className="capitalize">{b.status || 'draft'}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{fmt(b.createdAt)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="shrink-0">
+          <p className="text-xs text-muted-foreground mr-auto">{data?.total ?? 0} books total</p>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -504,23 +519,38 @@ function AIUsageTab() {
         </div>
       </div>
 
-      <div className="rounded-xl border bg-white overflow-hidden">
+      <div className="rounded-xl border bg-white overflow-hidden overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead>Time</TableHead><TableHead>Provider</TableHead><TableHead>Stage</TableHead>
-              <TableHead>Status</TableHead><TableHead className="text-right">Tokens In</TableHead><TableHead className="text-right">Tokens Out</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Tokens In</TableHead>
+              <TableHead className="text-right">Tokens Out</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
             ) : usage.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="py-16 text-center text-muted-foreground">No AI usage in the last {days} days</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-16 text-center text-muted-foreground">No AI usage in the last {days} days</TableCell></TableRow>
             ) : (
               usage.slice(0, 200).map((u: AIUsageRecord) => (
                 <TableRow key={u._id}>
-                  <TableCell className="text-xs text-muted-foreground font-mono">{timeAgo(u.createdAt)}</TableCell>
+                  <TableCell>
+                    {u.userId ? (
+                      <div>
+                        <p className="text-sm font-medium">{u.userId.name}</p>
+                        <p className="text-xs text-muted-foreground">{u.userId.email}</p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground font-mono whitespace-nowrap">{timeAgo(u.createdAt)}</TableCell>
                   <TableCell>
                     <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold capitalize', PROVIDER_COLOR[u.provider] ?? 'bg-slate-100 text-slate-600')}>
                       {u.provider}
@@ -615,14 +645,140 @@ function MarginTab() {
   );
 }
 
+// ─── Feedback Tab ─────────────────────────────────────────────────────────────
+
+function FeedbackTab() {
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['admin', 'feedback', typeFilter, page],
+    queryFn: () => adminApi.getFeedback({
+      type: typeFilter === 'all' ? undefined : typeFilter,
+      page,
+      limit: 20,
+    }),
+    placeholderData: (prev) => prev,
+  });
+
+  const feedback = data?.feedback ?? [];
+
+  const TYPE_COLORS: Record<string, string> = {
+    nps:          'bg-blue-100 text-blue-700 border-blue-200',
+    cancellation: 'bg-red-100 text-red-700 border-red-200',
+    general:      'bg-slate-100 text-slate-600',
+  };
+
+  function ScoreStars({ score }: { score?: number }) {
+    if (score == null) return <span className="text-muted-foreground text-sm">—</span>;
+    return (
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <Star
+            key={i}
+            className={cn('h-3 w-3', i < score ? 'fill-amber-400 text-amber-400' : 'text-slate-200')}
+          />
+        ))}
+        <span className="ml-1.5 text-sm font-semibold text-foreground">{score}/10</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {data?.npsCount ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Avg NPS Score</p>
+            <p className="text-3xl font-bold text-foreground">{data.npsAverage ?? '—'}<span className="text-lg text-muted-foreground font-normal">/10</span></p>
+          </div>
+          <div className="rounded-xl border bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">NPS Responses</p>
+            <p className="text-3xl font-bold text-foreground">{data.npsCount}</p>
+          </div>
+          <div className="rounded-xl border bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Total Feedback</p>
+            <p className="text-3xl font-bold text-foreground">{data.total}</p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Feedback</SelectItem>
+            <SelectItem value="nps">NPS</SelectItem>
+            <SelectItem value="cancellation">Cancellation</SelectItem>
+            <SelectItem value="general">General</SelectItem>
+          </SelectContent>
+        </Select>
+        {isFetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          {data && <span>{data.total} responses · page {data.page} of {data.totalPages}</span>}
+          <Button variant="outline" size="icon" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => setPage((p) => p + 1)} disabled={!data || page >= data.totalPages}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>User</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Score</TableHead>
+              <TableHead>Comment</TableHead>
+              <TableHead>Page</TableHead>
+              <TableHead>When</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={6} className="py-16 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+            ) : feedback.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="py-16 text-center text-muted-foreground">No feedback found</TableCell></TableRow>
+            ) : (
+              feedback.map((f: AdminFeedback) => (
+                <TableRow key={f._id}>
+                  <TableCell>
+                    {f.userId ? (
+                      <>
+                        <p className="text-sm font-medium">{f.userId.name}</p>
+                        <p className="text-xs text-muted-foreground">{f.userId.email}</p>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Anonymous</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={cn('text-xs border capitalize', TYPE_COLORS[f.type] ?? '')}>{f.type}</Badge>
+                  </TableCell>
+                  <TableCell><ScoreStars score={f.score} /></TableCell>
+                  <TableCell className="max-w-[280px]">
+                    <p className="text-sm text-muted-foreground line-clamp-2">{f.comment || '—'}</p>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{f.page || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{timeAgo(f.createdAt)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
 
-type AdminTab = 'dashboard' | 'users' | 'reports' | 'ai' | 'margin';
+type AdminTab = 'dashboard' | 'users' | 'reports' | 'ai' | 'margin' | 'feedback';
 
 const NAV = [
   { id: 'dashboard' as AdminTab, label: 'Dashboard',  icon: LayoutDashboard },
   { id: 'users'     as AdminTab, label: 'Users',       icon: Users },
   { id: 'reports'   as AdminTab, label: 'Reports',     icon: Flag },
+  { id: 'feedback'  as AdminTab, label: 'Feedback',    icon: MessageSquare },
   { id: 'ai'        as AdminTab, label: 'AI Usage',    icon: Cpu },
   { id: 'margin'    as AdminTab, label: 'Margin',      icon: TrendingUp },
 ];
@@ -647,6 +803,7 @@ export default function AdminPage() {
     dashboard: { title: 'Dashboard',       sub: 'Platform overview and key metrics' },
     users:     { title: 'Users',           sub: 'Manage accounts, credits, plans, and access' },
     reports:   { title: 'Reports',         sub: 'Review user-submitted content reports' },
+    feedback:  { title: 'Feedback',        sub: 'NPS scores, cancellation reasons, and general feedback' },
     ai:        { title: 'AI Usage',        sub: 'Monitor API calls, token usage, and provider performance' },
     margin:    { title: 'Margin',          sub: 'Revenue vs. AI cost vs. gross margin estimate' },
   };
@@ -786,10 +943,11 @@ export default function AdminPage() {
           )}
 
           {/* Tab content panels */}
-          {activeTab === 'users'   && <UsersTab />}
-          {activeTab === 'reports' && <ReportsTab />}
-          {activeTab === 'ai'      && <AIUsageTab />}
-          {activeTab === 'margin'  && <MarginTab />}
+          {activeTab === 'users'    && <UsersTab />}
+          {activeTab === 'reports'  && <ReportsTab />}
+          {activeTab === 'feedback' && <FeedbackTab />}
+          {activeTab === 'ai'       && <AIUsageTab />}
+          {activeTab === 'margin'   && <MarginTab />}
 
         </main>
       </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { LanguageToggle } from "./LanguageToggle";
 
 const navLinks = [
@@ -24,13 +24,8 @@ export function Navbar() {
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-teal flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform duration-300">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-foreground">
-              Noor<span className="text-primary">Studio</span>
-            </span>
+          <Link to="/" className="flex items-center">
+            <img src="/assets/img-01.png" alt="NoorStudio" className="h-12 w-auto" />
           </Link>
 
           {/* Desktop Navigation */}
