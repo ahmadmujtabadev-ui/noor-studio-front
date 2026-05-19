@@ -36,7 +36,7 @@ const createNavItems = [
 
 const bottomNavItems = [
   { icon: CreditCard, label: "Billing", href: "/app/billing" },
-  { icon: Settings, label: "Settings", href: "/app/settings" },
+  { icon: Settings, label: "Settings", href: "/app/preferences" },
   { icon: HelpCircle, label: "Help", href: "/app/help" },
 ];
 

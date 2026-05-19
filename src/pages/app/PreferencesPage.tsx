@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { api } from '@/lib/api/client';
+import { api, tokenStorage } from '@/lib/api/client';
 import { Loader2, Monitor, Mail, Shield, LogOut, Clock, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -270,8 +270,23 @@ export default function PreferencesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  window.location.href = '/api/user/export';
+                onClick={async () => {
+                  try {
+                    const token = tokenStorage.get();
+                    const res = await fetch('/api/user/export', {
+                      headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!res.ok) throw new Error('Export failed');
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'noorstudio-data-export.json';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    toast.error('Could not download data. Please try again.');
+                  }
                 }}
               >
                 Download my data

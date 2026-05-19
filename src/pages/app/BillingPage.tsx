@@ -166,7 +166,7 @@ export default function BillingPage() {
                   Manage Billing
                 </Button>
               )}
-              {plan !== "free" && subscriptionStatus === "active" && !sub?.cancelAtPeriodEnd && (
+              {plan !== "free" && (subscriptionStatus === "active" || subscriptionStatus === "trialing") && !sub?.cancelAtPeriodEnd && (
                 <Button variant="outline" size="sm" className="text-red-500 border-red-200 hover:bg-red-50"
                   onClick={handleCancelSubscription} disabled={cancelMutation.isPending}>
                   {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
